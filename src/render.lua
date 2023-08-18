@@ -7,12 +7,13 @@ require "3d"
 CAM = Camera:new()
 
 Renderer = {
-	
+	vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 }
+
 Renderer.__index = Renderer
 
-function renderScaled(can)
-	local canvas = can or CAM.props.cam_viewport
+function renderScaled(cam)
+	local canvas = cam or CAM.props.cam_viewport
 	love.graphics.setCanvas()
 	love.graphics.origin()
 	love.graphics.scale(RESOLUTION_RATIO)

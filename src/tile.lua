@@ -12,6 +12,7 @@ function Tile:new(props)
 	}
 
 	setmetatable(this,Tile)
+	this:generateMesh()
 
 	return this
 end
@@ -28,4 +29,20 @@ function Tile.newLandTile(h1,h2,h3,h4, texture)
 		tile_height3 = h3,
 		tile_height4 = h4,
 		tile_texture = texture }
+end
+
+function Tile:generateMesh()
+	if self.props.tile_type == "void" then
+		return
+	elseif self.props.tile_type == "land" then
+
+		local atypes = {
+		  {"VertexPosition", "float", 3},
+		  {"VertexTexCoord", "float", 2},
+		}
+
+		self.props.tile_mesh = love.graphics.newMesh(atypes, 4, "triangles", "dynamic")
+	elseif self.props.tile_type == "model" then
+		--implement
+	end
 end

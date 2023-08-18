@@ -51,9 +51,10 @@ function Camera:transformCoords2()
 end
 
 function Camera:setupCanvas()
-	love.graphics.setCanvas(self.props.cam_viewport)
+	love.graphics.setCanvas{self.props.cam_viewport, depthstencil = self.props.cam_depthbuffer, depth=true}
+	love.graphics.setDepthMode( "less", true  )
 	love.graphics.origin()
-	self:transformCoords()
+	self:transformCoords2()
 end
 
 function Camera:dropCanvas()
@@ -64,23 +65,24 @@ end
 function Camera:generatePerspectiveMatrix()
 	local props = self.props
 	props.cam_perspective_matrix = cpml.mat4.from_perspective(
-		props.cam_fov, props.cam_viewport_w / props.cam_viewport_h, 1, 10000)
+		props.cam_fov, props.cam_viewport_w / props.cam_viewport_h, 0.1, 10000)
 	return props.cam_perspective_matrix
 end
 
 function Camera:generateViewMatrix()
 	local props = self.props
 	local v = cpml.mat4():identity()
+	local m = cpml.mat4()
 
 	local position = cpml.vec3(props.cam_x, props.cam_y, props.cam_z)
 
 	v:rotate(v, props.cam_pitch, cpml.vec3.unit_x)
 	v:rotate(v, props.cam_yaw, cpml.vec3.unit_y)
 	v:rotate(v, props.cam_roll, cpml.vec3.unit_z)
-	v:translate(v, position)
+	m:translate(m, -position)
 
-	props.cam_view_matrix = v
-	return v
+	props.cam_view_matrix = v * m
+	return props.cam_view_matrix
 end
 
 function Camera:getViewportCoords()

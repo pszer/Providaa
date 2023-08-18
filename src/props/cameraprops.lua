@@ -14,7 +14,7 @@ CameraPropPrototype = Props:prototype{
 	{"cam_z", "number", -16, nil, "camera z position" }, -- done
 
 	{"cam_yaw",   "number", 0, nil, "camera yaw angle" }, -- done
-	{"cam_pitch", "number", -0.9, nil, "camera pitch angle" }, -- done
+	{"cam_pitch", "number", -0.95, nil, "camera pitch angle" }, -- done
 	{"cam_roll",  "number", 0, nil, "camera roll angle"},
 
 	{"cam_fov", "number", 75.0, nil, "camera fov"},
