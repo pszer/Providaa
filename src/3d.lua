@@ -1,9 +1,11 @@
 require 'math'
+local cpml = require 'cpml'
 
 require "camera"
 
 SCALE_3D = 24
 CLIP_FRONT_Z = 8
+CURVE_COEFF = 1280
 
 function screenCoord3D(x,y,z)
 	return x/z, y/z
@@ -23,7 +25,7 @@ function translateCoord3D(x,y,z, cam)
 		y - props.cam_y,
 		z - props.cam_z
 
-	Y = Y + (Z*Z)/1024
+	Y = Y + (Z*Z)/CURVE_COEFF
 
 	local yawsin, yawcos = math.sin(props.cam_yaw), math.cos(props.cam_yaw)
 	local pitchsin, pitchcos = math.sin(props.cam_pitch), math.cos(props.cam_pitch)
@@ -35,6 +37,15 @@ function translateCoord3D(x,y,z, cam)
 	local Z3 = -pitchsin*Y + pitchcos*Z2
 
 	return X2, Y2, Z3
+end
+
+function calculateHorizon(camy)
+	camy = camy or CAM.props.cam_y
+	if CURVE_COEFF == 0 then return 100000000 end
+	local c = -4 * camy / CURVE_COEFF
+	if c < 0 then return 1000000000 end
+	c = math.sqrt(c) * CURVE_COEFF/2
+	return c
 end
 
 function cameraCoord3DScaled(x,y,z, cam, scale)

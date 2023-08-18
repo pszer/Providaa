@@ -1,3 +1,5 @@
+local cpml = require 'cpml'
+
 require "resolution"
 
 require "props/cameraprops"
@@ -14,7 +16,7 @@ function Camera:new(props)
 	}
 
 	setmetatable(this,Camera)
-	this:setupCanvas()
+	this:createCanvas()
 
 	return this
 end
@@ -24,12 +26,15 @@ function Camera:createCanvas()
 	local props = self.props
 
 	if props.cam_viewport then props.cam_viewport:release() end
-	props.cam_viewport = love.graphics.newCanvas(w,h)
+	props.cam_viewport    = love.graphics.newCanvas (w,h, {format = "rgba8"})
+	props.cam_depthbuffer = love.graphics.newCanvas (w,h, {format = "depth24"})
 	props.cam_viewport_w = w
 	props.cam_viewport_h = h
 	self.__viewport_w_half = w/2
 	self.__viewport_h_half = h/2
 
+	self:generatePerspectiveMatrix()
+	self:generateViewMatrix()
 end
 
 function Camera:transformCoords()
@@ -54,6 +59,28 @@ end
 function Camera:dropCanvas()
 	love.graphics.setCanvas()
 	love.graphics.origin()
+end
+
+function Camera:generatePerspectiveMatrix()
+	local props = self.props
+	props.cam_perspective_matrix = cpml.mat4.from_perspective(
+		props.cam_fov, props.cam_viewport_w / props.cam_viewport_h, 1, 10000)
+	return props.cam_perspective_matrix
+end
+
+function Camera:generateViewMatrix()
+	local props = self.props
+	local v = cpml.mat4():identity()
+
+	local position = cpml.vec3(props.cam_x, props.cam_y, props.cam_z)
+
+	v:rotate(v, props.cam_pitch, cpml.vec3.unit_x)
+	v:rotate(v, props.cam_yaw, cpml.vec3.unit_y)
+	v:rotate(v, props.cam_roll, cpml.vec3.unit_z)
+	v:translate(v, position)
+
+	props.cam_view_matrix = v
+	return v
 end
 
 function Camera:getViewportCoords()

@@ -1,4 +1,5 @@
 require "render"
+require "grid"
 
 PROV = {
 	grid = {},
@@ -8,11 +9,21 @@ PROV = {
 
 function PROV:load()
 	local grid = PROV.grid
-	for z=1,16 do
+	for z=1,60 do
 		grid[z] = {}
 		for x=1,16 do
 			grid[z][x] = {0,0,0,0}
 		end
+	end
+
+	for i=1,25 do
+		local x = math.floor(math.random()*14)+1
+		local z = math.floor(math.random()*58)+1
+
+		grid[z][x][2] = grid[z][x][2] - 25
+		grid[z][x+1][1] = grid[z][x+1][1] - 25
+		grid[z+1][x][3] = grid[z+1][x][3] - 25 
+		grid[z+1][x+1][4] = grid[z+1][x+1][4] - 25
 	end
 	print("done")
 end
@@ -53,11 +64,13 @@ function PROV:update(dt)
 	if love.keyboard.isDown("up") then
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
-
 end
 
 function PROV:draw()
 
+	local clipz = calculateHorizon()
+	local cliptz = (clipz+CAM.props.cam_z) / 32
+	cliptz = cliptz
 
 	CAM:transformCoords2()
 	CAM:setupCanvas()
@@ -70,7 +83,7 @@ function PROV:draw()
 	local vmap = {1,2,3, 3,4,1}
 	mesh:setVertexMap(vmap)
 
-	for Z=1,16 do
+	for Z=math.min(48,math.ceil(cliptz)),1,-1 do
 		for X=1, 16 do
 			square = PROV.grid[Z][X]
 
@@ -78,13 +91,13 @@ function PROV:draw()
 			y[1],y[2],y[3],y[4] = square[1],square[2],square[3],square[4]
 
 			x[1], z[1] = X*32, Z*32
-			y[1]     = y[1] * 32
+			y[1]     = y[1] * 1
 			x[2], z[2] = X*32+32, Z*32
-			y[2]     = y[1] * 32
+			y[2]     = y[2] * 1
 			x[3], z[3] = X*32+32, Z*32-32
-			y[3]     = y[1] * 32
+			y[3]     = y[3] * 1
 			x[4], z[4] = X*32, Z*32-32
-			y[4]     = y[1] * 32
+			y[4]     = y[4] * 1
 
 			local u = {0,1,1,0}
 			local v = {0,0,1,1}
