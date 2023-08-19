@@ -1,0 +1,65 @@
+> Total time: 8.090224 s
+--------------------------------------------------------------------------------------
+| FILE                : FUNCTION                    : LINE   : TIME   : %     : #    |
+--------------------------------------------------------------------------------------
+| [love "callbacks.lua: Anon                        :   144  : 8.0893 : 100.0 :   27 |
+| main                : draw                        :    28  : 8.0704 : 99.8  :   26 |
+| providaa            : draw                        :    72  : 8.0702 : 99.8  :   26 |
+| prop                : __index                     :   116  : 5.6482 : 69.8  : 544218|
+| grid                : queryTile                   :    49  : 3.9438 : 48.7  : 106496|
+| tile                : updateMeshTexture           :    76  : 2.0061 : 24.8  : 106496|
+| provtype            : provtype                    :     9  : 1.6592 : 20.5  : 242512|
+| mesh                : updateTexture               :    26  : 0.1823 : 2.3   : 4498 |
+| texture             : animationChangesThisTick    :   136  : 0.1268 : 1.6   : 4498 |
+| mesh                : draw                        :    37  : 0.0493 : 0.6   : 4498 |
+| texture             : getImage                    :    25  : 0.0314 : 0.4   :  342 |
+| camera              : generateViewMatrix          :    90  : 0.0134 : 0.2   :   27 |
+| tick                : getTick                     :     4  : 0.0077 : 0.1   : 3331 |
+| camera              : setupCanvas                 :    54  : 0.0061 : 0.1   :   26 |
+| main                : Anon                        :    32  : 0.0023 : 0.0   :    1 |
+| camera              : createCanvas                :    25  : 0.0022 : 0.0   :    1 |
+| render              : renderScaled                :    17  : 0.0019 : 0.0   :   26 |
+| prop                : __newindex                  :    85  : 0.0018 : 0.0   :   59 |
+| camera              : dropCanvas                  :    73  : 0.0017 : 0.0   :   26 |
+| cpml/modules/mat4   : rotate                      :   358  : 0.0014 : 0.0   :   81 |
+| main                : update                      :    16  : 0.0013 : 0.0   :   26 |
+| providaa            : update                      :    24  : 0.0011 : 0.0   :   26 |
+| cpml/modules/mat4   : mat4                        :    62  : 0.0007 : 0.0   :   54 |
+| cpml/modules/mat4   : is_mat4                     :   693  : 0.0007 : 0.0   :  108 |
+| resolution          : get_resolution              :    42  : 0.0006 : 0.0   :   28 |
+| camera              : transformCoords2            :    47  : 0.0005 : 0.0   :   26 |
+| cpml/modules/mat4   : mul_internal                :   330  : 0.0004 : 0.0   :  108 |
+| cpml/modules/mat4   : translate                   :   358  : 0.0004 : 0.0   :   27 |
+| resolution          : get_aspect_ratio            :    30  : 0.0003 : 0.0   :   29 |
+| cpml/modules/mat4   : identity                    :    32  : 0.0003 : 0.0   :  135 |
+| cpml/modules/_privat: typeof                      :     5  : 0.0003 : 0.0   :   81 |
+| matrix              : matrix                      :     2  : 0.0003 : 0.0   :   78 |
+| 3d                  : calculateHorizon            :    44  : 0.0003 : 0.0   :   26 |
+| [love "callbacks.lua: Anon                        :    43  : 0.0003 : 0.0   :  143 |
+| [love "wrap_Event.lu: poll                        :    25  : 0.0002 : 0.0   :   27 |
+| camera              : generatePerspectiveMatrix   :    82  : 0.0001 : 0.0   :    1 |
+| tick                : setTick                     :     8  : 0.0001 : 0.0   :   25 |
+--------------------------------------------------------------------------------------
+| resolution          : update_resolution_ratio     :    11  : ~      : ~     :    1 |
+| cpml/modules/mat4   : from_perspective            :   217  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    91  : ~      : ~     :    3 |
+| [love "callbacks.lua: Anon                        :    31  : ~      : ~     :    2 |
+| [love "callbacks.lua: Anon                        :    97  : ~      : ~     :    1 |
+| [builtin:rad]       : rad                         :    -1  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    40  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    94  : ~      : ~     :    1 |
+| profiler            : stop                        :   225  : ~      : ~     :    1 |
+| main                : quit                        :    37  : ~      : ~     :    1 |
+| prop                : __index                     :    62  : ~      : ~     : 204234|
+| [love "callbacks.lua: Anon                        :   106  : ~      : ~     :    1 |
+| cpml/modules/vec3   : len                         :   192  : ~      : ~     :   81 |
+| cpml/modules/mat4   : rotate                      :   475  : ~      : ~     :   81 |
+| cpml/modules/vec3   : __unm                       :   383  : ~      : ~     :   27 |
+| cpml/modules/mat4   : translate                   :   509  : ~      : ~     :   27 |
+| cpml/modules/mat4   : __index                     :   879  : ~      : ~     :  244 |
+| cpml/modules/vec3   : vec3                        :   379  : ~      : ~     :   27 |
+| cpml/modules/mat4   : new                         :    20  : ~      : ~     :   55 |
+| cpml/modules/vec3   : vec3                        :    51  : ~      : ~     :   27 |
+| cpml/modules/mat4   : mat4                        :   899  : ~      : ~     :   54 |
+| cpml/modules/mat4   : identity                    :   102  : ~      : ~     :   27 |
+--------------------------------------------------------------------------------------

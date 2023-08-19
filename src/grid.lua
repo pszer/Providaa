@@ -74,10 +74,15 @@ function Grid:getWorldCoords(x,z)
 	end
 	local tprops = tile.props
 
-	local x1,y1,z1 = (x+0)*TILE_SIZE , tprops.tile_height1*TILE_HEIGHT, -(z+1)*TILE_SIZE
-	local x2,y2,z2 = (x+1)*TILE_SIZE , tprops.tile_height2*TILE_HEIGHT, -(z+1)*TILE_SIZE
-	local x3,y3,z3 = (x+1)*TILE_SIZE , tprops.tile_height3*TILE_HEIGHT, -(z+0)*TILE_SIZE
-	local x4,y4,z4 = (x+0)*TILE_SIZE , tprops.tile_height4*TILE_HEIGHT, -(z+0)*TILE_SIZE
+	--local x1,y1,z1 = (x+0)*TILE_SIZE , tprops.tile_height1*TILE_HEIGHT, -(z+1)*TILE_SIZE
+	--local x2,y2,z2 = (x+1)*TILE_SIZE , tprops.tile_height2*TILE_HEIGHT, -(z+1)*TILE_SIZE
+	--local x3,y3,z3 = (x+1)*TILE_SIZE , tprops.tile_height3*TILE_HEIGHT, -(z+0)*TILE_SIZE
+	--local x4,y4,z4 = (x+0)*TILE_SIZE , tprops.tile_height4*TILE_HEIGHT, -(z+0)*TILE_SIZE
+
+	local x1,y1,z1 = Tile.tileCoordToWorld( x , tprops.tile_height1, (z+1) )
+	local x2,y2,z2 = Tile.tileCoordToWorld( x+1, tprops.tile_height2, (z+1) )
+	local x3,y3,z3 = Tile.tileCoordToWorld( x+1, tprops.tile_height3, (z+0) )
+	local x4,y4,z4 = Tile.tileCoordToWorld( x+0, tprops.tile_height4, (z+0) )
 
 	return x1,y1,z1, x2,y2,z2,
 	       x3,y3,z3, x4,y4,z4
@@ -97,12 +102,11 @@ function Grid:generateMesh()
 				local u = {0,1,1,0}
 				local v = {0,0,1,1}
 	
-				mesh:setVertex(1, x1,y1,z1, u[1], v[1])
-				mesh:setVertex(2, x2,y2,z2, u[2], v[2])
-				mesh:setVertex(3, x3,y3,z3, u[3], v[3])
-				mesh:setVertex(4, x4,y4,z4, u[4], v[4])
+				mesh.mesh:setVertex(1, x1,y1,z1, u[1], v[1])
+				mesh.mesh:setVertex(2, x2,y2,z2, u[2], v[2])
+				mesh.mesh:setVertex(3, x3,y3,z3, u[3], v[3])
+				mesh.mesh:setVertex(4, x4,y4,z4, u[4], v[4])
 			end
-			
 		end
 	end
 end
@@ -162,7 +166,7 @@ function Grid:optimizeMesh()
 				X[3] = X[1] + count * TILE_SIZE
 
 				for i=1,4 do
-					mesh:setVertex(i, X[i], Y[i], Z[i], u[i], v[i])
+					mesh.mesh:setVertex(i, X[i], Y[i], Z[i], u[i], v[i])
 				end
 
 				for i = x+1, upto do

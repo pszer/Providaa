@@ -20,6 +20,11 @@ TexturePropPrototype = Props:prototype{
 
 	{"texture_animation_delay", "number", 60/2,     nil,    "delay between each animation frame in 1/60th of a second"},
 	{"texture_wrap_mode",       "string", "repeat", PropIsOneOf{"clamp","repeat","clampzero","mirroredrepeat"}}, -- implement
-	{"texture_type",            "string", "2d",     PropIsOneOf{"2d","array","cube","volume"}} -- implement
+	{"texture_type",            "string", "2d",     PropIsOneOf{"2d","array","cube","volume"}}, -- implement
+
+	-- texture size is determined by first frame
+	-- textures are expected to have the same size in an animation
+	{"texture_height", "number", 1, nil, "texture height"},
+	{"texture_width" , "number", 1, nil, "texture width"}
 
 }

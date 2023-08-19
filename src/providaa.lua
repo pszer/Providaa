@@ -4,9 +4,13 @@ local cpml = require "cpml"
 require "render"
 require "map"
 require "tick"
+require "scene"
+
+local testmap = require "maps.test"
 
 PROV = {
 	grid = {},
+	scene = Scene:new(),
 
 	tick_dt_counter = 0,
 	tick_rate = 60
@@ -14,19 +18,22 @@ PROV = {
 
 function PROV:load()
 	Textures.loadTextures()
+
+	self.scene:loadMap(testmap)
 end
 
-local testmap = require "maps.test"
-TESTGRID = Map.loadMap(testmap)
-TESTGRID:generateMesh()
-TESTGRID:optimizeMesh()
-
 function PROV:update(dt)
+	UPDATE_ANIMATION = false
 	self.tick_dt_counter = self.tick_dt_counter + dt
 	if (self.tick_dt_counter > 1/self.tick_rate) then
 		setTick(getTick()+1)
 		self.tick_dt_counter = self.tick_dt_counter - 1/self.tick_rate
+		self:onTickChange()
+		UPDATE_ANIMATION = true
 	end
+
+	local x,y,z = CAM:getDirectionVector()
+	print(x,y,z)
 
 	local cam = CAM.props
 	if love.keyboard.isDown("w") then
@@ -50,10 +57,12 @@ function PROV:update(dt)
 
 	if love.keyboard.isDown("right") then
 		cam.cam_yaw = cam.cam_yaw + 1*dt
+		cam.cam_roll = cam.cam_roll - 1*dt
 	end
 
 	if love.keyboard.isDown("left") then
 		cam.cam_yaw = cam.cam_yaw - 1*dt
+		cam.cam_roll = cam.cam_roll + 1*dt
 	end
 
 	if love.keyboard.isDown("down") then
@@ -78,22 +87,43 @@ function PROV:draw()
 	love.graphics.setColor(1,1,1,0.5)
 	love.graphics.setColor(1,1,1,1)
 
-	local grid = TESTGRID
+	local grid = self.scene.props.scene_grid
+	local gridd = self.scene.props.scene_grid.props.grid_data
+	local walls = self.scene.props.scene_walls
 	for Z = 1, grid.props.grid_h do
 		for X = 1, grid.props.grid_w do
-			local tile = grid:queryTile(X,Z)
-			tile:updateTextureAnimation()
+			--local tile = grid:queryTile(X,Z)
+			local tile = gridd[Z][X]
+			tile:updateMeshTexture()
 
 			local mesh = tile.props.tile_mesh
 			if mesh then
-				local x,y,z = mesh:getVertex(1)
-				love.graphics.draw(mesh)
+				mesh:draw()
+				--love.graphics.draw(mesh)
+			end
+
+			local wall = walls[Z][X]
+			if wall then
+				if wall.eastmesh then wall.eastmesh:draw() end
+				if wall.northmesh then wall.northmesh:draw() end
+				if wall.westmesh then wall.westmesh:draw() end
+				if wall.southmesh then wall.southmesh:draw() end
 			end
 		end
 	end
 
-
 	CAM:dropCanvas()
 
 	renderScaled()
+end
+
+function PROV:onTickChange()
+
+	local grid = self.scene.props.scene_grid
+	for Z = 1, grid.props.grid_h do
+		for X = 1, grid.props.grid_w do
+			local tile = grid:queryTile(X,Z)
+			tile:updateMeshTexture()
+		end
+	end
 end

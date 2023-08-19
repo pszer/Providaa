@@ -1,4 +1,5 @@
-local TICK = 0
+TICK = 0
+UPDATE_ANIMATION = false
 
 function getTick()
 	return TICK

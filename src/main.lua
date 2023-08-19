@@ -1,6 +1,8 @@
 require "gamestate"
 require "render"
 
+local profiler = require("profiler")
+
 function love.load()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	CAM:createCanvas()
@@ -16,7 +18,7 @@ function love.update(dt)
 	counter = counter + dt
 	frames=frames+1
 	if (counter > 1.0) then
-		print(frames)
+		print(1/dt)
 		frames=0
 		counter = 0
 	end
@@ -29,4 +31,7 @@ end
 function love.resize( w,h )
 	update_resolution_ratio( w,h )
 	CAM:createCanvas()
+end
+
+function love.quit()
 end

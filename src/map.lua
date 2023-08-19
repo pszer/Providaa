@@ -76,6 +76,7 @@
 
 require "texture"
 require "grid"
+require "wall"
 
 Map = {}
 Map.__index = Map
@@ -140,7 +141,7 @@ function Map.malformedCheck(map)
 	return nil
 end
 
--- returns grid, makes sure textures in tileset are loaded
+-- returns grid, walls. makes sure textures in tileset are loaded
 function Map.loadMap(map)
 	local maperror = Map.malformedCheck(map)
 	if maperror then
@@ -150,11 +151,14 @@ function Map.loadMap(map)
 
 	local width, height = map.width, map.height
 
-	local grid = Grid.allocateGrid(map.width, map.height)
+	local grid = Grid.allocateGrid(width, height)
+	local walls = {}
+	for z=1,height do walls[z]={} end
 
 	local textures = {}
+	local walltextures = {}
 
-	-- load all the textures in the tileset
+	-- load all the textures in the tileset and wallset
 	for i,t in pairs(map.tile_set) do
 		local tex = t.tile_texture
 
@@ -164,26 +168,47 @@ function Map.loadMap(map)
 		end
 	end
 
+	for i,t in pairs(map.wall_set) do
+		if t then
+			Textures.loadTexture(t)
+			walltextures[i] = Textures.queryTexture(t)
+		end
+	end
+
 	for z = 1,height do
 		for x=1,width do
 			local y1,y2,y3,y4
 
-			local tileh = map.height_map[z][x]
+			--local tileh = map.height_map[z][x]
+			local tileh = Map.getHeights(map, x,z)
 			local tileid = map.tile_map[z][x]
-
-			if type(tileh) == "table" then
-				y1,y2,y3,y4 = tileh[1],tileh[2],tileh[3],tileh[4]
-			else
-				y1,y2,y3,y4 = tileh,tileh,tileh,tileh
-			end
+			local tilewalls = Map.getWalls(map, x,z)
 
 			local tileprops = map.tile_set[tileid]
-			tileprops.tile_height1 = y1
-			tileprops.tile_height2 = y2
-			tileprops.tile_height3 = y3
-			tileprops.tile_height4 = y4
+			tileprops.tile_height1 = tileh[1]
+			tileprops.tile_height2 = tileh[2]
+			tileprops.tile_height3 = tileh[3]
+			tileprops.tile_height4 = tileh[4]
 
-			--t = Tile:new(tileprops)
+			if tilewalls then
+				local textures = {}
+				for i = 1,4 do 
+					local wallid = tilewalls[i]
+					if wallid then
+						textures[i] = walltextures[wallid]
+					end
+				end
+
+				walls[z][x] = Wall:generateWall(textures,
+					tileh, -- current tile
+					Map.getHeights( map , x-1, z  ), -- west tile
+					Map.getHeights( map , x  , z+1), -- south tile
+					Map.getHeights( map , x+1, z  ), -- east tile
+					Map.getHeights( map , x  , z-1)  -- north tile
+					)
+
+			end
+
 			t = Tile.allocateTile(tileprops, textures[tileid])
 
 			local realz = height - z + 1
@@ -191,5 +216,35 @@ function Map.loadMap(map)
 		end
 	end
 
-	return grid
+	return grid, walls
+end
+
+function Map.getHeights(map, x,z)
+	if x < 1 or x > map.width or z < 1 or z > map.height then
+		return nil
+	end
+
+	local y = {}
+	local tileh = map.height_map[z][x]
+	if type(tileh) == "table" then
+		y[1],y[2],y[3],y[4] = tileh[1],tileh[2],tileh[3],tileh[4]
+	else
+		y[1],y[2],y[3],y[4] = tileh,tileh,tileh,tileh
+	end
+	return y
+end
+
+function Map.getWalls(map, x,z)
+	local w = {}
+	local walls = map.wall_map[z][x]
+
+	if not walls then return nil end
+
+	if type(walls) == "table" then
+		w[1],w[2],w[3],w[4],w[5] = walls[1],walls[2],walls[3],walls[4],walls[5]
+	else
+		--w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
+		w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
+	end
+	return w
 end

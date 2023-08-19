@@ -105,6 +105,17 @@ function Camera:generateViewMatrix()
 	return props.cam_view_matrix, props.cam_rot_matrix
 end
 
+function Camera:getDirectionVector()
+	local unit = {0,0,0,0}
+	local rot = self.props.cam_rot_matrix
+	if rot then
+		unit = cpml.mat4.mul_vec4(unit, rot, {0,0,-1,0})
+		return unit[1], unit[2], unit[3]
+	else
+		return 0,0,-1
+	end
+end
+
 function Camera:getViewportCoords()
 	return self.__viewport_w_half, self.__viewport_h_half
 end

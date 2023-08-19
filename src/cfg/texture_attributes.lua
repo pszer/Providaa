@@ -4,6 +4,11 @@ return {
 		texture_type      = "2d",
 		texture_animated  = false
 	},
+	["dirt2.png"] = {
+		texture_wrap_mode = "repeat",
+		texture_type      = "2d",
+		texture_animated  = false
+	},
 
 	["water.png"] = {
 		texture_sequence = {1,2,3,4,3,2},

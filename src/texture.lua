@@ -18,6 +18,8 @@ function Texture:new(props)
 
 	setmetatable(this,Texture)
 	this.props.texture_sequence_length = #this.props.texture_sequence
+	this.props.texture_width = this.props.texture_imgs[1]:getWidth()
+	this.props.texture_height = this.props.texture_imgs[1]:getHeight()
 
 	return this
 end
@@ -26,6 +28,10 @@ function Texture:getImage(frame)
 	if not self.props.texture_animated then
 		return self.props.texture_imgs[1]
 	else
+		if frame then
+			return self.props.texture_imgs[frame]
+		end
+
 		local props = self.props
 		local tick = getTick()
 
@@ -45,7 +51,6 @@ end
 -- otherwise, returns nil
 function Texture.openFilename(filename, attributes)
 	if not attributes then attributes = tex_attributes[filename] or {} end
-	for i,v in pairs(attributes) do print(i,v) end
 
 	local fpath = "img/" .. filename
 
@@ -158,9 +163,6 @@ function Textures.loadTextures()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	print("loading from cfg/texture_attributes")
 	for i,v in pairs(tex_attributes) do
-		print("loading",i)
 		Textures.loadTexture(i)
 	end
 end
-
-Textures.loadTextures()

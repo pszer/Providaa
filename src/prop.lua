@@ -116,13 +116,15 @@ Props.__call = function (proto, init)
 	props.__index = function (p, key)
 		local v = rawget(p.__proptabledata, key)
 		if v ~= nil then
-			if provtype(v) == "function" and p.__proto[key].callonly then
-				return v()
-			elseif provtype(v) == "link" then
-				return v[1]()
-			else
-				return v
-			end
+			--if provtype(v) == "function" and p.__proto[key].callonly then
+			--if type(v) == "function" and p.__proto[key].callonly then
+			--	return v()
+			--elseif provtype(v) == "link" then
+			--	return v[1]()
+			--else
+			--	return v
+			--end
+			return v
 		else
 			if p.__proto[key] then
 				return p.__proto[key].default
