@@ -1,0 +1,127 @@
+-- functions for loading and getting textures
+
+require "props.textureprops"
+require "string"
+
+local tex_attributes = require "cfg.texture_attributes"
+
+Texture = {__type = "texture"}
+Texture.__index = Texture
+
+function Texture:new(props)
+	local this = {
+		props = TexturePropPrototype(props),
+	}
+
+	setmetatable(this,Tile)
+
+	return this
+end
+
+-- if img/filename exists, loads it as a texture
+-- if it doesn`t exist, but img/filename1,2,3... exist
+-- then it loads these together into an animted texture
+-- otherwise, returns nil
+function Texture.openFilename(filename, attributes)
+	if not attributes then attributes = tex_attributes[filename] or {} end
+	local fpath = "img/" .. filename
+
+	print("yoyoyo")
+
+	local img = Texture.openImage(fpath)
+	print(fpath, img)
+	if img then
+
+		-- non animated texture
+		local props = {
+			texture_name = filename,
+			texture_imgs = {img},
+			texture_frames  = 1,
+			texture_animated = false,
+			texture_type = "2d"
+		}
+		for i,v in pairs(attributes) do props[i]=v end
+		return Texture:new(props)
+
+	else
+		-- check if animated texture
+
+		-- first, we get a filepath without a file extension
+		-- and have a copy of the file extension itself
+		local extension_i = 1
+		for extension_i= string.len(fpath),1,-1 do
+			if fpath[extension_i] == '.' then
+				break
+			end
+		end
+		-- if no file extension, return nil
+		if extension_i <= 1 then return nil end
+
+		local fpathsub = string.sub(fpath, 1,extension_i-1)
+		local fpathext = string.sub(fpath, extension_i,-1)
+
+		local frames = {}
+		local sequence = {}
+		local i = 1
+		local exists = false
+
+		while true do
+			local anim_path = fpathsub .. to_string(i) .. fpathext
+
+			local img = Texture.openImage(anim_path)
+
+			if img then
+				exists = true
+				frames[i] = img
+				sequence[i] = i
+				i = i + 1
+			else
+				break
+			end
+		end
+
+		if exists then
+			local props = {
+				texture_name = filename,
+				texture_imgs = frames,
+				texture_frames  = i-1,
+				texture_animated = true,
+				texture_type = "2d"
+			}
+			for i,v in ipairs(attributes) do props[i]=v end
+			return Texture:new(props)
+		else
+			-- texture at filename doesn`t exist
+			return nil
+		end
+
+	end
+end
+
+-- checks if texture exists, if it does
+-- calls love.graphics.newImage() along with
+-- setting desired texture attributes
+function Texture.openImage(f)
+	local finfo = love.filesystem.getInfo(f)
+	if not finfo or finfo.type ~= "file" then return nil end
+
+	local img = love.graphics.newImage(f)
+	if not img then return nil end
+
+	img:setWrap("repeat","repeat")
+
+	return img
+end
+
+Textures = {
+	loaded = {}
+}
+Textures.__index = Textures
+
+function Textures.loadTextures()
+	for i,v in pairs(tex_attributes) do
+		print("loading",i)
+		local T = Texture.openFilename(i, v)
+		if T then loaded[i] = T end
+	end
+end

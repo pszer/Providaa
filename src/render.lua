@@ -4,6 +4,8 @@ require "camera"
 require "resolution"
 require "3d"
 
+require "texture"
+
 CAM = Camera:new()
 
 Renderer = {

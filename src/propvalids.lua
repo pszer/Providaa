@@ -36,10 +36,38 @@ function PropMin(m)
 	end
 end
 
+-- limits numbers to <= m
+function PropMax(m)
+	return function (x)
+		return true, math.min(m,x)
+	end
+end
+
 -- limits numbers to a <= x <= b
 function PropClamp(a,b)
 	return function (x)
 		return true, math.max(a , math.min(x,b))
+	end
+end
+
+-- limits numbers to integers >= m
+function PropIntegerMin(m)
+	return function (x)
+		return true, math.max(m,math.floor(x))
+	end
+end
+
+-- limits numbers to integers <= m
+function PropIntegerMax(m)
+	return function (x)
+		return true, math.min(m,math.floor(x))
+	end
+end
+
+-- limits numbers to integers a <= x <= b
+function PropIntegerClamp(a,b)
+	return function (x)
+		return true, math.max(a , math.min(math.floor(x),b))
 	end
 end
 

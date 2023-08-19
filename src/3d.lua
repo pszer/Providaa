@@ -1,3 +1,5 @@
+-- mostly unused legacy code
+
 require 'math'
 local cpml = require 'cpml'
 

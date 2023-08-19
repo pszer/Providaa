@@ -1,0 +1,12 @@
+return {
+	["dirt.png"] = {
+		texture_wrap_mode = "repeat",
+		texture_type      = "2d",
+		texture_animated  = false
+	},
+
+	["water.png"] = {
+		texture_sequence = {1,2,3,4,3,2},
+		texture_animation_delay = 8
+	}
+}

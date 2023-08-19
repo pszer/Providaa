@@ -2,7 +2,7 @@ require "gamestate"
 require "render"
 
 function love.load()
-	love.graphics.setDefaultFilter( "linear", "nearest" )
+	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	CAM:createCanvas()
 
 	SET_GAMESTATE(PROV)
