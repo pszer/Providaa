@@ -317,16 +317,28 @@ function Map.getGridMeshes(map, grid, gridset)
 		local texture = Textures.queryTexture(map.tile_set[i].tile_texture)
 
 		local set_meshes = {}
+		local set_tiles  = {}
 
 		for _,tile_in_set in ipairs(v) do
 			local z,x = tile_in_set[1], tile_in_set[2]
 			
 			--print(map.wall_set[i], unpack(wall_in_set))
+			local tile = grid:queryTile(x,z)
 			local mesh = Map.generateTileMesh(map, z,x, grid:queryTile(x,z), texture)
 			table.insert(set_meshes, mesh)
+			table.insert(set_tiles, tile)
 		end
 
-		local merge = Mesh.mergeMeshes(texture, set_meshes)
+		local vindices = {}
+		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices)
+
+		for i,tile in ipairs(set_tiles) do
+			local props = tile.props
+			props.tile_mesh = merge
+			props.tile_mesh_vstart_index = vindices[i][1]
+			props.tile_mesh_vend_index = vindices[i][2]
+		end
+
 		table.insert(meshes, merge)
 	end
 

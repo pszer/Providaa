@@ -8,7 +8,7 @@ Mesh = {
 	atypes = {
 	  {"VertexPosition", "float", 3},
 	  {"VertexTexCoord", "float", 2},
-	  {"VertexNormal"  , "float", 3}
+	  {"VertexNormal"  , "float", 3},
 	},
 
 	vertex_attribute = 1,
@@ -22,6 +22,7 @@ function Mesh:new(tex, ...)
 	local arg = {...}
 	local this = {
 		mesh = love.graphics.newMesh(Mesh.atypes, unpack(arg)),
+		attr_mesh = nil,
 		texture = tex,
 	}
 
@@ -51,7 +52,11 @@ function Mesh:setRectangle(index, v1, v2, v3, v4)
 	self:setTriangle(index+3, v3, v4, v1)
 end
 
-function Mesh.mergeMeshes(texture, list)
+function Mesh:attachAttributeMesh(mesh)
+
+end
+
+function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 	local length = #list
 
 	local count = 0
@@ -62,17 +67,32 @@ function Mesh.mergeMeshes(texture, list)
 	print(length,"meshes",count,"verts")
 
 	local mesh = Mesh:new(texture, count, "triangles", "dynamic")
+	local attr_mesh = nil
+	if attribute_atype then
+		attr_mesh = love.graphics.newMesh(attribute_atype, count, "triangles", "dynamic")
+		mesh.attr_mesh = attr_mesh
+		for _,attr in pairs(attribute_atype) do
+			mesh:attachAttribute(attr_mesh, attr[1])
+		end
+	end
+
 	mesh.mesh:setDrawRange(1, count*2)
 
 	local V = 1
 	for i = 1, length do
 		local m = list[i]
 		local vcount = m.mesh:getVertexCount()
-		
+	
+		local startV = V
+
 		for j=1,vcount do
 			local vertex = {m.mesh:getVertex(j)}
 			mesh.mesh:setVertex(V, vertex)
 			V = V + 1
+		end
+
+		if vertexlist then
+			vertexlist[i] = {startV, V}
 		end
 	end
 
@@ -90,8 +110,13 @@ function Mesh:updateTexture()
 	end
 end
 
-function Mesh:draw()
+function Mesh:draw(shader)
+	shader = shader or love.graphics.getShader()
 	if self.mesh then
+		local tex = self.texture
+		shader:send("texture_animated", tex.props.texture_animated)
+		shader:send("texture_animated_frame", 1)
+		shader:send("texture_animated_dimx", tex.props.texture_merged_dim_x)
 		love.graphics.draw(self.mesh)
 	end
 end

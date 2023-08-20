@@ -10,15 +10,18 @@ DIRT:setWrap("repeat", "repeat")
 TILE_SIZE = 32
 TILE_HEIGHT = -24
 
-Tile = {__type = "tile"}
+Tile = {__type = "tile",
+
+	atypes = {
+		{"AnimationOffset", "int", 1},
+		{"TextureScale",    "float", 1},
+		{"TextureOffset",   "float", 2}
+	}}
 Tile.__index = Tile
 
 function Tile:new(props)
 	local this = {
 		props = TilePropPrototype(props),
-
-		-- used for caching purposes
-		--texture = nil
 	}
 
 	setmetatable(this,Tile)

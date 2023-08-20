@@ -16,6 +16,11 @@ TexturePropPrototype = Props:prototype{
 	{"texture_sequence", "table", {}, nil,              "table of indices "},
 	{"texture_sequence_length", "number", 1, nil,       "table of indices "},
 
+	{"texture_merged_img", nil, nil, nil,               "all the frames of an animated texture in one"},
+	{"texture_merged_dim_x", "number", 1, nil,        "how many textures there are in the x direction in merged texture"},
+	{"texture_merged_dim_y", "number", 1, nil,        "how many textures there are in the x direction in merged texture"},
+	{"texture_merged_coords", nil, nil, nil,            "uv texture coordinates for the merged image"},
+
 	{"texture_animated", "boolean", false, nil,         "is texture animated?", "readonly"},
 
 	{"texture_animation_delay", "number", 60/2,     nil,    "delay between each animation frame in 1/60th of a second"},

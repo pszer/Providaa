@@ -20,11 +20,14 @@ TilePropPrototype = Props:prototype{
 	{"tile_height4", "number", 0, PropIntegerClamp(TILE_MIN_Y,TILE_MAX_Y),   "tile's y position (-x,-z corner)" }, -- done
 
 	{"tile_texture", "string", "tile", nil,                         "tile's texture (only for land tiles)" , "readonly"},
+	{"tile_texture_animation_offset", "number", 0, nil,             "offset for texture animation on this tile"},
+
 	{"tile_model", "string", "block",  nil,                         "tile's model   (only for model tiles)", "readonly"},
 
-	{"tile_mesh", nil, nil, nil,              "tiles Love2D mesh for rendering"},
-	{"tile_mesh_optimized", "boolean", false, nil, "flag for whether or not this tile is missing a mesh due to grid:optimizeMesh"},
+	{"tile_mesh", nil, nil, nil,              "the mesh which this tile is a part of"},
 
+	{"tile_mesh_vstart_index", "number", 0, nil, "the starting index vertex in the mesh for this tile"},
+	{"tile_mesh_vend_index", "number", 0, nil,   "the final index vertex in the mesh for this tile"},
 
 	{"tile_walkable", "boolean", true, nil, nil,         "can be walked on by entities"},
 

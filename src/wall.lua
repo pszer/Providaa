@@ -26,11 +26,6 @@ function Wall:new()
 		south = nil,
 		west = nil,
 		east = nil,
-
-		northmesh = nil,
-		southmesh = nil,
-		westmesh = nil,
-		eastmesh = nil,
 	}
 
 	setmetatable(this,Wall)
@@ -65,11 +60,8 @@ function Wall:generateWall(textures, tile_heights, west_heights, south_heights, 
 
 	local wall = Wall:new()
 	local dest = { "west", "south", "east", "north"}
-	local destmesh = { "westmesh", "southmesh", "eastmesh", "northmesh"}
 
 	local at_least_one_wall = false
-
-	local vmap = {1,2,3, 3,4,1}
 
 	-- iterative function, i goes through 1,2,3,4=west,south,east,north
 	local check_side = function(i,     check_side)
@@ -92,15 +84,6 @@ function Wall:generateWall(textures, tile_heights, west_heights, south_heights, 
 		end
 
 		-- for now, generate both triangles of the rectangle, even if one below ground
-		--local atypes = {
-		--  {"VertexPosition", "float", 3},
-		--  {"VertexTexCoord", "float", 2},
-		--}
-
-		local mesh = Mesh:new(textures[i], 6, "triangles", "dynamic")
-		--mesh.mesh:setVertexMap(vmap)
-		--mesh.mesh:setDrawRange(1,3000)
-
 		local vector = vectors[i]
 
 		local x,y,z = {},{},{}
@@ -117,15 +100,9 @@ function Wall:generateWall(textures, tile_heights, west_heights, south_heights, 
 			x[4],y[4],z[4] = 0         , oppheight_a,  0
 		end
 
-		--x[1],y[1],z[1] = 0+vector.x, height_a,     0+vector.z
-		--x[2],y[2],z[2] = 0         , height_b,     0
-		--x[3],y[3],z[3] = 0         , oppheight_b,  0
-		--x[4],y[4],z[4] = 0+vector.x, oppheight_a,  0+vector.z
-
 		at_least_one_wall = true
 
 		wall[dest[i]] = {}
-		wall[destmesh[i]] = mesh
 
 		for vertex=1,4 do
 			wall[dest[i]][vertex] = {x[vertex], y[vertex], z[vertex]}

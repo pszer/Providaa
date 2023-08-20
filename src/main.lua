@@ -7,6 +7,8 @@ function love.load()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	CAM:createCanvas()
 
+	Textures.loadTextures()
+	Textures.generateMissingTexture()
 	--profiler.start()
 	SET_GAMESTATE(PROV)
 end
