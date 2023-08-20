@@ -27,8 +27,9 @@ CameraPropPrototype = Props:prototype{
 	{"cam_perspective_matrix", nil, nil, nil, "perspective matrix"},
 	{"cam_view_matrix", nil, nil, nil, "view position matrix"},
 	{"cam_rot_matrix", nil, nil, nil, "view rotation matrix"},
+	{"cam_rotview_matrix", nil, nil, nil, "view position matrix"},
 
 	{"cam_bend_enabled", "boolean", true, nil,           "when enabled, things further away from the camera decrease in y value"},
-	{"cam_bend_coefficient", "number", 4028, PropMin(1), "the lower the number, the more exaggerated the bend effect"}
+	{"cam_bend_coefficient", "number", 8048, PropMin(1), "the lower the number, the more exaggerated the bend effect"}
 
 }

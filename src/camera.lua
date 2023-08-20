@@ -58,7 +58,7 @@ function Camera:setupCanvas()
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
-	love.graphics.setShader(Renderer.vertex_shader)
+	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 	Renderer.vertex_shader:send("u_proj", "column", matrix(props.cam_perspective_matrix))
 	Renderer.vertex_shader:send("u_view", "column", matrix(props.cam_view_matrix))
 	Renderer.vertex_shader:send("u_rot", "column", matrix(props.cam_rot_matrix))
@@ -68,6 +68,11 @@ function Camera:setupCanvas()
 
 	love.graphics.origin()
 	self:transformCoords2()
+end
+
+function Camera:getPosition()
+	local props = self.props
+	return props.cam_x,props.cam_y,props.cam_z
 end
 
 function Camera:dropCanvas()
@@ -102,6 +107,11 @@ function Camera:generateViewMatrix()
 
 	props.cam_view_matrix = m
 	props.cam_rot_matrix  = v
+
+	local rotview = cpml.mat4()
+	cpml.mat4.mul(rotview, v, m)
+	props.cam_rotview_matrix = rotview
+
 	return props.cam_view_matrix, props.cam_rot_matrix
 end
 

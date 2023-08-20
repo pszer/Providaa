@@ -61,15 +61,15 @@ function Tile:allocateMesh(texture)
 		return
 	elseif self.props.tile_type == "land" then
 
-		local atypes = {
-		  {"VertexPosition", "float", 3},
-		  {"VertexTexCoord", "float", 2},
-		}
+		--local atypes = {
+		--  {"VertexPosition", "float", 3},
+		--  {"VertexTexCoord", "float", 2},
+		--}
 
 		local t = texture or Textures.queryTexture(self.props.tile_texture)
-		local mesh = Mesh:new(t, atypes, 4, "triangles", "dynamic")
+		local mesh = Mesh:new(t, 6, "triangles", "dynamic")
 		--local mesh = love.graphics.newMesh(atypes, 4, "triangles", "dynamic")
-		local vmap = {1,2,3, 3,4,1}
+		--local vmap = {1,2,3, 3,4,1}
 
 		mesh.mesh:setVertexMap(vmap)
 		mesh.mesh:setDrawRange(1,3000)

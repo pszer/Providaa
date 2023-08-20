@@ -90,6 +90,10 @@ end
 
 function Grid:generateMesh()
 	local props = self.props
+
+	local mesh_count=1
+	local meshes = {}
+
 	for x = 1,props.grid_w do
 		for z = 1,props.grid_h do
 			local tile = self:queryTile(x,z)
@@ -102,13 +106,27 @@ function Grid:generateMesh()
 				local u = {0,1,1,0}
 				local v = {0,0,1,1}
 	
-				mesh.mesh:setVertex(1, x1,y1,z1, u[1], v[1])
-				mesh.mesh:setVertex(2, x2,y2,z2, u[2], v[2])
-				mesh.mesh:setVertex(3, x3,y3,z3, u[3], v[3])
-				mesh.mesh:setVertex(4, x4,y4,z4, u[4], v[4])
+				--mesh.mesh:setVertex(1, x1,y1,z1, u[1], v[1])
+				--mesh.mesh:setVertex(2, x2,y2,z2, u[2], v[2])
+				--mesh.mesh:setVertex(3, x3,y3,z3, u[3], v[3])
+				--mesh.mesh:setVertex(4, x4,y4,z4, u[4], v[4])
+				--mesh:calculateNormal()
+				
+				v1 = {x1,y1,z1, u[1], v[1]}
+				v2 = {x2,y2,z2, u[2], v[2]}
+				v3 = {x3,y3,z3, u[3], v[3]}
+				v4 = {x4,y4,z4, u[4], v[4]}
+				mesh:setRectangle(1, v1,v2,v3,v4)
+
+				meshes[mesh_count]=mesh
+				mesh_count = mesh_count+1
 			end
 		end
 	end
+
+	local tex = Textures.queryTexture("dirt.png")
+	local mergemesh = Mesh.mergeMeshes(tex, meshes)
+	return mergemesh
 end
 
 -- horizontal flat stretches of tiles with the same texture
@@ -180,4 +198,3 @@ function Grid:optimizeMesh()
 		end
 	end
 end
-

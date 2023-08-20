@@ -8,7 +8,12 @@ Wall = {__type = "wall",
 		atypes = {
 		  {"VertexPosition", "float", 3},
 		  {"VertexTexCoord", "float", 2},
-		}
+		},
+
+		westi = 1,
+		southi = 2,
+		easti = 3,
+		northi = 4
 
 }
 Wall.__index = Wall
@@ -87,14 +92,14 @@ function Wall:generateWall(textures, tile_heights, west_heights, south_heights, 
 		end
 
 		-- for now, generate both triangles of the rectangle, even if one below ground
-		local atypes = {
-		  {"VertexPosition", "float", 3},
-		  {"VertexTexCoord", "float", 2},
-		}
+		--local atypes = {
+		--  {"VertexPosition", "float", 3},
+		--  {"VertexTexCoord", "float", 2},
+		--}
 
-		local mesh = Mesh:new(textures[i], atypes, 4, "triangles", "dynamic")
-		mesh.mesh:setVertexMap(vmap)
-		mesh.mesh:setDrawRange(1,3000)
+		local mesh = Mesh:new(textures[i], 6, "triangles", "dynamic")
+		--mesh.mesh:setVertexMap(vmap)
+		--mesh.mesh:setDrawRange(1,3000)
 
 		local vector = vectors[i]
 

@@ -9,7 +9,8 @@ require "texture"
 CAM = Camera:new()
 
 Renderer = {
-	vertex_shader = love.graphics.newShader("shader/vertex.glsl")
+	--vertex_shader = love.graphics.newShader("shader/vertex.glsl")
+	vertex_shader = nil 
 }
 
 Renderer.__index = Renderer

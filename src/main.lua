@@ -1,12 +1,13 @@
 require "gamestate"
 require "render"
 
-local profiler = require("profiler")
+local profiler = require "profiler"
 
 function love.load()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	CAM:createCanvas()
 
+	--profiler.start()
 	SET_GAMESTATE(PROV)
 end
 
@@ -18,7 +19,7 @@ function love.update(dt)
 	counter = counter + dt
 	frames=frames+1
 	if (counter > 1.0) then
-		print(1/dt)
+		print(frames)
 		frames=0
 		counter = 0
 	end
@@ -34,4 +35,5 @@ function love.resize( w,h )
 end
 
 function love.quit()
+	--profiler.stop()
 end
