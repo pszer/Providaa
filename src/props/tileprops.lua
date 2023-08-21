@@ -25,7 +25,6 @@ TilePropPrototype = Props:prototype{
 	{"tile_model", "string", "block",  nil,                         "tile's model   (only for model tiles)", "readonly"},
 
 	{"tile_mesh", nil, nil, nil,              "the mesh which this tile is a part of"},
-
 	{"tile_mesh_vstart_index", "number", 0, nil, "the starting index vertex in the mesh for this tile"},
 	{"tile_mesh_vend_index", "number", 0, nil,   "the final index vertex in the mesh for this tile"},
 

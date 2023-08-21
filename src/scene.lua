@@ -29,13 +29,15 @@ end
 function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local props = self.props
 
-	local wallmeshes = Map.getWallMeshes(map, props.scene_walls, wallsets)
 	local gridmeshes = Map.getGridMeshes(map, props.scene_grid, gridsets)
+	local wallmeshes = Map.getWallMeshes(map, props.scene_walls, wallsets)
 
 	for i,mesh in ipairs(wallmeshes) do
 		table.insert(self.props.scene_meshes,mesh) end
 	for i,mesh in ipairs(gridmeshes) do
 		table.insert(self.props.scene_meshes,mesh) end
+
+	props.scene_grid:applyAttributes()
 end
 
 function Scene:pushFog()
@@ -45,19 +47,31 @@ function Scene:pushFog()
 	sh:send("fog_colour", self.props.scene_fog_colour)
 end
 
-function Scene:draw(cam)
+function Scene:pushAmbience()
+	local sh = love.graphics.getShader()
+	sh:send("light_col", self.props.scene_light_col)
+	sh:send("light_dir", self.props.scene_light_dir)
+	sh:send("ambient_col", self.props.scene_ambient_col)
+	sh:send("ambient_str", self.props.scene_ambient_str)
+end
 
-	cam:setupCanvas()
+function Scene:draw(cam)
+	cam = cam or self.props.scene_camera
+
+	cam:update()
 	cam:generateViewMatrix()
+
+	Renderer.setupCanvasFor3D()
+
 	self:pushFog()
+	self:pushAmbience()
+	self.props.scene_camera:pushToShader()
 
 	local props = self.props
 
 	local fog = props.scene_fog_colour
 	local fog_end = props.scene_fog_end
 	love.graphics.clear(fog[1],fog[2],fog[3],1)
-	--love.graphics.setColor(1,1,1,0.5)
-	--love.graphics.setColor(1,1,1,1)
 
 	local grid = props.scene_grid
 	local gridd = props.scene_grid.props.grid_data
@@ -70,5 +84,5 @@ function Scene:draw(cam)
 		v:draw()
 	end
 
-	cam:dropCanvas()
+	Renderer.dropCanvas()
 end

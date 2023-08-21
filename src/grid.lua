@@ -87,3 +87,20 @@ function Grid:getWorldCoords(x,z)
 	return x1,y1,z1, x2,y2,z2,
 	       x3,y3,z3, x4,y4,z4
 end
+
+function Grid:applyAttributes()
+	for z = 1, self:getHeight() do
+		for x = 1, self:getWidth() do
+			local tile = self.props.grid_data[z][x]
+			local tileprops = tile.props
+			local starti,endi = tileprops.tile_mesh_vstart_index, tileprops.tile_mesh_vend_index
+			local mesh = tileprops.tile_mesh
+			print("its",mesh:getVertexCount())
+			print(starti,endi)
+
+			for i=starti,endi do
+				mesh:setVertexAttribute(i,2,1)
+			end
+		end
+	end
+end

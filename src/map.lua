@@ -135,10 +135,10 @@ function Map.loadMap(map)
 			local tilewalls = Map.getWalls(map, x,z)
 
 			local tileprops = map.tile_set[tileid]
-			tileprops.tile_height1 = tileh[1]
-			tileprops.tile_height2 = tileh[2]
-			tileprops.tile_height3 = tileh[3]
-			tileprops.tile_height4 = tileh[4]
+			tileprops.tile_height1 = math.floor(tileh[1])
+			tileprops.tile_height2 = math.floor(tileh[2])
+			tileprops.tile_height3 = math.floor(tileh[3])
+			tileprops.tile_height4 = math.floor(tileh[4])
 
 			local realz = height - z + 1
 
@@ -180,7 +180,7 @@ function Map.loadMap(map)
 
 			end
 
-			t = Tile.allocateTile(tileprops, textures[tileid])
+			t = Tile:new(tileprops)
 
 			--local realz = height - z + 1
 			--grid:swapTile(x,realz, t)
@@ -255,7 +255,7 @@ function Map.generateWallMesh(map, z,x, wall, wall_side, texture)
 	end
 
 	mesh:setRectangle(1,vert[1],vert[2],vert[3],vert[4])
-	mesh:fitTexture(TILE_SIZE, -TILE_HEIGHT)
+	--mesh:fitTexture(TILE_SIZE, -TILE_HEIGHT)
 	return mesh
 end
 
@@ -291,12 +291,6 @@ function Map.generateTileMesh(map, z,x, tile, texture)
 
 	local tprops = tile.props
 
-	--mesh.mesh:setVertex(1, x1,y1,z1, u[1], v[1])
-	--mesh.mesh:setVertex(2, x2,y2,z2, u[2], v[2])
-	--mesh.mesh:setVertex(3, x3,y3,z3, u[3], v[3])
-	--mesh.mesh:setVertex(4, x4,y4,z4, u[4], v[4])
-	--mesh:calculateNormal()
-	--
 	local x1,y1,z1 = Tile.tileCoordToWorld( x , tprops.tile_height1, (z+1) )
 	local x2,y2,z2 = Tile.tileCoordToWorld( x+1, tprops.tile_height2, (z+1) )
 	local x3,y3,z3 = Tile.tileCoordToWorld( x+1, tprops.tile_height3, (z+0) )
@@ -330,11 +324,11 @@ function Map.getGridMeshes(map, grid, gridset)
 		end
 
 		local vindices = {}
-		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices)
+		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices, Tile.atypes)
 
 		for i,tile in ipairs(set_tiles) do
 			local props = tile.props
-			props.tile_mesh = merge
+			props.tile_mesh = merge.attr_mesh
 			props.tile_mesh_vstart_index = vindices[i][1]
 			props.tile_mesh_vend_index = vindices[i][2]
 		end

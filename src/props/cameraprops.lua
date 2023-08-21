@@ -19,11 +19,6 @@ CameraPropPrototype = Props:prototype{
 
 	{"cam_fov", "number", 75.0, nil, "camera fov"},
 
-	{"cam_viewport", nil, nil, nil, "camera viewport (Love2D Canvas)"},
-	{"cam_viewport_w", "number", 1366, nil, "camera viewport width"},
-	{"cam_viewport_h", "number", 768, nil, "camera viewport width"},
-	{"cam_depthbuffer", nil, nil, nil, "depth buffer for z-testing (Love2D Canvas)"},
-
 	{"cam_perspective_matrix", nil, nil, nil, "perspective matrix"},
 	{"cam_view_matrix", nil, nil, nil, "view position matrix"},
 	{"cam_rot_matrix", nil, nil, nil, "view rotation matrix"},

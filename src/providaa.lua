@@ -17,7 +17,6 @@ PROV = {
 }
 
 function PROV:load()
-	Textures.loadTextures()
 
 	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 
@@ -36,7 +35,7 @@ function PROV:update(dt)
 	end
 
 
-	local cam = CAM.props
+	local cam = PROV.scene.props.scene_camera.props
 	if love.keyboard.isDown("w") then
 		cam.cam_z = cam.cam_z - 500*dt
 	end
@@ -76,14 +75,9 @@ function PROV:update(dt)
 end
 
 function PROV:draw()
+	self.scene:draw()
 
-	local clipz = calculateHorizon()
-	local cliptz = (clipz+CAM.props.cam_z) / 32
-	cliptz = cliptz
-
-	self.scene:draw(CAM)
-
-	renderScaled()
+	Renderer.renderScaled()
 end
 
 function PROV:onTickChange()

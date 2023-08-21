@@ -52,10 +52,6 @@ function Mesh:setRectangle(index, v1, v2, v3, v4)
 	self:setTriangle(index+3, v3, v4, v1)
 end
 
-function Mesh:attachAttributeMesh(mesh)
-
-end
-
 function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 	local length = #list
 
@@ -72,7 +68,7 @@ function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 		attr_mesh = love.graphics.newMesh(attribute_atype, count, "triangles", "dynamic")
 		mesh.attr_mesh = attr_mesh
 		for _,attr in pairs(attribute_atype) do
-			mesh:attachAttribute(attr_mesh, attr[1])
+			mesh.mesh:attachAttribute(attr[1], attr_mesh)
 		end
 	end
 
@@ -86,15 +82,17 @@ function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 		local startV = V
 
 		for j=1,vcount do
+			if vertexlist then
+				vertexlist[i] = {startV, V}
+			end
+
 			local vertex = {m.mesh:getVertex(j)}
 			mesh.mesh:setVertex(V, vertex)
 			V = V + 1
 		end
-
-		if vertexlist then
-			vertexlist[i] = {startV, V}
-		end
 	end
+
+	mesh:calculateNormal()
 
 	return mesh
 end
@@ -115,7 +113,7 @@ function Mesh:draw(shader)
 	if self.mesh then
 		local tex = self.texture
 		shader:send("texture_animated", tex.props.texture_animated)
-		shader:send("texture_animated_frame", 1)
+		shader:send("texture_animated_frame", tex:getAnimationFrame() - 1)
 		shader:send("texture_animated_dimx", tex.props.texture_merged_dim_x)
 		love.graphics.draw(self.mesh)
 	end
@@ -154,8 +152,6 @@ function Mesh:scaleFittedTexture(xunit,yunit,x,y)
 end
 
 function Mesh:calculateNormal()
-	local vmap = self.mesh:getVertexMap()
-
 	for i=1,self.mesh:getVertexCount(), 3 do 
 
 		local x1,y1,z1 = self.mesh:getVertexAttribute(i  , Mesh.vertex_attribute)
@@ -174,9 +170,9 @@ function Mesh:calculateNormal()
 		local norm = cpml.vec3.cross(a,b)
 		norm = cpml.vec3.normalize(norm)
 
-		self.mesh:setVertexAttribute(i  , Mesh.vertex_attribute, norm.x, norm.y, norm.z)
-		self.mesh:setVertexAttribute(i+1, Mesh.vertex_attribute, norm.x, norm.y, norm.z)
-		self.mesh:setVertexAttribute(i+2, Mesh.vertex_attribute, norm.x, norm.y, norm.z)
+		self.mesh:setVertexAttribute(i  , Mesh.normal_attribute, norm.x, norm.y, norm.z)
+		self.mesh:setVertexAttribute(i+1, Mesh.normal_attribute, norm.x, norm.y, norm.z)
+		self.mesh:setVertexAttribute(i+2, Mesh.normal_attribute, norm.x, norm.y, norm.z)
 
 	end
 end

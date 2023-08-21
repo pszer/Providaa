@@ -13,7 +13,7 @@ TILE_HEIGHT = -24
 Tile = {__type = "tile",
 
 	atypes = {
-		{"AnimationOffset", "int", 1},
+		{"AnimationOffset", "float", 1},
 		{"TextureScale",    "float", 1},
 		{"TextureOffset",   "float", 2}
 	}}
@@ -51,45 +51,6 @@ function Tile.newLandTile(h1,h2,h3,h4, texture)
 		tile_height3 = h3,
 		tile_height4 = h4,
 		tile_texture = texture }
-end
-
-function Tile.allocateTile(props, texture)
-	local T = Tile:new(props)
-	T:allocateMesh(texture)
-	return T
-end
-
-function Tile:allocateMesh(texture)
-	if self.props.tile_type == "void" then
-		return
-	elseif self.props.tile_type == "land" then
-
-		--local atypes = {
-		--  {"VertexPosition", "float", 3},
-		--  {"VertexTexCoord", "float", 2},
-		--}
-
-		local t = texture or Textures.queryTexture(self.props.tile_texture)
-		local mesh = Mesh:new(t, 6, "triangles", "dynamic")
-		--local mesh = love.graphics.newMesh(atypes, 4, "triangles", "dynamic")
-		--local vmap = {1,2,3, 3,4,1}
-
-		mesh.mesh:setVertexMap(vmap)
-		mesh.mesh:setDrawRange(1,3000)
-
-		self.props.tile_mesh = mesh
-		self:updateMeshTexture()
-
-	elseif self.props.tile_type == "model" then
-		--implement
-	end
-end
-
-function Tile:updateMeshTexture()
-	local mesh = self.props.tile_mesh
-	if mesh then
-		mesh:updateTexture()
-	end
 end
 
 -- returns true, height if flat

@@ -52,6 +52,22 @@ function Texture:getImage(frame)
 	end
 end
 
+function Texture:getAnimationFrame()
+	if not self.props.texture_animated then
+		return 1
+	end
+
+	local props = self.props
+	local tick = getTick()
+
+	local anim_delay = props.texture_animation_delay
+	local anim_length = props.texture_sequence_length * props.texture_animation_delay
+	local anim_frame = math.floor((tick%anim_length)/anim_delay) + 1
+
+	local f = props.texture_sequence[anim_frame]
+	return f
+end
+
 -- if img/filename exists, loads it as a texture
 -- if it doesn`t exist, but img/filename1,2,3... exist
 -- then it loads these together into an animted texture
