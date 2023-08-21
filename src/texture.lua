@@ -165,6 +165,13 @@ function Texture:animationChangesThisTick()
 	return false
 end
 
+function Texture:getWidth()
+	return self.props.texture_width
+end
+function Texture:getHeight()
+	return self.props.texture_height
+end
+
 Textures = {
 	loaded = {},
 	missing_texture = nil

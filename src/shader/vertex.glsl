@@ -13,6 +13,7 @@ extern vec4  fog_colour;
 extern bool texture_animated;
 extern int  texture_animated_dimx;
 extern int  texture_animated_frame;
+extern int  texture_animated_framecount;
 
 extern vec3 light_dir;
 extern vec3 light_col;
@@ -21,13 +22,14 @@ extern float ambient_str;
 
 varying vec4 vposition;
 varying vec3 vnormal;
-varying float texscale;
+varying vec2 texscale;
+varying vec2 texoffset;
 
 #ifdef VERTEX
 
 attribute vec3 VertexNormal;
-attribute float TextureScale;
-//attribute vec2  TextureOffset;
+attribute vec2 TextureScale;
+attribute vec2  TextureOffset;
 
 vec4 position(mat4 transform, vec4 vertex) {
 	vec4 view_v = u_view * vertex;
@@ -38,9 +40,9 @@ vec4 position(mat4 transform, vec4 vertex) {
 
 	vnormal = VertexNormal;
 	texscale = TextureScale;
-	if (texscale == 0) {
-		texscale = 1;
-	}
+	if (texscale.x == 0) { texscale.x = 1; }
+	if (texscale.y == 0) { texscale.y = 1; }
+	texoffset = TextureOffset;
 
 	vec4 pos_v = u_proj * u_rot * view_v;
 	vposition = pos_v;
@@ -69,11 +71,13 @@ vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 	vec4 texcolor;
 	vec2 coords;
 	if (!texture_animated) {
-		coords = texture_coords;
+		coords = texture_coords + texoffset;
 	} else {
 		vec2 step = vec2(1.0,1.0) / float(texture_animated_dimx);
+		//int frame = mod(texture_animated_frame + floor(AnimationOffset), texture_animated_framecount)
+
 		vec2 texpos = vec2(mod(texture_animated_frame,texture_animated_dimx), texture_animated_frame / texture_animated_dimx);
-		coords = texture_coords*step + texpos*step;
+		coords = mod(texture_coords + texoffset,vec2(1,1))*step + texpos*step;
 	}
 
 	coords = coords / texscale;

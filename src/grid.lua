@@ -91,16 +91,32 @@ end
 function Grid:applyAttributes()
 	for z = 1, self:getHeight() do
 		for x = 1, self:getWidth() do
-			local tile = self.props.grid_data[z][x]
-			local tileprops = tile.props
-			local starti,endi = tileprops.tile_mesh_vstart_index, tileprops.tile_mesh_vend_index
-			local mesh = tileprops.tile_mesh
-			print("its",mesh:getVertexCount())
-			print(starti,endi)
-
-			for i=starti,endi do
-				mesh:setVertexAttribute(i,2,1)
-			end
+			self:applyTileAttribute(x,z)
 		end
+	end
+end
+
+function Grid:applyTileAttribute(x,z)
+	local tile = self.props.grid_data[z][x]
+	local tileprops = tile.props
+	local starti,endi = tileprops.tile_mesh_vstart_index, tileprops.tile_mesh_vend_index
+	local mesh = tileprops.tile_mesh
+
+	--local animationoffset = Tile.getAttributeIndex("AnimationOffset")
+	local texscale = Tile.getAttributeIndex("TextureScale")
+	local texoffset = Tile.getAttributeIndex("TextureOffset")
+
+	local texture = Textures.queryTexture(tile:getTexture())
+	local texw,texh = texture:getWidth(), texture:getHeight()
+	local scalex = tileprops.tile_texture_scalex * (texw / TILE_SIZE)
+	local scaley = tileprops.tile_texture_scaley * (texh / TILE_SIZE)
+
+	local offx = x + tileprops.tile_texture_offx/TILE_SIZE
+	local offy = z + tileprops.tile_texture_offy/TILE_SIZE
+
+	for i=starti,endi do
+		mesh:setVertexAttribute(i,texscale, scalex, scaley)
+		--mesh:setVertexAttribute(i,animationoffset, tileprops.tile_texture_animation_offset)
+		mesh:setVertexAttribute(i,texoffset, offx, offy)
 	end
 end

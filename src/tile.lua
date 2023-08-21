@@ -13,8 +13,8 @@ TILE_HEIGHT = -24
 Tile = {__type = "tile",
 
 	atypes = {
-		{"AnimationOffset", "float", 1},
-		{"TextureScale",    "float", 1},
+		--{"AnimationOffset", "float", 1},
+		{"TextureScale",    "float", 2},
 		{"TextureOffset",   "float", 2}
 	}}
 Tile.__index = Tile
@@ -73,4 +73,11 @@ end
 
 function Tile:getTexture()
 	return self.props.tile_texture
+end
+
+function Tile.getAttributeIndex(name)
+	for i,v in ipairs(Tile.atypes) do
+		if v[1] == name then return i end
+	end
+	return nil
 end
