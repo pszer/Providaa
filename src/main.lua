@@ -6,7 +6,9 @@ local profiler = require "profiler"
 
 function love.load()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
+	Renderer.loadShaders()
 	Renderer.createCanvas()
+	Renderer.setupSkyboxModel()
 
 	Textures.loadTextures()
 	Textures.generateMissingTexture()

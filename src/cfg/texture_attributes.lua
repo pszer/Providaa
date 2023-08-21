@@ -13,5 +13,9 @@ return {
 	["water.png"] = {
 		texture_sequence = {1,2,3,4,3,2},
 		texture_animation_delay = 8
+	},
+
+	["skyday01.png"] = {
+		texture_type = "cube"
 	}
 }

@@ -96,7 +96,11 @@ function Map.loadMap(map)
 
 	local grid = Grid.allocateGrid(width, height)
 	local walls = {}
-	for z=1,height do walls[z]={} end
+	local walltiles = {}
+	for z=1,height do
+		walls[z]={}
+		walltiles[z] = {}
+	end
 
 	local textures = {}
 	local walltextures = {}
@@ -157,7 +161,6 @@ function Map.loadMap(map)
 				end
 
 
-				local dest = { "west", "south", "east", "north"}
 				wall = Wall:generateWall(textures,
 					tileh, -- current tile
 					Map.getHeights( map , x-1, z  ), -- west tile
@@ -166,14 +169,26 @@ function Map.loadMap(map)
 					Map.getHeights( map , x  , z-1)  -- north tile
 					)
 
+				local dest = { "west", "south", "east", "north"}
 				if wall then
 					walls[realz][x] = wall
+					walltiles[realz][x] = {}
 
 					for i=1,4 do
 						local wd = wall[dest[i]]
 						if wd then
 							local wallid = tilewalls[i]
 							setinsert(wallmeshset, wallid, {realz,x,i})
+
+							walltiles[realz][x][i] = 
+								WallTile:new{
+								  wtile_texture = textures[i],
+								  wtile_texture_scalex = 1,
+								  wtile_texture_scaly = 1,
+								  wtile_texture_offx = 0,
+								  wtile_texture_scaly = 0,
+								  wtile_coords = wall[dest[i]]
+								}
 						end
 					end
 				end
@@ -188,7 +203,7 @@ function Map.loadMap(map)
 		end
 	end
 
-	return grid, walls, gridmeshset, wallmeshset
+	return grid, walls, walltiles, gridmeshset, wallmeshset
 end
 
 function Map.getHeights(map, x,z)
@@ -259,7 +274,7 @@ function Map.generateWallMesh(map, z,x, wall, wall_side, texture)
 	return mesh
 end
 
-function Map.getWallMeshes(map, walls, wallset)
+function Map.getWallMeshes(map, walls, wallset, walltiles)
 	local meshes = {}
 
 	for i,v in pairs(wallset) do
@@ -267,17 +282,31 @@ function Map.getWallMeshes(map, walls, wallset)
 		print("texture",texture)
 
 		local set_meshes = {}
+		local set_walls = {}
 
 		for _,wall_in_set in ipairs(v) do
 			local z,x,side = wall_in_set[1], wall_in_set[2], wall_in_set[3]
 			
 			--print(map.wall_set[i], unpack(wall_in_set))
+			local wall = walls[z][x]
 			local mesh = Map.generateWallMesh(map, z,x, walls[z][x], side, texture)
 			table.insert(set_meshes, mesh)
+			table.insert(set_walls, wall)
 		end
 
-		local merge = Mesh.mergeMeshes(texture, set_meshes)
+		local vindices = {}
+		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices, WallTile.atypes)
 		table.insert(meshes, merge)
+
+		for i,wall_in_set in ipairs(v) do
+			local z,x,side = wall_in_set[1], wall_in_set[2], wall_in_set[3]
+
+			local walltile = walltiles[z][x][side]
+			local wtprops = walltile.props
+			wtprops.wtile_mesh = merge.attr_mesh
+			wtprops.wtile_mesh_vstart_index = vindices[i][1]
+			wtprops.wtile_mesh_vend_index = vindices[i][2]
+		end
 	end
 
 	return meshes

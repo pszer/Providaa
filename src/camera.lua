@@ -28,11 +28,11 @@ function Camera:pushToShader(sh)
 
 	sh = sh or love.graphics.getShader()
 	sh:send("u_proj", "column", matrix(props.cam_perspective_matrix))
-	sh:send("u_view", "column", matrix(props.cam_view_matrix))
+	if sh:hasUniform( "u_view" ) then sh:send("u_view", "column", matrix(props.cam_view_matrix)) end
 	sh:send("u_rot", "column", matrix(props.cam_rot_matrix))
 
-	sh:send("curve_flag", props.cam_bend_enabled)
-	sh:send("curve_coeff", props.cam_bend_coefficient)
+ 	if sh:hasUniform( "curve_flag" ) then sh:send("curve_flag", props.cam_bend_enabled) end
+	if sh:hasUniform( "curve_coeff" ) then sh:send("curve_coeff", props.cam_bend_coefficient) end
 end
 
 function Camera:getPosition()

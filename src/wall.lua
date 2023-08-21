@@ -1,14 +1,12 @@
+require "tile"
+require "walltile"
+
 Wall = {__type = "wall",
 
 		vmap = {1,2,3, 3,4,1},
 
 		u = {0,1,1,0},
 		v = {0,0,1,1},
-
-		atypes = {
-		  {"VertexPosition", "float", 3},
-		  {"VertexTexCoord", "float", 2},
-		},
 
 		westi = 1,
 		southi = 2,
@@ -17,8 +15,6 @@ Wall = {__type = "wall",
 
 }
 Wall.__index = Wall
-
-require "tile"
 
 function Wall:new()
 	local this = {
@@ -118,4 +114,42 @@ function Wall:generateWall(textures, tile_heights, west_heights, south_heights, 
 	else
 		return nil
 	end
+end
+
+function Wall.applyAttributes(walls)
+	for z = 1, #walls do
+		for x = 1, #walls[z] do
+			if walls[z][x] then
+				Wall.applyWallAttribute(walls[z][x], x,z)
+			end
+		end
+	end
+end
+
+function Wall.applyWallAttribute(wall, x,z)
+	local starti,endi = wall.wall_mesh_starti, wall.wall_mesh_endi
+	local mesh = wall.wall_mesh
+
+	local texscale = Wall.getAttributeIndex("TextureScale")
+	local texoffset = Wall.getAttributeIndex("TextureOffset")
+
+	local texture = Textures.queryTexture(wall:getTexture())
+	local texw,texh = texture:getWidth(), texture:getHeight()
+	local scalex = (texw / TILE_SIZE)
+	local scaley = (texh / TILE_SIZE)
+
+	local offx = x
+	local offy = z 
+
+	for i=starti,endi do
+		mesh:setVertexAttribute(i,texscale, scalex, scaley)
+		mesh:setVertexAttribute(i,texoffset, offx, offy)
+	end
+end
+
+function Wall.getAttributeIndex(name)
+	for i,v in ipairs(Wall.atypes) do
+		if v[1] == name then return i end
+	end
+	return nil
 end

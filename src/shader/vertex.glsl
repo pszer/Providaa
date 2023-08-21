@@ -6,20 +6,6 @@ extern mat4 u_rot;
 extern float curve_coeff;
 extern bool curve_flag;
 
-extern float fog_start;
-extern float fog_end;
-extern vec4  fog_colour;
-
-extern bool texture_animated;
-extern int  texture_animated_dimx;
-extern int  texture_animated_frame;
-extern int  texture_animated_framecount;
-
-extern vec3 light_dir;
-extern vec3 light_col;
-extern vec3 ambient_col;
-extern float ambient_str;
-
 varying vec4 vposition;
 varying vec3 vnormal;
 varying vec2 texscale;
@@ -51,6 +37,20 @@ vec4 position(mat4 transform, vec4 vertex) {
 #endif
 
 #ifdef PIXEL
+
+extern float fog_start;
+extern float fog_end;
+extern vec4  fog_colour;
+
+extern bool texture_animated;
+extern int  texture_animated_dimx;
+extern int  texture_animated_frame;
+extern int  texture_animated_framecount;
+
+extern vec3 light_dir;
+extern vec3 light_col;
+extern vec3 ambient_col;
+extern float ambient_str;
 
 vec3 ambient_lighting( vec3 normal, vec3 light_dir, vec3 light_col, vec3 ambient_col, float ambient_str ) {
 	float diff = max(0.0, dot(normal, -normalize(light_dir)));

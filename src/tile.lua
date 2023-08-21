@@ -16,7 +16,8 @@ Tile = {__type = "tile",
 		--{"AnimationOffset", "float", 1},
 		{"TextureScale",    "float", 2},
 		{"TextureOffset",   "float", 2}
-	}}
+	}
+}
 Tile.__index = Tile
 
 function Tile:new(props)

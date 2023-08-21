@@ -17,9 +17,6 @@ PROV = {
 }
 
 function PROV:load()
-
-	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
-
 	self.scene:loadMap(testmap)
 end
 

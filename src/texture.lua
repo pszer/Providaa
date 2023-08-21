@@ -21,7 +21,6 @@ function Texture:new(props)
 	this.props.texture_width = this.props.texture_imgs[1]:getWidth()
 	this.props.texture_height = this.props.texture_imgs[1]:getHeight()
 
-	print(this.props.texture_name, "yep")
 	local merge,x,y = Textures.mergeTextures(this.props.texture_imgs)
 	this.props.texture_merged_img = merge
 	this.props.texture_merged_dim_x = x
@@ -80,17 +79,32 @@ function Texture.openFilename(filename, attributes)
 	local img = Texture.openImage(fpath)
 	if img then
 
-		-- non animated texture
-		local props = {
-			texture_name = filename,
-			texture_imgs = {img},
-			texture_frames  = 1,
-			texture_animated = false,
-			texture_type = "2d"
-		}
+		local props
+
+		--cubemap
+		if attributes.texture_type == "cube" then
+			img = love.graphics.newCubeImage(fpath, {linear = true, mipmaps = true})
+
+			props = {
+				texture_name = filename,
+				texture_imgs = {img},
+				texture_frames  = 1,
+				texture_animated = false,
+				texture_type = "cube"
+			}
+		else
+			-- non animated texture
+			props = {
+				texture_name = filename,
+				texture_imgs = {img},
+				texture_frames  = 1,
+				texture_animated = false,
+				texture_type = "2d"
+			}
+		end
+
 		for i,v in pairs(attributes) do props[i]=v end
 		return Texture:new(props)
-
 	else
 		-- check if animated texture
 

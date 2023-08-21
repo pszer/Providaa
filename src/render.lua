@@ -11,6 +11,9 @@ require "texture"
 Renderer = {
 	--vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	vertex_shader = nil,
+	skybox_shader = nil,
+
+	skybox_model = nil,
 
 	scene_viewport = nil,
 	scene_depthbuffer = nil,
@@ -22,6 +25,55 @@ Renderer = {
 }
 
 Renderer.__index = Renderer
+
+function Renderer.loadShaders()
+	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
+	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
+end
+
+function Renderer.setupSkyboxModel()
+	local vertices = {
+        -- Top
+        {-1, -1, 1}, {1, -1, 1},
+        {1, 1, 1}, {-1, 1, 1},
+
+        -- Bottom
+        {1, -1, -1}, {-1, -1, -1},
+        {-1, 1, -1}, {1, 1, -1},
+
+        -- Front
+        {-1, -1, -1}, {1, -1, -1},
+        {1, -1, 1}, {-1, -1, 1},
+
+        -- Back
+        {1, 1, -1}, {-1, 1, -1},
+        {-1, 1, 1}, {1, 1, 1},
+
+        -- Right
+        {1, -1, -1}, {1, 1, -1},
+        {1, 1, 1}, {1, -1, 1},
+
+        -- Left
+        {-1, 1, -1}, {-1, -1, -1},
+        {-1, -1, 1}, {-1, 1, 1}
+	}
+
+    local indices = {
+        1, 2, 3, 3, 4, 1,
+        5, 6, 7, 7, 8, 5,
+        9, 10, 11, 11, 12, 9,
+        13, 14, 15, 15, 16, 13,
+        17, 18, 19, 19, 20, 17,
+        21, 22, 23, 23, 24, 21,
+    }
+
+    local layout = {
+        {"VertexPosition", "float", 3},
+    }
+
+	Renderer.skybox_model = love.graphics.newMesh(layout, vertices, "triangles", "static")
+	Renderer.skybox_model:setVertexMap(indices)
+end
 
 function Renderer.renderScaled(canvas)
 	canvas = canvas or Renderer.scene_viewport
@@ -70,6 +122,16 @@ function Renderer.setupCanvasFor3D()
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 	
+	love.graphics.origin()
+	Renderer.transformCoordsFor3D()
+end
+
+function Renderer.setupCanvasForSkybox()
+	love.graphics.setMeshCullMode("none")
+	love.graphics.setDepthMode( "always", false )
+	love.graphics.setCanvas(Renderer.scene_viewport)
+	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
+
 	love.graphics.origin()
 	Renderer.transformCoordsFor3D()
 end
