@@ -72,7 +72,7 @@ function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 		end
 	end
 
-	mesh.mesh:setDrawRange(1, count*2)
+	mesh.mesh:setDrawRange(1, count+1)
 
 	local V = 1
 	for i = 1, length do
