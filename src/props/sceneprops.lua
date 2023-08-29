@@ -18,7 +18,7 @@ ScenePropPrototype = Props:prototype{
 	{"scene_fog_end", "number", 2048, nil, "distance where fog begins"},
 	{"scene_fog_colour", "table", {209/255, 247/255, 255/255, 1.0}, nil, "fog colour"},
 
-	{"scene_light_col", "table", {255/255, 252/255, 232/255}, nil,   "colour of the ambient light"},
+	{"scene_light_col", "table", {232/255, 228/255, 216/255}, nil,   "colour of the ambient light"},
 	{"scene_ambient_col", "table", {196/255, 238/255, 255/255}, nil, "colour of the ambience (shows up in shadows)"},
 	{"scene_light_dir", "table", {0.5,1,-0.25}, nil,                       "direction of ambient light source"},
 	{"scene_ambient_str", "number", 0.6, nil,                        "strength of global illumination"},

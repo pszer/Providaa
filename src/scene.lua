@@ -57,12 +57,25 @@ function Scene:pushAmbience()
 	sh:send("ambient_str", self.props.scene_ambient_str)
 end
 
+function Scene:drawGridMap()
+	local props = self.props
+	local grid = props.scene_grid
+	local gridd = props.scene_grid.props.grid_data
+	local walls = props.scene_walls
+
+	for i,v in ipairs(props.scene_meshes) do
+		v:drawAsEnvironment()
+	end
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
+	self.props.scene_light_dir[1] = math.sin(getTick()/50)
+	self.props.scene_light_dir[2] = math.cos(getTick()/50)
+
 	cam:update()
 	cam:generateViewMatrix()
-
 
 	Renderer.setupCanvasFor3D()
 	love.graphics.clear(0,0,0,1)
@@ -81,16 +94,8 @@ function Scene:draw(cam)
 	local fog_end = props.scene_fog_end
 	if not skybox_drawn then love.graphics.clear(fog[1],fog[2],fog[3],1) end
 
-	local grid = props.scene_grid
-	local gridd = props.scene_grid.props.grid_data
-	local walls = props.scene_walls
+	self:drawGridMap()
 
-	local dirx,diry,dirz = cam:getDirectionVector()
-	local camx,camy,camz = cam:getPosition()
-
-	for i,v in ipairs(self.props.scene_meshes) do
-		v:draw()
-	end
 	alekin:draw()
 
 	Renderer.dropCanvas()

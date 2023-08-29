@@ -118,7 +118,8 @@ function Renderer.setupCanvasFor3D()
 
 	love.graphics.setCanvas{Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
 	love.graphics.setDepthMode( "less", true  )
-	love.graphics.setMeshCullMode("front")
+	--love.graphics.setMeshCullMode("front")
+	love.graphics.setMeshCullMode("none")
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 	

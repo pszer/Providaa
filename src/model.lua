@@ -12,7 +12,13 @@ function Model:new(props)
 	local this = {
 		props = ModelPropPrototype(props),
 
-		bone_hierarchy = {} -- for use internally
+		baseframe = {},
+		inversebaseframe = {},
+		frames = {},
+		outframes = {},
+
+		dir_matrix = nil,
+		static_model_matrix = nil
 	}
 
 	setmetatable(this,Model)
@@ -27,21 +33,6 @@ function Model.openFilename(fname, texture_fname, load_anims)
 
 	local texture = Textures.loadTexture(texture_fname)
 
-	print("whats in the model")
-	for i,v in pairs(objs) do
-		print(i, v)
-	end
-
-	for i,v in pairs(objs.mesh:getVertexFormat()) do
-		print(i, v[1], v[2], v[3])
-	end
-
-	for i = 1,objs.mesh:getVertexCount() do
-		x,y,z,w = objs.mesh:getVertexAttribute(i, 5)
-		x2,y2,z2,w2 = objs.mesh:getVertexAttribute(i, 6)
-		print(x,y,z,w)
-	end
-
 	local mesh = Mesh.newFromMesh(objs.mesh, texture)
 	local anims = nil
 	local skeleton = nil
@@ -53,57 +44,28 @@ function Model.openFilename(fname, texture_fname, load_anims)
 		has_anims = true
 	end
 
-	return Model:new{
+	local model = Model:new{
 		["model_name"] = fname,
 		["model_mesh"] = mesh,
-		["model_animations"] = anims,
 		["model_skeleton"] = skeleton,
+		["model_animations"] = anims,
 		["model_animated"] = has_anims
 	}
+
+	if load_anims and objs.has_anims then
+		model:generateBaseFrames()
+		model:generateAnimationFrames()
+	end
+
+	model:generateDirectionFixingMatrix()
+
+	return model
 end
 
 function Model.openAnimations(fname)
 	print("openAnimations")
 	local fpath = "models/" .. fname
-
 	local anims = Model.readIQMAnimations(fpath)
-
-	for i,v in pairs(anims) do
-		print(i, v)
-	end
-
-	print()
-	for i,v in pairs(anims[1]) do
-		print(i, v)
-	end
-
-	print()
-	for i,v in pairs(anims[2]) do
-		print(i, v)
-	end
-
-	--[[
-	print()
-	print("wooop")
-	for i,v in pairs(anims.frames) do
-		print("frame ", i)
-		for j,u in pairs(v) do
-			print("joint",j,u)
-			for k,p in pairs(u) do
-				print("   ",k,p)
-			end
-		end
-	end
-
-	print("skeleton")
-	for i,v in pairs(anims.skeleton) do
-		print(i,v)
-
-		for j,p in pairs(v) do
-			print(" ",j,p)
-		end
-	end--]]
-
 	return anims
 end
 
@@ -127,19 +89,38 @@ function Model.readIQMAnimations(fname)
 	return anims
 end
 
+function Model:generateDirectionFixingMatrix()
+	local up_v = cpml.vec3(self.props.model_up_vector)
+	local dir_v = cpml.vec3(self.props.model_dir_vector)
+	local mat = cpml.mat4.from_direction(up_v, dir_v)
+	self.dir_matrix = mat
+end
+
 function Model:modelMatrix()
+	local is_static = self.props.model_static
+	if is_static and self.static_model_matrix then
+		return self.static_model_matrix
+	end
+
 	local props = self.props
 	local pos = props.model_position
 
 	local m = cpml.mat4():identity()
+	m = m * self.dir_matrix
+	m:scale(m,  cpml.vec3(unpack(props.model_scale)))
 	m:rotate(m, props.model_rotation[1], cpml.vec3.unit_x)
 	m:rotate(m, props.model_rotation[2], cpml.vec3.unit_y)
 	m:rotate(m, props.model_rotation[3], cpml.vec3.unit_z)
-	m:translate(m, cpml.vec3(pos.x, pos.y, pos.z))
+	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3]))
+
+	if is_static then
+		self.static_model_matrix = m
+	end
+
 	return m
 end
 
-function Model:sendAnimation(shader, animation)
+function Model:sendAnimation(shader, animation, frame)
 	shader = shader or love.graphics.getShader()
 
 	if not self.props.model_animated then
@@ -147,23 +128,31 @@ function Model:sendAnimation(shader, animation)
 	else
 		shader:send("u_skinning", 1)
 
-		local matrices = self:calculateBoneMatrices(unpack(animation))
-		shader:send("u_bone_matrices", unpack(matrices))
+		local bone_matrices = self:getBoneMatrices(animation, frame)
+
+		for i,v in ipairs(bone_matrices) do
+			bone_matrices[i] = matrix(v)
+		end
+
+		shader:send("u_bone_matrices", "column", unpack(bone_matrices))
 	end
+end
+
+function Model:getSkeleton()
+	return self.props.model_skeleton
 end
 
 function Model:draw(shader)
 	shader = shader or love.graphics.getShader()
 
 	shader:send("u_model", "column", matrix(self:modelMatrix()))
-	self:sendAnimation(shader, {alekin.props.model_animations["Walk"], getTick(), 0.0})
-
+	self:sendAnimation(shader, "Walk", getTickSmooth())
 
 	self.props.model_mesh:drawModel(shader)
 end
 
-function Model:generateBoneOffsetMatrices()
-	local skeleton = self.props.model_skeleton
+function Model:generateBaseFrames()
+	local skeleton = self:getSkeleton()
 
 	for bone_id,bone in ipairs(skeleton) do
 		local position_v = bone.position
@@ -172,6 +161,7 @@ function Model:generateBoneOffsetMatrices()
 
 		local bone_pos_v = cpml.vec3.new(position_v.x, position_v.y, position_v.z)
 		local bone_rot_q = cpml.quat.new(rotation_q.x, rotation_q.y, rotation_q.z, rotation_q.w)
+		bone_rot_q = bone_rot_q:normalize()
 		local bone_scale_v = cpml.vec3.new(scale_v.x, scale_v.y, scale_v.z)
 
 		local rotation_u = cpml.mat4.from_quaternion( bone_rot_q )
@@ -181,96 +171,101 @@ function Model:generateBoneOffsetMatrices()
 		position_u:translate(position_u, bone_pos_v)
 		scale_u:scale(scale_u, bone_scale_v)
 
-		local matrix = scale_u * rotation_u * position_u
+		local matrix = position_u * rotation_u * scale_u
+		local invmatrix = cpml.mat4():invert(matrix)
+
+		self.baseframe[bone_id] = matrix
+		self.inversebaseframe[bone_id] = invmatrix
+
+		if bone.parent > 0 then -- if bone has a parent
+			self.baseframe[bone_id] = self.baseframe[bone.parent] * self.baseframe[bone_id]
+			self.inversebaseframe[bone_id] = self.inversebaseframe[bone_id] * self.inversebaseframe[bone.parent]
+		end
+
 		bone.offset = matrix
 	end
 end
 
-function Model:calculateBoneMatrices(animation, frame, interp_value)
-	local bone_matrices = {}
-	local final_bone_matrices = {}
-	local skeleton = self.props.model_skeleton
-	interp_value = interp_value or 0
+function Model:generateAnimationFrames()
+	for frame_i, frame in ipairs(self.props.model_animations.frames) do
+		self.frames[frame_i] = {}
+		local output_frames = self.frames[frame_i]
 
-	if (not skeleton) or (not animation) then return end
+		for pose_i, pose in ipairs(frame) do
+			
+			local position = pose.translate
+			local rotation = pose.rotate
+			local scale = pose.scale
 
-	local anim_start = animation.first
-	local anim_end = animation.last
-	--local anim_loop = animation.loop
-	local anim_loop = true
-	local anim_length = anim_end - anim_start
+			local pos_v = cpml.vec3.new(position.x, position.y, position.z)
+			local rot_q = cpml.quat.new(rotation.x, rotation.y, rotation.z, rotation.w)
+			rot_q = rot_q:normalize()
+			local scale_v = cpml.vec3.new(scale.x, scale.y, scale.z)
 
-	local frame_id = 0
-	local nextframe_id = 0
-	if anim_loop then
-		frame_id = anim_start + (frame-1) % anim_length
-		nextframe_id = anim_start + (frame) % anim_length
-	else
-		if frame >= anim_length then
-			frame_id = anim_end
-			nextframe_id = anim_end
-		else
-			frame_id = anim_start + (frame-1)
-			nextframe_id = anim_start + (frame)
+			local position_u = cpml.mat4.new(1)
+			local rotation_u = cpml.mat4.from_quaternion( rot_q )
+			local scale_u    = cpml.mat4.new(1)
+
+			position_u:translate(position_u, pos_v)
+			scale_u:scale(scale_u, scale_v)
+
+			--local matrix = scale_u * rotation_u * position_u
+			local matrix = position_u * rotation_u * scale_u
+			local invmatrix = cpml.mat4():invert(matrix)
+
+			local bone = self:getSkeleton()[pose_i]
+
+			if bone.parent > 0 then -- if bone has a parent
+				output_frames[pose_i] = self.baseframe[bone.parent] * matrix * self.inversebaseframe[pose_i]
+			else
+				output_frames[pose_i] = matrix * self.inversebaseframe[pose_i]
+			end
 		end
 	end
-
-	anim_joints = self.props.model_animations.frames[frame_id]
-	nextanim_joints = self.props.model_animations.frames[nextframe_id]
-	
-	local calc_bone = function(bone_id, func)
-
-		if bone_matrices[bone_id] then return end
-		
-		local bone = skeleton[bone_id]
-		local anim1 = anim_joints[bone_id]
-		local anim2 = nextanim_joints[bone_id]
-
-		local anim_pos_v1 = cpml.vec3.new(anim1.translate.x, anim1.translate.y, anim1.translate.z)
-		--local anim_pos_v2 = cpml.vec3.new(anim2.position.x, anim2.position.y, anim2.position.z)
-		--
-
-		local anim_rot_q1 = cpml.quat.new(anim1.rotate.x, anim1.rotate.y, anim1.rotate.z, anim1.rotate.w )
-		--local anim_rot_q2 = cpml.quat.new(anim2.rotate.x, anim2.rotate.y, anim2.rotate.z, anim2.rotate.w  )
-
-		local anim_scale_v1 = cpml.vec3.new(anim1.scale.x, anim1.scale.y, anim1.scale.z)
-		--local anim_scale_v2 = cpml.vec3.new(anim2.scale.x, anim2.scale.y, anim2.scale.z)
-		--
-		--
-
-		-- TODO implement interpolation
-		local f_anim_pos_v = anim_pos_v1
-		local f_anim_rot_q = anim_rot_q1
-		local f_anim_scale_v = anim_scale_v1
-
-		local anim_rotation_u = nil
-		local anim_position_u = cpml.mat4.new(1)
-		local anim_scale_u    = cpml.mat4.new(1)
-
-		anim_rotation_u = cpml.mat4.from_quaternion( cpml.quat(f_anim_rot_q.x, f_anim_rot_q.y, f_anim_rot_q.z, f_anim_rot_q.w) )
-		anim_position_u:translate(anim_position_u, f_anim_pos_v)
-		anim_scale_u:scale(anim_scale_u, f_anim_scale_v)
-
-		local bone_offset_u = bone.offset
-
-		local final_u = anim_scale_u * anim_rotation_u * anim_position_u
-
-
-		-- if root
-		if not bone.parent or bone.parent < 1 then
-			bone_matrices[bone_id] = final_u
-			final_bone_matrices[bone_id] = final_u * bone_offset_u
-		else
-			func(bone.parent, func)
-			bone_matrices[bone_id] = final_u * bone_matrices[bone.parent]
-			final_bone_matrices[bone_id] = final_u * bone_matrices[bone.parent] * bone_offset_u
-		end
-
-	end
-
-	for i,v in ipairs(skeleton) do
-		calc_bone(i, calc_bone)
-	end
-
-	return final_bone_matrices
 end
+
+function Model:getBoneMatrices(animation, frame)
+	if not self.props.model_animated then return end
+
+	local anim_data   = self.props.model_animations[animation]
+	local anim_first  = anim_data.first
+	local anim_last   = anim_data.last
+	local anim_length = anim_last - anim_first
+	local anim_rate   = anim_data.framerate
+
+	local frame_fitted = frame * anim_rate / tickRate()
+	local frame_floor  = math.floor(frame_fitted)
+	local frame_interp = frame_fitted - frame_floor
+
+	local frame1_id = anim_first + (frame_floor-1) % anim_length
+	local frame2_id = anim_first + (frame_floor) % anim_length
+
+	local skeleton = self:getSkeleton()
+
+	--TODO add interpolation
+	local outframe = self.outframes
+	for i,pose1 in pairs(self.frames[frame1_id]) do
+		pose2 = self.frames[frame2_id][i]
+
+		local pose_interp = {}
+
+		for i,v in ipairs(pose1) do
+			pose_interp[i] =
+			 (1-frame_interp)*pose1[i] + frame_interp*pose2[i]
+		end
+
+		--local mat = pose1 -- interp here <---- DO IT
+		local mat = cpml.mat4.new(pose_interp)
+
+		local parent_i = skeleton[i].parent
+		if parent_i > 0 then
+			outframe[i] = outframe[parent_i] * mat
+		else
+			outframe[i] = mat
+		end
+	end
+
+	return outframe
+end
+
+

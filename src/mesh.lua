@@ -2,6 +2,7 @@
 --
 
 local cpml = require 'cpml'
+local matrix = require 'matrix'
 
 Mesh = {
 
@@ -127,13 +128,14 @@ function Mesh:updateTexture()
 	end
 end
 
-function Mesh:draw(shader)
+function Mesh:drawAsEnvironment(shader)
 	shader = shader or love.graphics.getShader()
 	if self.mesh then
 		local tex = self.texture
 		shader:send("texture_animated", tex.props.texture_animated)
 		shader:send("texture_animated_frame", tex:getAnimationFrame() - 1)
 		shader:send("texture_animated_dimx", tex.props.texture_merged_dim_x)
+		shader:send("u_model", matrix(cpml.mat4.identity()))
 		shader:send("u_skinning", 0)
 		love.graphics.draw(self.mesh)
 	end

@@ -175,7 +175,7 @@ function Texture:animationChangesThisTick()
 	if not self.props.texture_animated then return false end
 
 	local delay = self.props.texture_animation_delay
-	if getTick() % delay == 0 then return true end
+	if getTick() % delay == 0 and tickChanged() then return true end
 	return false
 end
 

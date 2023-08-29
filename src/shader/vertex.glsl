@@ -1,3 +1,5 @@
+#pragma language glsl3
+
 extern mat4 u_proj;
 extern mat4 u_view;
 extern mat4 u_rot;
@@ -24,56 +26,20 @@ attribute vec2  TextureOffset;
 uniform mat4 u_bone_matrices[64];
 uniform int  u_skinning;
 
-//mat4 get_deform_matrix() {
-//	if (u_skinning != 0) {
-//		return
-//			u_bone_matrices[int(VertexBone.x*255.0)] * VertexWeight.x +
-//			u_bone_matrices[int(VertexBone.y*255.0)] * VertexWeight.y +
-//			u_bone_matrices[int(VertexBone.z*255.0)] * VertexWeight.z +
-//			u_bone_matrices[int(VertexBone.w*255.0)] * VertexWeight.w;
-//	}
-//	return mat4(1.0);
-//}
-
-vec4 apply_skinning(vec4 v) {
-	if (u_skinning == 0) {
-		return v;
+mat4 get_deform_matrix() {
+	if (u_skinning != 0) {
+		return
+			u_bone_matrices[int(VertexBone.x*255.0)] * VertexWeight.x +
+			u_bone_matrices[int(VertexBone.y*255.0)] * VertexWeight.y +
+			u_bone_matrices[int(VertexBone.z*255.0)] * VertexWeight.z +
+			u_bone_matrices[int(VertexBone.w*255.0)] * VertexWeight.w;
 	}
-
-	mat4 bones[4];
-	float weights[4];
-
-	bones[0] = u_bone_matrices[int(VertexBone.x*255.0)];
-	bones[1] = u_bone_matrices[int(VertexBone.y*255.0)];
-	bones[2] = u_bone_matrices[int(VertexBone.z*255.0)];
-	bones[3] = u_bone_matrices[int(VertexBone.w*255.0)];
-
-	weights[0] = VertexWeight.x;
-	weights[1] = VertexWeight.y;
-	weights[2] = VertexWeight.z;
-	weights[3] = VertexWeight.w;
-
-	vec4 total_position = vec4(0.0f);
-	for (int i = 0; i < 4; i++) {
-		vec4 local_position = bones[i] * v;
-		total_position += local_position * weights[i];
-	}
-
-	return total_position;
+	return mat4(1.0);
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
-	vertex = apply_skinning(vertex);
-
-	//mat4 trans_u = u_model * get_deform_matrix();
-	//mat4 trans_u = get_deform_matrix();
-	//mat4 modelview_u = trans_u * u_rot * u_view;
-	//mat4 modelview_u = trans_u * u_rot * u_view * u_model;
-	//mat4 modelview_u = u_rot * u_view * u_model * trans_u;
-	mat4 modelview_u = u_rot * u_view * u_model;
-
-	//vec4 model_v = u_model * getDeformMatrix() * vertex;
-	//vec4 view_v = u_view * model_v;
+	mat4 skin_u = u_model * get_deform_matrix();
+	mat4 modelview_u = u_rot * u_view * skin_u;
 
 	vec4 view_v = modelview_u * vertex;
 

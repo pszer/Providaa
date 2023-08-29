@@ -12,32 +12,19 @@ local testmap = require "maps.test"
 PROV = {
 	grid = {},
 	scene = Scene:new(),
-
-	tick_dt_counter = 0,
-	tick_rate = 60
 }
 
 function PROV:load()
 	self.scene:loadMap(testmap)
 
-	--anims = Model.openAnimations("alekin.iqm")
 	alekin = Model.openFilename("alekin.iqm", "models/alekin.png", true)
-	alekin:generateBoneOffsetMatrices()
-	local finalm = alekin:calculateBoneMatrices(alekin.props.model_animations["Walk"], 10)
-	print(#finalm)
 end
 
 function PROV:update(dt)
-	UPDATE_ANIMATION = false
-	self.tick_dt_counter = self.tick_dt_counter + dt
-	if (self.tick_dt_counter > 1/self.tick_rate) then
-		UPDATE_ANIMATION = true
-
-		setTick(getTick()+1)
-		self.tick_dt_counter = self.tick_dt_counter - 1/self.tick_rate
+	stepTick(dt)
+	if tickChanged() then
 		self:onTickChange()
 	end
-
 
 	local cam = PROV.scene.props.scene_camera.props
 	if love.keyboard.isDown("w") then
@@ -76,6 +63,9 @@ function PROV:update(dt)
 	if love.keyboard.isDown("up") then
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
+
+	alekin.props.model_position = {cam.cam_x,cam.cam_y+80,cam.cam_z-100}
+	alekin.props.model_rotation[2] = getTick()/50
 end
 
 function PROV:draw()
