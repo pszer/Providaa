@@ -1,7 +1,7 @@
 extern mat4 u_proj;
 extern mat4 u_view;
 extern mat4 u_rot;
-//extern mat4 u_model;
+extern mat4 u_model;
 //
 extern float curve_coeff;
 extern bool curve_flag;
@@ -14,11 +14,68 @@ varying vec2 texoffset;
 #ifdef VERTEX
 
 attribute vec3 VertexNormal;
+attribute vec4 VertexWeight;
+attribute vec4 VertexBone;
+attribute vec4 VertexTangent;
+
 attribute vec2 TextureScale;
 attribute vec2  TextureOffset;
 
+uniform mat4 u_bone_matrices[64];
+uniform int  u_skinning;
+
+//mat4 get_deform_matrix() {
+//	if (u_skinning != 0) {
+//		return
+//			u_bone_matrices[int(VertexBone.x*255.0)] * VertexWeight.x +
+//			u_bone_matrices[int(VertexBone.y*255.0)] * VertexWeight.y +
+//			u_bone_matrices[int(VertexBone.z*255.0)] * VertexWeight.z +
+//			u_bone_matrices[int(VertexBone.w*255.0)] * VertexWeight.w;
+//	}
+//	return mat4(1.0);
+//}
+
+vec4 apply_skinning(vec4 v) {
+	if (u_skinning == 0) {
+		return v;
+	}
+
+	mat4 bones[4];
+	float weights[4];
+
+	bones[0] = u_bone_matrices[int(VertexBone.x*255.0)];
+	bones[1] = u_bone_matrices[int(VertexBone.y*255.0)];
+	bones[2] = u_bone_matrices[int(VertexBone.z*255.0)];
+	bones[3] = u_bone_matrices[int(VertexBone.w*255.0)];
+
+	weights[0] = VertexWeight.x;
+	weights[1] = VertexWeight.y;
+	weights[2] = VertexWeight.z;
+	weights[3] = VertexWeight.w;
+
+	vec4 total_position = vec4(0.0f);
+	for (int i = 0; i < 4; i++) {
+		vec4 local_position = bones[i] * v;
+		total_position += local_position * weights[i];
+	}
+
+	return total_position;
+}
+
 vec4 position(mat4 transform, vec4 vertex) {
-	vec4 view_v = u_view * vertex;
+	vertex = apply_skinning(vertex);
+
+	//mat4 trans_u = u_model * get_deform_matrix();
+	//mat4 trans_u = get_deform_matrix();
+	//mat4 modelview_u = trans_u * u_rot * u_view;
+	//mat4 modelview_u = trans_u * u_rot * u_view * u_model;
+	//mat4 modelview_u = u_rot * u_view * u_model * trans_u;
+	mat4 modelview_u = u_rot * u_view * u_model;
+
+	//vec4 model_v = u_model * getDeformMatrix() * vertex;
+	//vec4 view_v = u_view * model_v;
+
+	vec4 view_v = modelview_u * vertex;
 
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff;
@@ -30,7 +87,8 @@ vec4 position(mat4 transform, vec4 vertex) {
 	if (texscale.y == 0) { texscale.y = 1; }
 	texoffset = TextureOffset;
 
-	vec4 pos_v = u_proj * u_rot * view_v;
+	//vec4 pos_v = u_proj * u_rot * view_v;
+	vec4 pos_v = u_proj * view_v;
 	vposition = pos_v;
 	return pos_v;
 }

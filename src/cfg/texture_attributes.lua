@@ -17,5 +17,5 @@ return {
 
 	["skyday01.png"] = {
 		texture_type = "cube"
-	}
+	},
 }

@@ -40,6 +40,25 @@ function Mesh:new(tex, ...)
 	return this
 end
 
+function Mesh.newFromMesh(mesh, tex)
+	local this = {
+		mesh = mesh,
+		attr_mesh = nil,
+		texture = tex,
+	}
+
+	setmetatable(this,Mesh)
+
+	if this.texture then
+		t = this.texture:getImage()
+		if t then
+			this.mesh:setTexture(t)
+		end
+	end
+
+	return this
+end
+
 function Mesh:setTriangle(index, v1, v2, v3)
 	self.mesh:setVertex(index,   v1)
 	self.mesh:setVertex(index+1, v2)
@@ -115,6 +134,15 @@ function Mesh:draw(shader)
 		shader:send("texture_animated", tex.props.texture_animated)
 		shader:send("texture_animated_frame", tex:getAnimationFrame() - 1)
 		shader:send("texture_animated_dimx", tex.props.texture_merged_dim_x)
+		shader:send("u_skinning", 0)
+		love.graphics.draw(self.mesh)
+	end
+end
+
+function Mesh:drawModel(shader)
+	shader = shader or love.graphics.getShader()
+	if self.mesh then
+		shader:send("texture_animated", false)
 		love.graphics.draw(self.mesh)
 	end
 end
@@ -185,4 +213,12 @@ function Mesh:testAgainstDirection(x,y,z, threshold)
 	local normal = self.normal
 	local dot = cpml.vec3.dot(normal,cpml.vec3.new(x,y,z))
 	return dot > threshold
+end
+
+function Mesh:scale(x,y,z)
+	local v_count = self.mesh:getVertexCount()
+
+	for i=1,v_count do
+		
+	end
 end

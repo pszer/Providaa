@@ -91,6 +91,7 @@ function Scene:draw(cam)
 	for i,v in ipairs(self.props.scene_meshes) do
 		v:draw()
 	end
+	alekin:draw()
 
 	Renderer.dropCanvas()
 end

@@ -5,6 +5,7 @@ require "render"
 require "map"
 require "tick"
 require "scene"
+require "model"
 
 local testmap = require "maps.test"
 
@@ -18,6 +19,12 @@ PROV = {
 
 function PROV:load()
 	self.scene:loadMap(testmap)
+
+	--anims = Model.openAnimations("alekin.iqm")
+	alekin = Model.openFilename("alekin.iqm", "models/alekin.png", true)
+	alekin:generateBoneOffsetMatrices()
+	local finalm = alekin:calculateBoneMatrices(alekin.props.model_animations["Walk"], 10)
+	print(#finalm)
 end
 
 function PROV:update(dt)

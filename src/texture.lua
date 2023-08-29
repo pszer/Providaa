@@ -206,11 +206,12 @@ function Textures.isTextureLoaded(fname)
 end
 
 function Textures.loadTexture(fname)
-	if Textures.isTextureLoaded(fname) then return end -- do nothing if already loaded
+	if Textures.isTextureLoaded(fname) then return Textures.queryTexture(fname) end -- do nothing if already loaded
 
 	local attributes = tex_attributes[fname] or {}
 	local tex = Texture.openFilename(fname, attributes)
 	if tex then Textures.loaded[fname] = tex end
+	return tex
 end
 
 function Textures.loadTextures()
