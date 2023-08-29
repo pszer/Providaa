@@ -8,8 +8,8 @@ extern mat4 u_model;
 extern float curve_coeff;
 extern bool curve_flag;
 
-varying vec4 vposition;
-varying vec3 vnormal;
+varying vec3 frag_position;
+varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 
@@ -21,7 +21,7 @@ attribute vec4 VertexBone;
 attribute vec4 VertexTangent;
 
 attribute vec2 TextureScale;
-attribute vec2  TextureOffset;
+attribute vec2 TextureOffset;
 
 uniform mat4 u_bone_matrices[64];
 uniform int  u_skinning;
@@ -47,18 +47,21 @@ vec4 position(mat4 transform, vec4 vertex) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff;
 	}
 
-	vnormal = VertexNormal;
+	frag_normal = mat3(transpose(inverse(modelview_u))) * VertexNormal;
+
 	texscale = TextureScale;
 	if (texscale.x == 0) { texscale.x = 1; }
 	if (texscale.y == 0) { texscale.y = 1; }
 	texoffset = TextureOffset;
 
-	//vec4 pos_v = u_proj * u_rot * view_v;
+	frag_position = view_v.xyz;
+
 	vec4 pos_v = u_proj * view_v;
-	vposition = pos_v;
 	return pos_v;
 }
 #endif
+
+
 
 #ifdef PIXEL
 
@@ -77,32 +80,48 @@ extern vec3 ambient_col;
 extern float ambient_str;
 
 vec3 ambient_lighting( vec3 normal, vec3 light_dir, vec3 light_col, vec3 ambient_col, float ambient_str ) {
-	float diff = max(0.0, dot(normal, -normalize(light_dir)));
+	float diff = max(0.0, dot(normal, normalize(light_dir)));
 	vec3 diff_col = light_col * diff;
 	return diff_col + ambient_col*ambient_str;
 }
 
+vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
+	float specular_strength = 0.4;
+	vec3 view_dir = normalize(-frag_position);
+	vec3 reflect_dir = reflect(-light_dir, normal);
+
+	float spec = pow(max(dot(view_dir,reflect_dir),0.0), 6);
+
+	return spec * specular_strength * light_col;
+}
+
+vec2 calc_tex_coords( vec2 uv_coords ) {
+	if (!texture_animated) {
+		return uv_coords + texoffset;
+	} else {
+		vec2 step = vec2(1.0,1.0) / float(texture_animated_dimx);
+
+		vec2 texpos = vec2(mod(texture_animated_frame,texture_animated_dimx), texture_animated_frame / texture_animated_dimx);
+		return mod(uv_coords + texoffset,vec2(1,1))*step + texpos*step;
+	}
+}
+
 vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
-	float dist = vposition.z*vposition.z + vposition.x*vposition.x;
+	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
+
+	vec3 light_dir_n = normalize(light_dir);
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
+	if (fog_r > 0.99) { return fog_colour; }
 
-	vec3 light_result = ambient_lighting(vnormal, light_dir, light_col, ambient_col, ambient_str);
-	vec4 light = vec4(light_result,1.0);
+	vec3 light_result = ambient_lighting(frag_normal, light_dir_n, light_col, ambient_col, ambient_str);
+	vec3 specular_result = specular_highlight( frag_normal , light_dir_n, light_col);
+	vec4 light = vec4(light_result + specular_result, 1.0);
 
 	vec4 texcolor;
-	vec2 coords;
-	if (!texture_animated) {
-		coords = texture_coords + texoffset;
-	} else {
-		vec2 step = vec2(1.0,1.0) / float(texture_animated_dimx);
-		//int frame = mod(texture_animated_frame + floor(AnimationOffset), texture_animated_framecount)
-
-		vec2 texpos = vec2(mod(texture_animated_frame,texture_animated_dimx), texture_animated_frame / texture_animated_dimx);
-		coords = mod(texture_coords + texoffset,vec2(1,1))*step + texpos*step;
-	}
+	vec2 coords = calc_tex_coords(texture_coords);
 
 	coords = coords / texscale;
 

@@ -65,7 +65,7 @@ function PROV:update(dt)
 	end
 
 	alekin.props.model_position = {cam.cam_x,cam.cam_y+80,cam.cam_z-100}
-	alekin.props.model_rotation[2] = getTick()/50
+	alekin.props.model_rotation[2] = getTick()/100
 end
 
 function PROV:draw()
