@@ -1,5 +1,11 @@
+require 'math'
+
 require "props.sceneprops"
-require "math"
+require "light"
+
+local shadersend = require 'shadersend'
+local matrix     = require 'matrix'
+local cpml       = require 'cpml'
 
 Scene = {__type = "scene"}
 Scene.__index = Scene
@@ -52,19 +58,22 @@ end
 function Scene:pushAmbience()
 	local sh = love.graphics.getShader()
 	sh:send("light_col", self.props.scene_light_col)
-	sh:send("light_dir", self.props.scene_light_dir)
+	--sh:send("light_dir", self.props.scene_light_dir)
+	sh:send("light_dir", self.props.scene_lights[1].props.light_dir)
 	sh:send("ambient_col", self.props.scene_ambient_col)
 	sh:send("ambient_str", self.props.scene_ambient_str)
 end
 
 function Scene:drawGridMap()
 	local props = self.props
-	local grid = props.scene_grid
-	local gridd = props.scene_grid.props.grid_data
-	local walls = props.scene_walls
-
 	for i,v in ipairs(props.scene_meshes) do
 		v:drawAsEnvironment()
+	end
+end
+
+function Scene:drawModels(updateAnims)
+	for i,v in ipairs(self.props.scene_models) do
+		v:draw(nil, updateAnims)
 	end
 end
 
@@ -73,6 +82,10 @@ function Scene:draw(cam)
 
 	--self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
 	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
+	--
+	--self.props.scene_lights[1].props.light_dir[3] = math.cos(getTick()/45)/3
+	--self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)/3
+	self.props.scene_lights[1]:generateLightSpaceMatrix()
 
 	cam:update()
 	cam:generateViewMatrix()
@@ -82,11 +95,20 @@ function Scene:draw(cam)
 
 	local skybox_drawn = self:drawSkybox()
 
+	for i,v in ipairs(self.props.scene_models) do
+		v:fillOutBoneMatrices("Walk", getTickSmooth())
+		--v:sendToShader()
+	end
+
+	--self.props.scene_camera:pushToShader()
+	self:shadowPass()
+
 	Renderer.setupCanvasFor3D()
 
 	self:pushFog()
 	self:pushAmbience()
 	self.props.scene_camera:pushToShader()
+	self:pushShadowMaps()
 
 	local props = self.props
 
@@ -95,10 +117,47 @@ function Scene:draw(cam)
 	if not skybox_drawn then love.graphics.clear(fog[1],fog[2],fog[3],1) end
 
 	self:drawGridMap()
-
-	alekin:draw()
+	self:drawModels(false)
+	
+	--for i,v in ipairs(self.props.scene_models) do
+	--	v:draw(nil, false)
+	--end
 
 	Renderer.dropCanvas()
+end
+
+function Scene:shadowPass()
+	local props = self.props
+	for i,light in ipairs(props.scene_lights) do
+		light:clearDepthMap()
+		Renderer.setupCanvasForShadowMapping(light)
+		local shader = love.graphics.getShader()
+
+		local light_matrix = light:getLightSpaceMatrix()
+		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
+
+		self:drawModels(false)
+		self:drawGridMap()
+		--Renderer.dropCanvas()
+	end
+end
+
+function Scene:pushShadowMaps(shader)
+	local lights = self.props.scene_lights
+	local light_count = #lights
+	local shader = shader or love.graphics.getShader()
+
+	local lightspace_mats = {}
+	local shadow_maps = {}
+
+	for i,light in ipairs(lights) do
+		shadow_maps[i] = light.props.light_depthmap
+		lightspace_mats[i] = matrix(light.props.light_lightspace_matrix)
+	end
+	
+	shadersend(shader, "u_lightspaces", "column", unpack(lightspace_mats))
+	shadersend(shader, "shadow_maps", unpack(shadow_maps))
+	shadersend(shader, "LIGHT_COUNT", light_count)
 end
 
 -- returns true if skybox drawn
@@ -117,7 +176,7 @@ function Scene:drawSkybox(cam)
 	Renderer.setupCanvasForSkybox()
 
 	local sh = love.graphics.getShader()
-	sh:send("skybox", skybox_img:getImage())
+	shadersend(sh, "skybox", skybox_img:getImage())
 	self.props.scene_camera:pushToShader(sh)
 
 	love.graphics.draw(Renderer.skybox_model)

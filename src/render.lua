@@ -10,6 +10,7 @@ Renderer = {
 	--vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	vertex_shader = nil,
 	skybox_shader = nil,
+	shadow_shader = nil,
 
 	skybox_model = nil,
 
@@ -27,6 +28,7 @@ Renderer.__index = Renderer
 function Renderer.loadShaders()
 	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
+	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
 end
 
 function Renderer.setupSkyboxModel()
@@ -132,6 +134,17 @@ function Renderer.setupCanvasForSkybox()
 
 	love.graphics.origin()
 	Renderer.transformCoordsFor3D()
+end
+
+function Renderer.setupCanvasForShadowMapping(light)
+	love.graphics.origin()
+	Renderer.transformCoordsFor3D()
+
+	--love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
+	love.graphics.setCanvas{light.testcanvas, depthstencil = light.props.light_depthmap, depth=true}
+	love.graphics.setDepthMode( "less", true )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)
 end
 
 function Renderer.dropCanvas()

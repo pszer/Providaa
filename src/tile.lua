@@ -3,10 +3,6 @@ require "props.tileprops"
 require "texture"
 require "mesh"
 
-love.graphics.setDefaultFilter("nearest", "nearest")
-DIRT = love.graphics.newImage("dirt.jpg")
-DIRT:setWrap("repeat", "repeat")
-
 TILE_SIZE = 32
 TILE_HEIGHT = -24
 

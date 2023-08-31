@@ -1,6 +1,7 @@
 local iqm = require 'iqm-exm'
 local cpml = require 'cpml'
 local matrix = require 'matrix'
+local shadersend = require 'shadersend'
 
 require "props.modelprops"
 require "texturemanager"
@@ -19,7 +20,9 @@ function Model:new(props)
 
 		dir_matrix = nil,
 		static_model_matrix = nil,
-		static_normal_matrix = nil
+		static_normal_matrix = nil,
+
+		bone_matrices = {}
 	}
 
 	setmetatable(this,Model)
@@ -128,21 +131,25 @@ function Model:modelMatrix()
 	return m, norm_m
 end
 
-function Model:sendAnimation(shader, animation, frame)
-	shader = shader or love.graphics.getShader()
-
-	if not self.props.model_animated then
-		shader:send("u_skinning", 0)
-	else
-		shader:send("u_skinning", 1)
-
+function Model:fillOutBoneMatrices(animation, frame)
+	if self.props.model_animated then
 		local bone_matrices = self:getBoneMatrices(animation, frame)
 
 		for i,v in ipairs(bone_matrices) do
 			bone_matrices[i] = matrix(v)
 		end
 
-		shader:send("u_bone_matrices", "column", unpack(bone_matrices))
+		self.bone_matrices = bone_matrices
+	end
+end
+
+-- called after fillOutBoneMatrices()
+function Model:sendBoneMatrices(shader)
+	if not self.props.model_animated then
+		shadersend(shader, "u_skinning", 0)
+	else
+		shadersend(shader, "u_skinning", 1)
+		shadersend(shader, "u_bone_matrices", "column", unpack(self.bone_matrices))
 	end
 end
 
@@ -150,14 +157,24 @@ function Model:getSkeleton()
 	return self.props.model_skeleton
 end
 
-function Model:draw(shader)
+function Model:sendToShader(shader)
 	shader = shader or love.graphics.getShader()
 
 	local model_u, normal_u = self:modelMatrix()
-	shader:send("u_model", "column", matrix(model_u))
-	shader:send("u_normal_model", "column", matrix(normal_u))
+	shadersend(shader, "u_model", "column", matrix(model_u))
+	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
 
-	self:sendAnimation(shader, "Walk", getTickSmooth())
+	self:sendBoneMatrices(shader)
+end
+
+function Model:draw(shader, update_animation)
+	shader = shader or love.graphics.getShader()
+
+	if update_animation then
+		self:fillOutBoneMatrices("Walk", getTickSmooth())
+	end
+
+	self:sendToShader()
 
 	self.props.model_mesh:drawModel(shader)
 end

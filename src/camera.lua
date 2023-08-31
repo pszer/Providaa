@@ -2,6 +2,7 @@ local cpml = require 'cpml'
 local matrix = require 'matrix'
 
 require "resolution"
+local shadersend = require 'shadersend'
 
 require "props/cameraprops"
 
@@ -27,12 +28,12 @@ function Camera:pushToShader(sh)
 	local props = self.props
 
 	sh = sh or love.graphics.getShader()
-	sh:send("u_proj", "column", matrix(props.cam_perspective_matrix))
-	if sh:hasUniform( "u_view" ) then sh:send("u_view", "column", matrix(props.cam_view_matrix)) end
-	sh:send("u_rot", "column", matrix(props.cam_rot_matrix))
+	shadersend(sh, "u_proj", "column", matrix(props.cam_perspective_matrix))
+	shadersend(sh, "u_view", "column", matrix(props.cam_view_matrix))
+	shadersend(sh, "u_rot", "column", matrix(props.cam_rot_matrix))
 
- 	if sh:hasUniform( "curve_flag" ) then sh:send("curve_flag", props.cam_bend_enabled) end
-	if sh:hasUniform( "curve_coeff" ) then sh:send("curve_coeff", props.cam_bend_coefficient) end
+ 	shadersend(sh, "curve_flag", props.cam_bend_enabled)
+	shadersend(sh, "curve_coeff", props.cam_bend_coefficient)
 end
 
 function Camera:getPosition()
@@ -48,6 +49,10 @@ function Camera:generatePerspectiveMatrix(aspect_ratio)
 	local props = self.props
 	props.cam_perspective_matrix = cpml.mat4.from_perspective(
 		props.cam_fov, aspect_ratio, 0.1, 10000)
+
+	--props.cam_perspective_matrix = cpml.mat4.from_ortho(
+	--	-1000*aspect_ratio, 1000*aspect_ratio, 1000, -1000, 1.0, 1000)
+
 	return props.cam_perspective_matrix
 end
 

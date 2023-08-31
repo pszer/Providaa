@@ -1,22 +1,29 @@
 #pragma language glsl3
 
-extern mat4 u_proj;
-extern mat4 u_view;
-extern mat4 u_rot;
-extern mat4 u_model;
-extern mat3 u_normal_model;
-//
-extern float curve_coeff;
-extern bool curve_flag;
-
 varying vec3 frag_position;
+varying vec3 frag_w_position;
+varying vec4 frag_light_pos[24];
 varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 varying vec3 view_pos;
 varying vec3 view_dir;
 
+extern int LIGHT_COUNT;
+extern mat4 u_lightspaces[24];
+
 #ifdef VERTEX
+
+//extern mat4 u_proj;
+extern mat4 u_view;
+extern mat4 u_rot;
+extern mat4 u_model;
+extern mat4 u_proj;
+extern mat3 u_normal_model;
+
+//
+extern float curve_coeff;
+extern bool curve_flag;
 
 attribute vec3 VertexNormal;
 attribute vec4 VertexWeight;
@@ -59,7 +66,12 @@ vec4 position(mat4 transform, vec4 vertex) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
 	frag_position = view_v.xyz;
+	frag_w_position = (skin_u * vertex).xyz;
 	frag_normal = get_normal_matrix(modelview_u) * VertexNormal;
+
+	for (int i = 0; i < LIGHT_COUNT; i++) {
+		frag_light_pos[i] = u_lightspaces[i] * vertex;
+	}
 
 	texscale = TextureScale;
 	if (texscale.x == 0) { texscale.x = 1; }
@@ -89,10 +101,16 @@ extern vec3 light_col;
 extern vec3 ambient_col;
 extern float ambient_str;
 
-vec3 ambient_lighting( vec3 normal, vec3 light_dir, vec3 light_col, vec3 ambient_col, float ambient_str ) {
+extern Image shadow_maps[24]; 
+
+vec3 ambient_lighting( vec3 ambient_col, float ambient_str ) {
+	return ambient_col*ambient_str;
+}
+
+vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec3 light_col) {
 	float diff = max(0.0, dot(normal, normalize(light_dir)));
 	vec3 diff_col = light_col * diff;
-	return diff_col + ambient_col*ambient_str;
+	return diff_col;
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
@@ -119,19 +137,34 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 	}
 }
 
+float shadow_calculation( vec4 pos , mat4 lightspace, Image shadow_map ) {
+	//vec4 coords = lightspace * vec4(pos,1.0);
+	vec3 prooj_coords = pos.xyz / pos.w;
+	prooj_coords = prooj_coords * 0.5 + 0.5;
+
+	float closest_depth = Texel(shadow_map, prooj_coords.xy).r;
+	float curr_depth    = prooj_coords.z;
+	float bias = 0.005;
+	return curr_depth - bias > closest_depth ? 1.0 : 0.0;
+}
+
 vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 
-	vec3 light_dir_n = normalize(light_dir);
+	vec3 light_dir_n = normalize(-light_dir);
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
 	if (fog_r > 0.99) { return fog_colour; }
 
-	vec3 light_result = ambient_lighting(frag_normal, light_dir_n, light_col, ambient_col, ambient_str);
-	vec3 specular_result = specular_highlight( frag_normal , light_dir_n, light_col);
-	vec4 light = vec4(light_result + specular_result, 1.0);
+	vec3 ambient = ambient_lighting(ambient_col, ambient_str);
+	vec3 diffuse = diffuse_lighting(frag_normal, light_dir_n, light_col);
+	vec3 specular = specular_highlight( frag_normal , light_dir_n, light_col);
+
+	float shadow = shadow_calculation(frag_light_pos[0], u_lightspaces[0], shadow_maps[0]);
+
+	vec4 light = vec4(ambient + (1.0-shadow)*(diffuse + specular), 1.0);
 
 	vec4 texcolor;
 	vec2 coords = calc_tex_coords(texture_coords);
@@ -141,6 +174,6 @@ vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 	texcolor = Texel(tex, coords);
 	vec4 pix = texcolor * light;
 
-	return (1-fog_r)*pix + fog_r*fog_colour;
+	return ((1-fog_r)*pix + fog_r*fog_colour);
 }
 #endif
