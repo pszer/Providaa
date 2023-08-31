@@ -64,8 +64,8 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	alekin.props.model_position = {cam.cam_x,cam.cam_y+80,cam.cam_z-100}
-	alekin.props.model_rotation[2] = getTick()/100
+	alekin.props.model_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+80,cam.cam_z-100*math.cos(cam.cam_yaw)}
+	alekin.props.model_rotation[2] = getTick()/60
 end
 
 function PROV:draw()

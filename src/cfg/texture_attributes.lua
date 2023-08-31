@@ -1,4 +1,4 @@
-return {
+return{
 	["dirt.png"] = {
 		texture_wrap_mode = "repeat",
 		texture_type      = "2d",

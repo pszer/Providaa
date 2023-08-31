@@ -135,8 +135,12 @@ function Mesh:drawAsEnvironment(shader)
 		shader:send("texture_animated", tex.props.texture_animated)
 		shader:send("texture_animated_frame", tex:getAnimationFrame() - 1)
 		shader:send("texture_animated_dimx", tex.props.texture_merged_dim_x)
+
 		shader:send("u_model", matrix(cpml.mat4.identity()))
+		shader:send("u_normal_model", {1,0,0,0,1,0,0,0,1})
+
 		shader:send("u_skinning", 0)
+
 		love.graphics.draw(self.mesh)
 	end
 end

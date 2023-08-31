@@ -71,8 +71,8 @@ end
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
-	self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
-	self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
+	--self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
+	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
 
 	cam:update()
 	cam:generateViewMatrix()

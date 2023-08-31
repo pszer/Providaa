@@ -4,6 +4,7 @@ extern mat4 u_proj;
 extern mat4 u_view;
 extern mat4 u_rot;
 extern mat4 u_model;
+extern mat3 u_normal_model;
 //
 extern float curve_coeff;
 extern bool curve_flag;
@@ -12,6 +13,8 @@ varying vec3 frag_position;
 varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
+varying vec3 view_pos;
+varying vec3 view_dir;
 
 #ifdef VERTEX
 
@@ -37,6 +40,15 @@ mat4 get_deform_matrix() {
 	return mat4(1.0);
 }
 
+mat3 get_normal_matrix(mat4 modelview_u) {
+	// u_normal_model matrix is calculated outside and passed to shader
+	// if skinning is enabled then this needs to be recalculated
+	if (u_skinning != 0) {
+		return mat3(transpose(inverse(modelview_u)));
+	}
+	return u_normal_model;
+}
+
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = u_model * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
@@ -44,17 +56,15 @@ vec4 position(mat4 transform, vec4 vertex) {
 	vec4 view_v = modelview_u * vertex;
 
 	if (curve_flag) {
-		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff;
-	}
+		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
-	frag_normal = mat3(transpose(inverse(modelview_u))) * VertexNormal;
+	frag_position = view_v.xyz;
+	frag_normal = get_normal_matrix(modelview_u) * VertexNormal;
 
 	texscale = TextureScale;
 	if (texscale.x == 0) { texscale.x = 1; }
 	if (texscale.y == 0) { texscale.y = 1; }
 	texoffset = TextureOffset;
-
-	frag_position = view_v.xyz;
 
 	vec4 pos_v = u_proj * view_v;
 	return pos_v;
@@ -86,11 +96,14 @@ vec3 ambient_lighting( vec3 normal, vec3 light_dir, vec3 light_col, vec3 ambient
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
-	float specular_strength = 0.4;
+	float specular_strength = 0.01;
 	vec3 view_dir = normalize(-frag_position);
-	vec3 reflect_dir = reflect(-light_dir, normal);
+	vec3 light_dir_n = normalize(light_dir);
+	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(max(dot(view_dir,reflect_dir),0.0), 6);
+	//vec3 reflect_dir = reflect(-light_dir, normal);
+
+	float spec = pow(max(dot(normal,halfway_v),0.0), 48);
 
 	return spec * specular_strength * light_col;
 }

@@ -3,7 +3,7 @@ local cpml = require 'cpml'
 local matrix = require 'matrix'
 
 require "props.modelprops"
-require "texture"
+require "texturemanager"
 
 Model = {__type = "model"}
 Model.__index = Model
@@ -18,7 +18,8 @@ function Model:new(props)
 		outframes = {},
 
 		dir_matrix = nil,
-		static_model_matrix = nil
+		static_model_matrix = nil,
+		static_normal_matrix = nil
 	}
 
 	setmetatable(this,Model)
@@ -96,10 +97,12 @@ function Model:generateDirectionFixingMatrix()
 	self.dir_matrix = mat
 end
 
+-- calculates returns model matrix and the model for normal vector transformation
+-- if model is static this function calculates once and re-uses
 function Model:modelMatrix()
 	local is_static = self.props.model_static
 	if is_static and self.static_model_matrix then
-		return self.static_model_matrix
+		return self.static_model_matrix, self.static_normal_matrix
 	end
 
 	local props = self.props
@@ -113,11 +116,16 @@ function Model:modelMatrix()
 	m:rotate(m, props.model_rotation[3], cpml.vec3.unit_z)
 	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3]))
 
-	if is_static then
-		self.static_model_matrix = m
-	end
+	-- the xyz 3x3 section of the model matrix
+	norm_m = cpml.mat4.new(m[1],m[2],m[3], m[5],m[6],m[7], m[9],m[10],m[11])
 
-	return m
+	norm_m = norm_m:invert(norm_m)
+	norm_m = norm_m:transpose(norm_m)
+
+	self.static_model_matrix = m
+	self.static_normal_matrix = norm_m
+
+	return m, norm_m
 end
 
 function Model:sendAnimation(shader, animation, frame)
@@ -145,7 +153,10 @@ end
 function Model:draw(shader)
 	shader = shader or love.graphics.getShader()
 
-	shader:send("u_model", "column", matrix(self:modelMatrix()))
+	local model_u, normal_u = self:modelMatrix()
+	shader:send("u_model", "column", matrix(model_u))
+	shader:send("u_normal_model", "column", matrix(normal_u))
+
 	self:sendAnimation(shader, "Walk", getTickSmooth())
 
 	self.props.model_mesh:drawModel(shader)

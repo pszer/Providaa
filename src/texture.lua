@@ -83,7 +83,7 @@ function Texture.openFilename(filename, attributes)
 
 		--cubemap
 		if attributes.texture_type == "cube" then
-			img = love.graphics.newCubeImage(fpath, {linear = true, mipmaps = true})
+			img = love.graphics.newCubeImage(fpath, {mipmaps = true})
 
 			props = {
 				texture_name = filename,

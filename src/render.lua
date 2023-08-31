@@ -2,9 +2,7 @@ require 'math'
 
 require "camera"
 require "resolution"
-require "3d"
-
-require "texture"
+require "texturemanager"
 
 --CAM = Camera:new()
 
@@ -118,8 +116,7 @@ function Renderer.setupCanvasFor3D()
 
 	love.graphics.setCanvas{Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
 	love.graphics.setDepthMode( "less", true  )
-	--love.graphics.setMeshCullMode("front")
-	love.graphics.setMeshCullMode("none")
+	love.graphics.setMeshCullMode("front")
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 	
