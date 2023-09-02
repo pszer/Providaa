@@ -17,6 +17,8 @@ varying vec3 cube_coords;
 #ifdef PIXEL
     vec4 effect(vec4 pixel_color, Image tex, vec2 texture_coords, vec2 screen_coords)
     {
-        return Texel(skybox, cube_coords);
+		vec3 pix_color = Texel(skybox, cube_coords).rgb;
+        //return Texel(skybox, cube_coords);
+		return vec4(pix_color, 1.0);
 	}
 #endif

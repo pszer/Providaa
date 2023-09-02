@@ -11,10 +11,12 @@ Renderer = {
 	vertex_shader = nil,
 	skybox_shader = nil,
 	shadow_shader = nil,
+	hdr_shader    = nil,
 
 	skybox_model = nil,
 
 	scene_viewport = nil,
+	skybox_viewport = nil,
 	scene_depthbuffer = nil,
 
 	viewport_w = 1000,
@@ -29,6 +31,7 @@ function Renderer.loadShaders()
 	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
+	Renderer.hdr_shader    = love.graphics.newShader("shader/hdr.glsl")
 end
 
 function Renderer.setupSkyboxModel()
@@ -75,12 +78,22 @@ function Renderer.setupSkyboxModel()
 	Renderer.skybox_model:setVertexMap(indices)
 end
 
-function Renderer.renderScaled(canvas)
-	canvas = canvas or Renderer.scene_viewport
+function Renderer.renderScaled(canvas, hdr)
+	local canvas = canvas or Renderer.scene_viewport
+	local hdr = hdr or {}
+	local exposure = hdr.exposure or 1.0
 
 	love.graphics.setCanvas()
 	love.graphics.origin()
 	love.graphics.scale(RESOLUTION_RATIO)
+
+	if hdr.hdr_enabled then
+		love.graphics.setShader(Renderer.hdr_shader)
+		Renderer.hdr_shader:send("hdr_enabled", true)
+		Renderer.hdr_shader:send("exposure", exposure)
+	else
+		love.graphics.setShader()
+	end
 
 	local w,h = get_resolution()
 	local W,H = love.graphics.getWidth() / RESOLUTION_RATIO, love.graphics.getHeight() / RESOLUTION_RATIO
@@ -93,12 +106,14 @@ function Renderer.renderScaled(canvas)
 	end
 
 	love.graphics.draw( canvas, wpad,hpad )
+	Renderer.dropCanvas()
 end
 
 function Renderer.createCanvas()
 	local w,h = get_resolution()
 
-	Renderer.scene_viewport    = love.graphics.newCanvas (w,h, {format = "rgba8"})
+	Renderer.scene_viewport    = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.skybox_viewport   = love.graphics.newCanvas (w,h, {format = "rgba8"})
 	Renderer.scene_depthbuffer = love.graphics.newCanvas (w,h, {format = "depth24"})
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h
@@ -129,7 +144,7 @@ end
 function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
-	love.graphics.setCanvas(Renderer.scene_viewport)
+	love.graphics.setCanvas(Renderer.skybox_viewport)
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 
 	--love.graphics.origin()
@@ -144,7 +159,7 @@ function Renderer.setupCanvasForShadowMapping(light)
 	--love.graphics.setCanvas{light.testcanvas, depthstencil = light.props.light_depthmap, depth=true}
 	--love.graphics.setCanvas{nil, depthstencil = light.props.light_depthmap, depth=true}
 	love.graphics.setDepthMode( "less", true )
-	love.graphics.setMeshCullMode("front")
+	love.graphics.setMeshCullMode("none")
 	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)
 end
 
@@ -152,7 +167,7 @@ function Renderer.dropCanvas()
 	love.graphics.setShader()
 	love.graphics.setCanvas()
 	love.graphics.setDepthMode()
-	love.graphics.setMeshCullMode("none")
+	love.graphics.setMeshCullMode("front")
 	love.graphics.origin()
 end
 

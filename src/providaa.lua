@@ -43,22 +43,22 @@ function PROV:update(dt)
 
 	local cam = PROV.scene.props.scene_camera.props
 	if love.keyboard.isDown("w") then
-		cam.cam_z = cam.cam_z - 500*dt
+		cam.cam_z = cam.cam_z - 100*dt
 	end
 	if love.keyboard.isDown("s") then
-		cam.cam_z = cam.cam_z + 500*dt
+		cam.cam_z = cam.cam_z + 100*dt
 	end
 	if love.keyboard.isDown("a") then
-		cam.cam_x = cam.cam_x - 1000*dt
+		cam.cam_x = cam.cam_x - 100*dt
 	end
 	if love.keyboard.isDown("d") then
-		cam.cam_x = cam.cam_x + 1000*dt
+		cam.cam_x = cam.cam_x + 100*dt
 	end
 	if love.keyboard.isDown("space") then
-		cam.cam_y = cam.cam_y - 250*dt
+		cam.cam_y = cam.cam_y - 50*dt
 	end
 	if love.keyboard.isDown("lctrl") then
-		cam.cam_y = cam.cam_y + 250*dt
+		cam.cam_y = cam.cam_y + 50*dt
 	end
 
 	if love.keyboard.isDown("right") then
@@ -80,13 +80,14 @@ function PROV:update(dt)
 	end
 
 	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+80,cam.cam_z-100*math.cos(cam.cam_yaw)}
-	instance.props.model_i_rotation[2] = getTick()/60
+	--instance.props.model_i_rotation[2] = getTick()/60
 end
 
 function PROV:draw()
 	self.scene:draw()
 
-	Renderer.renderScaled()
+	Renderer.renderScaled(Renderer.skybox_viewport, {hdr_enabled=false})
+	Renderer.renderScaled(nil, {hdr_enabled=true, exposure=0.30})
 
 	--love.graphics.origin()
 	--Renderer.renderScaled(self.scene.props.scene_lights[1].testcanvas)

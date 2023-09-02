@@ -146,6 +146,18 @@ function Mesh:drawAsEnvironment(shader)
 	end
 end
 
+function Mesh:drawGeneric(shader)
+	shader = shader or love.graphics.getShader()
+	if self.mesh then
+		local tex = self.texture
+		shadersend(shader,"texture_animated", false)
+		shadersend(shader,"u_model", matrix(cpml.mat4.identity()))
+		shadersend(shader,"u_skinning", 0)
+
+		love.graphics.draw(self.mesh)
+	end
+end
+
 function Mesh:drawModel(shader)
 	shader = shader or love.graphics.getShader()
 	if self.mesh then

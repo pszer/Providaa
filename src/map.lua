@@ -231,7 +231,7 @@ function Map.getWalls(map, x,z)
 		w[1],w[2],w[3],w[4],w[5] = walls[1],walls[2],walls[3],walls[4],walls[5]
 	else
 		--w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
-		w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
+		w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,walls,nil
 	end
 	return w
 end
@@ -333,6 +333,36 @@ function Map.generateTileMesh(map, z,x, tile, texture)
 	return mesh
 end
 
+-- generates a rectangle spanning the entire bottom of the map, facing downwards, slightly below y=0
+-- to be used when shadow mapping
+function Map.generateBottomMesh(map)
+
+	local width  = map.width
+	local height = map.height
+
+	local x1,y1,z1 = Tile.tileCoordToWorld( 0 , -0.5, height+1 )
+	local x2,y2,z2 = Tile.tileCoordToWorld( width+1, -0.5, height+1 )
+	local x3,y3,z3 = Tile.tileCoordToWorld( width+1, -0.5, 0 )
+	local x4,y4,z4 = Tile.tileCoordToWorld( 0 , -0.5, 0 )
+
+	local u = {0,1,1,0}
+	local v = {0,0,1,1}
+
+	v1 = {x1,y1,z1, u[1], v[1]}
+	v2 = {x2,y2,z2, u[2], v[2]}
+	v3 = {x3,y3,z3, u[3], v[3]}
+	v4 = {x4,y4,z4, u[4], v[4]}
+
+	print(x1,y1,z1)
+	print(x2,y2,z2)
+	print(x3,y3,z3)
+	print(x4,y4,z4)
+	
+	local mesh = Mesh:new(Textures.queryTexture("nil.png"), 6, "triangles", "dynamic")
+	mesh:setRectangle(1, v1,v2,v3,v4) -- vertices in opposite order to face downwards
+	return mesh
+end
+
 function Map.getGridMeshes(map, grid, gridset)
 	local meshes = {}
 
@@ -352,6 +382,8 @@ function Map.getGridMeshes(map, grid, gridset)
 			table.insert(set_tiles, tile)
 		end
 
+
+
 		local vindices = {}
 		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices, Tile.atypes)
 
@@ -364,6 +396,9 @@ function Map.getGridMeshes(map, grid, gridset)
 
 		table.insert(meshes, merge)
 	end
+
+	--local bottom_mesh = Map.generateBottomMesh(map)
+	table.insert(meshes, bottom_mesh)
 
 	return meshes
 end

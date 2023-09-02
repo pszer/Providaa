@@ -39,13 +39,24 @@ function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local wallmeshes = Map.getWallMeshes(map, props.scene_walls, wallsets, props.scene_wall_tiles)
 
 	for i,mesh in ipairs(wallmeshes) do
-		table.insert(self.props.scene_meshes,mesh) end
+		table.insert(props.scene_meshes,mesh) end
 	for i,mesh in ipairs(gridmeshes) do
-		table.insert(self.props.scene_meshes,mesh) end
+		table.insert(props.scene_meshes,mesh) end
+
+	self:generateGenericMesh(map, props.scene_meshes)
+	--props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("nil.png"), props.scene_meshes)
 
 	props.scene_grid:applyAttributes()
 	--Wall.applyAttributes(props.scene_walls)
 	WallTile.applyAttributes(props.scene_wall_tiles, props.scene_width, props.scene_height)
+end
+
+function Scene:generateGenericMesh(map, scene_meshes)
+	local props = self.props
+	local bottom_mesh = Map.generateBottomMesh(map)
+	local meshes = {bottom_mesh, unpack(scene_meshes)}
+
+	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("dirt.png"), meshes)
 end
 
 function Scene:pushFog()
@@ -61,7 +72,7 @@ function Scene:pushAmbience()
 	--sh:send("light_dir", self.props.scene_light_dir)
 	sh:send("light_dir", self.props.scene_lights[1].props.light_dir)
 	sh:send("ambient_col", self.props.scene_ambient_col)
-	sh:send("ambient_str", self.props.scene_ambient_str)
+	--sh:send("ambient_str", self.props.scene_ambient_str)
 end
 
 function Scene:drawGridMap()
@@ -69,6 +80,12 @@ function Scene:drawGridMap()
 	for i,v in ipairs(props.scene_meshes) do
 		v:drawAsEnvironment()
 	end
+	--props.scene_generic_mesh:drawGeneric()
+end
+
+function Scene:drawGridMapForShadowMapping()
+	local props = self.props
+	props.scene_generic_mesh:drawGeneric()
 end
 
 function Scene:drawModels(updateAnims)
@@ -83,8 +100,8 @@ function Scene:draw(cam)
 	--self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
 	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
 	--
-	self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)/2
-	self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)/2
+	self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
+	self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)*2
 	--self.props.scene_lights[1]:generateLightSpaceMatrix()
 
 	cam:update()
@@ -96,7 +113,7 @@ function Scene:draw(cam)
 	--local corners = cam:getFrustrumCornersWorldSpace()
 
 	Renderer.setupCanvasFor3D()
-	love.graphics.clear(0,0,0,1)
+	love.graphics.clear(0,0,0,0)
 
 	local skybox_drawn = self:drawSkybox()
 
@@ -140,8 +157,15 @@ function Scene:shadowPass()
 		local light_matrix = light:getLightSpaceMatrix()
 		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
+		love.graphics.setMeshCullMode("back")
 		self:drawModels(false)
-		self:drawGridMap()
+
+		love.graphics.setMeshCullMode("back")
+		--self:drawGridMap()
+		self:drawGridMapForShadowMapping()
+
+		love.graphics.setMeshCullMode("front")
+
 		--Renderer.dropCanvas()
 	end
 end

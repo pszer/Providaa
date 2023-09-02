@@ -3,10 +3,11 @@ require "props.lightprops"
 require "math"
 local cpml = require 'cpml'
 
-local SHADOWMAP_SIZE = 1024
+--local SHADOWMAP_SIZE = 8096
+local SHADOWMAP_SIZE = 8096
 
 Light = {__type = "light",
-		 z_mult = 1.2 -- used to increase size of orthographic lightmap projection matrix when shadowmapping
+		 z_mult = 1.0 -- used to increase size of orthographic lightmap projection matrix when shadowmapping
 
 }
 Light.__index = Light
@@ -103,7 +104,7 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 	end
 
 
-	print(min_x, max_x, max_y, min_y, min_z, max_z)
+	--print(min_x, max_x, max_y, min_y, min_z, max_z)
 
 	local z_mult = Light.z_mult
 	if min_z < 0 then

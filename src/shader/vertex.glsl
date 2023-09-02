@@ -89,7 +89,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 
 extern float fog_start;
 extern float fog_end;
-extern vec4  fog_colour;
+extern vec3  fog_colour;
 
 extern bool texture_animated;
 extern int  texture_animated_dimx;
@@ -97,23 +97,25 @@ extern int  texture_animated_frame;
 extern int  texture_animated_framecount;
 
 extern vec3 light_dir;
-extern vec3 light_col;
-extern vec3 ambient_col;
-extern float ambient_str;
+extern vec4 light_col;
+extern vec4 ambient_col;
+//extern float ambient_str;
 
 extern sampler2DShadow shadow_maps[24]; 
 
-vec3 ambient_lighting( vec3 ambient_col, float ambient_str ) {
-	return ambient_col*ambient_str;
+//vec3 ambient_lighting( vec4 ambient_col, float ambient_str ) {
+vec3 ambient_lighting( vec4 ambient_col ) {
+	//return ambient_col*ambient_str;
+	return ambient_col.rgb * ambient_col.a;
 }
 
-vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec3 light_col) {
+vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
 	float diff = max(0.0, dot(normal, normalize(light_dir)));
-	vec3 diff_col = light_col * diff;
+	vec3 diff_col = light_col.rgb * light_col.a * diff;
 	return diff_col;
 }
 
-vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
+vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	float specular_strength = 0.005;
 	vec3 view_dir = normalize(-frag_position);
 	vec3 light_dir_n = normalize(light_dir);
@@ -123,7 +125,7 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
 
 	float spec = pow(max(dot(normal,halfway_v),0.0), 24);
 
-	return spec * specular_strength * light_col;
+	return spec * specular_strength * light_col.rgb * light_col.a;
 }
 
 vec2 calc_tex_coords( vec2 uv_coords ) {
@@ -168,13 +170,14 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 
 	//float closest_depth = Texel(shadow_map, prooj_coords.xy).r;
 	float curr_depth    = prooj_coords.z;
-	float bias = 0.0025;
+	//float bias = 0.00000006;
+	float bias = 0.000005;
 
 	float shadow = 0.0;
 	for (int i=0;i<4;i++){
 		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
 		//if ( Texel( shadow_map, prooj_coords.xy + poissonDisk[index]/5000.0 ).r  <  curr_depth - bias ){
-			shadow += 0.25 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/5000.0, curr_depth - bias), bias));
+			shadow += 0.20 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/5000.0, curr_depth - bias), bias));
 		//}
 	}
 
@@ -190,9 +193,10 @@ vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
-	if (fog_r > 0.99) { return fog_colour; }
+	if (fog_r > 0.99) { return vec4(fog_colour, 1.0); }
 
-	vec3 ambient = ambient_lighting(ambient_col, ambient_str);
+	//vec3 ambient = ambient_lighting(ambient_col, ambient_str);
+	vec3 ambient = ambient_lighting(ambient_col);
 	vec3 diffuse = diffuse_lighting(frag_normal, light_dir_n, light_col);
 	vec3 specular = specular_highlight( frag_normal , light_dir_n, light_col);
 
@@ -208,6 +212,6 @@ vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 	texcolor = Texel(tex, coords);
 	vec4 pix = texcolor * light;
 
-	return ((1-fog_r)*pix + fog_r*fog_colour);
+	return vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
 }
 #endif

@@ -1,4 +1,9 @@
 return{
+	["nil"] = {
+		texture_type = "2d",
+		texture_animated = false
+	},
+
 	["dirt.png"] = {
 		texture_wrap_mode = "repeat",
 		texture_type      = "2d",

@@ -95,15 +95,21 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	-- used to find vector in the centre
 	local sum_x, sum_y, sum_z = 0.0, 0.0, 0.0
 
-	print()
-	for x=0,1 do
-		for y=0,1 do
-			for z=0,1 do
-				local point = {
+	local X = {-1,1}
+	local Y = {-1,1}
+	local Z = {-1,1}
+
+	for x=1,2 do
+		for y=1,2 do
+			for z=1,2 do
+				--[[local point = {
 					2.0 * x - 1.0,
 					2.0 * y - 1.0,
 					2.0 * z - 1.0,
-					1.0 }
+					1.0 }]]
+				local point = {
+					X[x],Y[y],Z[z],1.0
+				}
 				cpml.mat4.mul_vec4(point, inv_m, point)
 
 				-- perform perspective division by w component
