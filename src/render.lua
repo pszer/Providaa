@@ -122,8 +122,8 @@ function Renderer.setupCanvasFor3D()
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 	
-	love.graphics.origin()
-	Renderer.transformCoordsFor3D()
+	--love.graphics.origin()
+	--Renderer.transformCoordsFor3D()
 end
 
 function Renderer.setupCanvasForSkybox()
@@ -132,16 +132,17 @@ function Renderer.setupCanvasForSkybox()
 	love.graphics.setCanvas(Renderer.scene_viewport)
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 
-	love.graphics.origin()
-	Renderer.transformCoordsFor3D()
+	--love.graphics.origin()
+	--Renderer.transformCoordsFor3D()
 end
 
 function Renderer.setupCanvasForShadowMapping(light)
-	love.graphics.origin()
-	Renderer.transformCoordsFor3D()
+	--love.graphics.origin()
+	--Renderer.transformCoordsFor3D()
 
-	--love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
-	love.graphics.setCanvas{light.testcanvas, depthstencil = light.props.light_depthmap, depth=true}
+	love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
+	--love.graphics.setCanvas{light.testcanvas, depthstencil = light.props.light_depthmap, depth=true}
+	--love.graphics.setCanvas{nil, depthstencil = light.props.light_depthmap, depth=true}
 	love.graphics.setDepthMode( "less", true )
 	love.graphics.setMeshCullMode("front")
 	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)

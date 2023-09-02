@@ -22,12 +22,119 @@ function Model:new(props)
 		static_model_matrix = nil,
 		static_normal_matrix = nil,
 
-		bone_matrices = {}
+		--bone_matrices = {}
 	}
 
 	setmetatable(this,Model)
 
 	return this
+end
+
+ModelInstance = {__type = "modelinstance"}
+ModelInstance.__index = ModelInstance
+
+function ModelInstance:new(props)
+	local this = {
+		props = ModelInstancePropPrototype(props),
+
+		static_model_matrix = nil,
+		static_normal_matrix = nil,
+
+		bone_matrices = {}
+	}
+
+	setmetatable(this,ModelInstance)
+
+	return this
+end
+
+function ModelInstance:newInstance(model, props)
+	local props = props or {}
+	props.model_i_reference = model
+	return ModelInstance:new(props)
+end
+
+function ModelInstance:modelMatrix()
+	local is_static = self.props.model_i_static
+	if is_static and self.static_model_matrix then
+		return self.static_model_matrix, self.static_normal_matrix
+	end
+
+	local props = self.props
+	local pos = props.model_i_position
+	local rot = props.model_i_rotation
+
+	local m = cpml.mat4():identity()
+	m = m * props.model_i_reference:getDirectionFixingMatrix()
+
+	m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
+
+	m:rotate(m, rot[1], cpml.vec3.unit_x)
+	m:rotate(m, rot[2], cpml.vec3.unit_y)
+	m:rotate(m, rot[3], cpml.vec3.unit_z)
+
+	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
+
+	-- the xyz 3x3 section of the model matrix
+	norm_m = cpml.mat4.new(m[1],m[2],m[3], m[5],m[6],m[7], m[9],m[10],m[11])
+
+	norm_m = norm_m:invert(norm_m)
+	norm_m = norm_m:transpose(norm_m)
+
+	self.static_model_matrix = m
+	self.static_normal_matrix = norm_m
+
+	return m, norm_m
+end
+
+function ModelInstance:getModel()
+	return self.props.model_i_reference
+end
+
+function ModelInstance:fillOutBoneMatrices(animation, frame)
+	local model = self:getModel()
+	if model.props.model_animated then
+		local bone_matrices = model:getBoneMatrices(animation, frame)
+
+		for i,v in ipairs(bone_matrices) do
+			bone_matrices[i] = matrix(v)
+		end
+
+		self.bone_matrices = bone_matrices
+	end
+end
+
+function ModelInstance:sendBoneMatrices(shader)
+	local model = self:getModel()
+	if not model.props.model_animated then
+		shadersend(shader, "u_skinning", 0)
+	else
+		shadersend(shader, "u_skinning", 1)
+		shadersend(shader, "u_bone_matrices", "column", unpack(self.bone_matrices))
+	end
+end
+
+function ModelInstance:sendToShader(shader)
+	local shader = shader or love.graphics.getShader()
+
+	local model_u, normal_u = self:modelMatrix()
+	shadersend(shader, "u_model", "column", matrix(model_u))
+	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
+
+	self:sendBoneMatrices(shader)
+end
+
+function ModelInstance:draw(shader, update_animation)
+	local shader = shader or love.graphics.getShader()
+
+	if update_animation then
+		self:fillOutBoneMatrices("Walk", getTickSmooth())
+	end
+
+	self:sendToShader(shader)
+
+	local model = self:getModel()
+	model.props.model_mesh:drawModel(shader)
 end
 
 function Model.openFilename(fname, texture_fname, load_anims)
@@ -100,6 +207,11 @@ function Model:generateDirectionFixingMatrix()
 	self.dir_matrix = mat
 end
 
+function Model:getDirectionFixingMatrix()
+	if not self.dir_matrix then self:generateDirectionFixingMatrix() end
+	return self.dir_matrix
+end
+
 -- calculates returns model matrix and the model for normal vector transformation
 -- if model is static this function calculates once and re-uses
 function Model:modelMatrix()
@@ -131,53 +243,55 @@ function Model:modelMatrix()
 	return m, norm_m
 end
 
-function Model:fillOutBoneMatrices(animation, frame)
-	if self.props.model_animated then
-		local bone_matrices = self:getBoneMatrices(animation, frame)
-
-		for i,v in ipairs(bone_matrices) do
-			bone_matrices[i] = matrix(v)
-		end
-
-		self.bone_matrices = bone_matrices
-	end
-end
+--these functions have been moved to ModelInstance
+--
+--function Model:fillOutBoneMatrices(animation, frame)
+--	if self.props.model_animated then
+--		local bone_matrices = self:getBoneMatrices(animation, frame)
+--
+--		for i,v in ipairs(bone_matrices) do
+--			bone_matrices[i] = matrix(v)
+--		end
+--
+--		self.bone_matrices = bone_matrices
+--	end
+--end
 
 -- called after fillOutBoneMatrices()
-function Model:sendBoneMatrices(shader)
-	if not self.props.model_animated then
-		shadersend(shader, "u_skinning", 0)
-	else
-		shadersend(shader, "u_skinning", 1)
-		shadersend(shader, "u_bone_matrices", "column", unpack(self.bone_matrices))
-	end
-end
+--function Model:sendBoneMatrices(shader)
+--	if not self.props.model_animated then
+--		shadersend(shader, "u_skinning", 0)
+--	else
+--		shadersend(shader, "u_skinning", 1)
+--		shadersend(shader, "u_bone_matrices", "column", unpack(self.bone_matrices))
+--	end
+--end
 
 function Model:getSkeleton()
 	return self.props.model_skeleton
 end
 
-function Model:sendToShader(shader)
-	shader = shader or love.graphics.getShader()
+--function Model:sendToShader(shader)
+--	local shader = shader or love.graphics.getShader()
 
-	local model_u, normal_u = self:modelMatrix()
-	shadersend(shader, "u_model", "column", matrix(model_u))
-	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
+--	local model_u, normal_u = self:modelMatrix()
+--	shadersend(shader, "u_model", "column", matrix(model_u))
+--	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
 
-	self:sendBoneMatrices(shader)
-end
+--	self:sendBoneMatrices(shader)
+--end
 
-function Model:draw(shader, update_animation)
-	shader = shader or love.graphics.getShader()
-
-	if update_animation then
-		self:fillOutBoneMatrices("Walk", getTickSmooth())
-	end
-
-	self:sendToShader()
-
-	self.props.model_mesh:drawModel(shader)
-end
+--function Model:draw(shader, update_animation)
+--	local shader = shader or love.graphics.getShader()
+--
+--	if update_animation then
+--		self:fillOutBoneMatrices("Walk", getTickSmooth())
+--	end
+--
+--	self:sendToShader()
+--
+--	self.props.model_mesh:drawModel(shader)
+--end
 
 function Model:generateBaseFrames()
 	local skeleton = self:getSkeleton()
@@ -270,7 +384,6 @@ function Model:getBoneMatrices(animation, frame)
 
 	local skeleton = self:getSkeleton()
 
-	--TODO add interpolation
 	local outframe = self.outframes
 	for i,pose1 in pairs(self.frames[frame1_id]) do
 		pose2 = self.frames[frame2_id][i]
@@ -282,7 +395,6 @@ function Model:getBoneMatrices(animation, frame)
 			 (1-frame_interp)*pose1[i] + frame_interp*pose2[i]
 		end
 
-		--local mat = pose1 -- interp here <---- DO IT
 		local mat = cpml.mat4.new(pose_interp)
 
 		local parent_i = skeleton[i].parent

@@ -43,12 +43,12 @@ end
 
 -- generates and returns perspective matrix
 function Camera:generatePerspectiveMatrix(aspect_ratio)
-	aspect_ratio = aspect_ratio or RESOLUTION_ASPECT_RATIO
+	local aspect_ratio = aspect_ratio or RESOLUTION_ASPECT_RATIO
 	self.__last_aspect = aspect_ratio
 
 	local props = self.props
 	props.cam_perspective_matrix = cpml.mat4.from_perspective(
-		props.cam_fov, aspect_ratio, 0.1, 10000)
+		props.cam_fov, aspect_ratio, 0.5, 2500)
 
 	--props.cam_perspective_matrix = cpml.mat4.from_ortho(
 	--	-1000*aspect_ratio, 1000*aspect_ratio, 1000, -1000, 1.0, 1000)
@@ -78,6 +78,66 @@ function Camera:generateViewMatrix()
 	props.cam_rotview_matrix = rotview
 
 	return props.cam_view_matrix, props.cam_rot_matrix
+end
+
+-- returns corners of camera`s view frustrum in world space,
+-- also returns the vector in the middle of this frustrum
+function Camera:generateFrustrumCornersWorldSpace(proj, view)
+	local props = self.props
+	local proj = proj or props.cam_perspective_matrix
+	local view = view or props.cam_rot_matrix * props.cam_view_matrix
+
+	local inv_m = cpml.mat4.new()
+	inv_m:invert(proj * view)
+
+	local corners = {}
+
+	-- used to find vector in the centre
+	local sum_x, sum_y, sum_z = 0.0, 0.0, 0.0
+
+	print()
+	for x=0,1 do
+		for y=0,1 do
+			for z=0,1 do
+				local point = {
+					2.0 * x - 1.0,
+					2.0 * y - 1.0,
+					2.0 * z - 1.0,
+					1.0 }
+				cpml.mat4.mul_vec4(point, inv_m, point)
+
+				-- perform perspective division by w component
+				point[1] = point[1]/point[4]
+				point[2] = point[2]/point[4]
+				point[3] = point[3]/point[4]
+				--point[4] = point[4]/point[4]
+				point[4] = 1.0
+
+				sum_x = sum_x + point[1]
+				sum_y = sum_y + point[2]
+				sum_z = sum_z + point[3]
+
+				table.insert(corners, point)
+			end
+		end
+	end
+
+	sum_x = sum_x / 8.0
+	sum_y = sum_y / 8.0
+	sum_z = sum_z / 8.0
+	local centre = {sum_x, sum_y, sum_z}
+
+	props.cam_frustrum_corners = corners
+	props.cam_frustrum_centre  = centre
+	return corners, centre
+end
+
+function Camera:getFrustrumCornersWorldSpace()
+	local props = self.props
+	if not props.cam_frustrum_corners then
+		self:generateFrustrumCornersWorldSpace()
+	end
+	return props.cam_frustrum_corners, props.cam_frustrum_centre
 end
 
 function Camera:getDirectionVector()

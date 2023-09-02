@@ -23,8 +23,10 @@ CameraPropPrototype = Props:prototype{
 	{"cam_view_matrix", nil, nil, nil, "view position matrix"},
 	{"cam_rot_matrix", nil, nil, nil, "view rotation matrix"},
 	{"cam_rotview_matrix", nil, nil, nil, "view position matrix"},
+	{"cam_frustrum_corners", nil, nil, nil, "camera`s projection+view frustrum corner coordinates"},
+	{"cam_frustrum_centre" , nil, nil, nil, "camera`s projection+view frustrum centre coordinates"},
 
-	{"cam_bend_enabled", "boolean", true, nil,           "when enabled, things further away from the camera decrease in y value"},
+	{"cam_bend_enabled", "boolean", false, nil,           "when enabled, things further away from the camera decrease in y value"},
 	{"cam_bend_coefficient", "number", 8048, PropMin(1), "the lower the number, the more exaggerated the bend effect"}
 
 }

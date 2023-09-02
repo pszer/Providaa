@@ -83,12 +83,17 @@ function Scene:draw(cam)
 	--self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
 	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
 	--
-	--self.props.scene_lights[1].props.light_dir[3] = math.cos(getTick()/45)/3
-	--self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)/3
-	self.props.scene_lights[1]:generateLightSpaceMatrix()
+	self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)/2
+	self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)/2
+	--self.props.scene_lights[1]:generateLightSpaceMatrix()
 
 	cam:update()
 	cam:generateViewMatrix()
+	cam:generateFrustrumCornersWorldSpace()
+
+	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
+
+	--local corners = cam:getFrustrumCornersWorldSpace()
 
 	Renderer.setupCanvasFor3D()
 	love.graphics.clear(0,0,0,1)
@@ -97,7 +102,6 @@ function Scene:draw(cam)
 
 	for i,v in ipairs(self.props.scene_models) do
 		v:fillOutBoneMatrices("Walk", getTickSmooth())
-		--v:sendToShader()
 	end
 
 	--self.props.scene_camera:pushToShader()

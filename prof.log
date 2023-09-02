@@ -1,0 +1,212 @@
+> Total time: 31.120286 s
+--------------------------------------------------------------------------------------
+| FILE                : FUNCTION                    : LINE   : TIME   : %     : #    |
+--------------------------------------------------------------------------------------
+| render              : transformCoordsFor3D        :   107  : 23.8415: 76.6  : 2051 |
+| [love "callbacks.lua: Anon                        :   144  : 18.3172: 58.9  :  905 |
+| main                : draw                        :    43  : 17.7947: 57.2  :  904 |
+| providaa            : draw                        :    81  : 17.6733: 56.8  :  904 |
+| scene               : draw                        :    80  : 17.6042: 56.6  :  904 |
+| gamestate           : SET_GAMESTATE               :     5  : 12.7846: 41.1  :    1 |
+| providaa            : load                        :    18  : 12.7846: 41.1  :    1 |
+| model               : fillOutBoneMatrices         :    94  : 12.1829: 39.1  :  904 |
+| model               : getBoneMatrices             :   367  : 11.8108: 38.0  :  904 |
+| scene               : loadMap                     :    23  : 8.6635 : 27.8  :    1 |
+| cpml/modules/mat4   : is_mat4                     :   693  : 8.2819 : 26.6  : 180096|
+| prop                : __newindex                  :    85  : 6.4682 : 20.8  : 76405|
+| map                 : loadMap                     :    88  : 4.9810 : 16.0  :    1 |
+| prop                : TilePropPrototype           :    76  : 4.2126 : 13.5  : 8192 |
+| model               : openFilename                :   140  : 4.1167 : 13.2  :    1 |
+| scene               : generateMeshes              :    35  : 3.6824 : 11.8  :    1 |
+| mesh                : setTriangle                 :    64  : 2.8035 : 9.0   : 4509 |
+| map                 : getGridMeshes               :   336  : 2.7776 : 8.9   :    1 |
+| model               : generateAnimationFrames     :   329  : 2.5885 : 8.3   :    1 |
+| scene               : drawModels                  :    74  : 2.4126 : 7.8   : 1808 |
+| model               : draw                        :   127  : 2.3636 : 7.6   : 1808 |
+| cpml/modules/mat4   : __mul                       :   358  : 2.3285 : 7.5   : 40820|
+| tile                : new                         :    19  : 2.1926 : 7.0   : 4096 |
+| model               : sendToShader                :   117  : 2.1632 : 7.0   : 1808 |
+| tile                : voidTile                    :    19  : 2.0898 : 6.7   : 4096 |
+| scene               : shadowPass                  :   128  : 2.0762 : 6.7   :  904 |
+| model               : modelMatrix                 :    57  : 1.9179 : 6.2   : 1808 |
+| mesh                : mergeMeshes                 :    76  : 1.8801 : 6.0   :    3 |
+| cpml/modules/mat4   : new                         :    62  : 1.7362 : 5.6   : 38512|
+| mesh                : calculateNormal             :   189  : 1.6831 : 5.4   :    3 |
+| prop                : __index                     :   116  : 1.0399 : 3.3   : 206588|
+| mesh                : setRectangle                :    70  : 0.9844 : 3.2   : 4179 |
+| scene               : drawGridMap                 :    67  : 0.9531 : 3.1   : 1808 |
+| model               : readIQM                     :   183  : 0.8602 : 2.8   :    1 |
+| iqm-exm/init        : load                        :    91  : 0.8601 : 2.8   :    1 |
+| camera              : generateViewMatrix          :    60  : 0.7413 : 2.4   :  904 |
+| cpml/modules/vec3   : is_vec3                     :   341  : 0.7139 : 2.3   : 40824|
+| grid                : applyAttributes             :    91  : 0.6654 : 2.1   :    1 |
+| grid                : applyTileAttribute          :    99  : 0.6536 : 2.1   : 4096 |
+| map                 : generateTileMesh            :   315  : 0.5848 : 1.9   : 4096 |
+| shadersend          : shadersend                  :     1  : 0.5173 : 1.7   : 55144|
+| cpml/modules/_privat: typeof                      :     5  : 0.5128 : 1.6   : 103435|
+| cpml/modules/mat4   : rotate                      :   358  : 0.4600 : 1.5   : 8136 |
+| model               : openAnimations              :   176  : 0.4529 : 1.5   :    1 |
+| model               : readIQMAnimations           :   193  : 0.4529 : 1.5   :    1 |
+| iqm-exm/init        : load_anims                  :   323  : 0.4528 : 1.5   :    1 |
+| provtype            : provtype                    :     9  : 0.3845 : 1.2   : 71385|
+| propvalids          : valid                       :    69  : 0.3048 : 1.0   : 32768|
+| main                : update                      :    21  : 0.2858 : 0.9   :  904 |
+| providaa            : update                      :    33  : 0.2743 : 0.9   :  904 |
+| scene               : drawSkybox                  :   164  : 0.2742 : 0.9   :  904 |
+| matrix              : matrix                      :     2  : 0.2518 : 0.8   : 49720|
+| cpml/modules/mat4   : translate                   :   358  : 0.2509 : 0.8   : 4340 |
+| iqm-exm/init        : readv                       :   384  : 0.2403 : 0.8   : 15910|
+| mesh                : new                         :    23  : 0.2316 : 0.7   : 4371 |
+| camera              : pushToShader                :    27  : 0.2136 : 0.7   : 1808 |
+| grid                : queryTile                   :    49  : 0.2099 : 0.7   : 8192 |
+| map                 : getWallMeshes               :   277  : 0.2018 : 0.6   :    1 |
+| cpml/modules/mat4   : scale                       :   358  : 0.1998 : 0.6   : 3436 |
+| light               : clearDepthMap               :    65  : 0.1891 : 0.6   :  904 |
+| model               : generateBaseFrames          :   294  : 0.1777 : 0.6   :    1 |
+| render              : setupCanvasFor3D            :   114  : 0.1746 : 0.6   : 1808 |
+| cpml/modules/mat4   : mul_internal                :   330  : 0.1741 : 0.6   : 57636|
+| wall                : generateWall                :    33  : 0.1675 : 0.5   : 4096 |
+| wall                : check_side                  :    63  : 0.1494 : 0.5   : 20480|
+| cpml/modules/quat   : to_angle_axis               :   422  : 0.1418 : 0.5   : 1628 |
+| model               : sendBoneMatrices            :   107  : 0.1373 : 0.4   : 1808 |
+| mesh                : drawModel                   :   149  : 0.1328 : 0.4   : 1808 |
+| texture             : getAnimationFrame           :    54  : 0.1309 : 0.4   : 5424 |
+| map                 : getHeights                  :   209  : 0.1181 : 0.4   : 20480|
+| render              : drawFPS                     :   158  : 0.1060 : 0.3   :  904 |
+| cpml/modules/_privat: assert                      :    11  : 0.1057 : 0.3   : 40824|
+| cpml/modules/mat4   : mat4                        :    62  : 0.1032 : 0.3   : 6149 |
+| grid                : swapTile                    :    42  : 0.1016 : 0.3   : 4096 |
+| texture             : getImage                    :    32  : 0.0925 : 0.3   : 5276 |
+| providaa            : onTickChange                :    90  : 0.0884 : 0.3   :  903 |
+| scene               : pushShadowMaps              :   144  : 0.0802 : 0.3   :  904 |
+| render              : dropCanvas                  :   150  : 0.0790 : 0.3   : 1808 |
+| render              : setupCanvasForShadowMapping :   139  : 0.0789 : 0.3   :  904 |
+| cpml/modules/quat   : to_angle_axis_unpack        :   384  : 0.0741 : 0.2   : 1628 |
+| tile                : getAttributeIndex           :    75  : 0.0716 : 0.2   : 8192 |
+| cpml/modules/vec3   : is_zero                     :   356  : 0.0670 : 0.2   : 8741 |
+| cpml/modules/mat4   : identity                    :    32  : 0.0658 : 0.2   : 24048|
+| walltile            : new                         :    11  : 0.0645 : 0.2   :  272 |
+| prop                : WallTilePropPrototype       :    76  : 0.0619 : 0.2   :  272 |
+| mesh                : updateTexture               :   121  : 0.0579 : 0.2   : 2709 |
+| render              : renderScaled                :    78  : 0.0571 : 0.2   :  904 |
+| scene               : pushAmbience                :    58  : 0.0543 : 0.2   :  904 |
+| cpml/modules/mat4   : mul                         :   358  : 0.0495 : 0.2   :  904 |
+| model               : getModel                    :    90  : 0.0495 : 0.2   : 4520 |
+| render              : setupCanvasForSkybox        :   129  : 0.0467 : 0.1   :  904 |
+| propvalids          : valid                       :    13  : 0.0450 : 0.1   : 8195 |
+| tile                : tileCoordToWorld            :    30  : 0.0450 : 0.1   : 16656|
+| texture             : getWidth                    :   182  : 0.0423 : 0.1   : 4368 |
+| texture             : getHeight                   :   185  : 0.0421 : 0.1   : 4368 |
+| texture             : animationChangesThisTick    :   174  : 0.0417 : 0.1   : 2709 |
+| tile                : getTexture                  :    71  : 0.0413 : 0.1   : 4096 |
+| scene               : pushFog                     :    51  : 0.0412 : 0.1   :  904 |
+| walltile            : applyAttributes             :    30  : 0.0374 : 0.1   :    1 |
+| texture             : loadTexture                 :   208  : 0.0373 : 0.1   :    5 |
+| texture             : openImage                   :   162  : 0.0358 : 0.1   :    3 |
+| walltile            : applyWallAttribute          :    43  : 0.0348 : 0.1   : 1036 |
+| model               : getSkeleton                 :   268  : 0.0278 : 0.1   : 2496 |
+| map                 : setinsert                   :   110  : 0.0274 : 0.1   : 4368 |
+| wall                : new                         :    19  : 0.0234 : 0.1   : 4096 |
+| light               : generateLightSpaceMatrix    :    31  : 0.0231 : 0.1   :  905 |
+| map                 : getWalls                    :   224  : 0.0211 : 0.1   : 4096 |
+| resolution          : get_resolution              :    42  : 0.0203 : 0.1   :  908 |
+| map                 : generateWallMesh            :   241  : 0.0197 : 0.1   :  272 |
+| iqm-exm/init        : read_offset                 :    53  : 0.0161 : 0.1   :    7 |
+| cpml/modules/mat4   : invert                      :   424  : 0.0145 : 0.0   : 3436 |
+| texture             : queryTexture                :   195  : 0.0135 : 0.0   : 5007 |
+| light               : getLightSpaceMatrix         :    62  : 0.0104 : 0.0   :  904 |
+| tick                : getTick                     :     9  : 0.0102 : 0.0   : 3615 |
+| cpml/modules/quat   : is_zero                     :   342  : 0.0091 : 0.0   : 1628 |
+| resolution          : get_aspect_ratio            :    30  : 0.0082 : 0.0   :  910 |
+| cpml/modules/mat4   : transpose                   :   630  : 0.0078 : 0.0   : 1808 |
+| model               : getDirectionFixingMatrix    :   210  : 0.0052 : 0.0   : 1808 |
+| [love "wrap_Event.lu: poll                        :    25  : 0.0044 : 0.0   :  905 |
+| light               : new                         :    10  : 0.0041 : 0.0   :    1 |
+| propvalids          : valid                       :    79  : 0.0039 : 0.0   : 1187 |
+| walltile            : getAttributeIndex           :    68  : 0.0038 : 0.0   :  544 |
+| console             : isOpen                      :    59  : 0.0034 : 0.0   : 1027 |
+| tick                : stepTick                    :    21  : 0.0034 : 0.0   :  904 |
+| tick                : tickChanged                 :    33  : 0.0031 : 0.0   : 1016 |
+| light               : allocateDepthMap            :    24  : 0.0028 : 0.0   :    1 |
+| camera              : update                      :    94  : 0.0026 : 0.0   :  904 |
+| tick                : getTickSmooth               :    13  : 0.0024 : 0.0   :  904 |
+| tick                : tickRate                    :    37  : 0.0022 : 0.0   :  904 |
+| texture             : openFilename                :    14  : 0.0013 : 0.0   :    3 |
+| main                : Anon                        :    50  : 0.0012 : 0.0   :    2 |
+| render              : createCanvas                :    98  : 0.0012 : 0.0   :    2 |
+| iqm-exm/init        : read_ptr                    :    65  : 0.0011 : 0.0   :    9 |
+| main                : Anon                        :    70  : 0.0011 : 0.0   :   95 |
+| prop                : TexturePropPrototype        :    76  : 0.0008 : 0.0   :    3 |
+| model               : new                         :    12  : 0.0008 : 0.0   :    1 |
+| prop                : ModelPropPrototype          :    76  : 0.0008 : 0.0   :    1 |
+| grid                : getWidth                    :    59  : 0.0008 : 0.0   :   64 |
+| iqm-exm/init        : load_data                   :    22  : 0.0007 : 0.0   :    2 |
+| main                : Anon                        :    60  : 0.0004 : 0.0   :   28 |
+| cpml/modules/mat4   : look_at                     :   574  : 0.0003 : 0.0   :    1 |
+| prop                : LightPropPrototype          :    76  : 0.0003 : 0.0   :    1 |
+| model               : generateDirectionFixingMatri:   203  : 0.0003 : 0.0   :    1 |
+| model               : newInstance                 :    36  : 0.0003 : 0.0   :    1 |
+| prop                : ModelInstancePropPrototype  :    76  : 0.0002 : 0.0   :    1 |
+| cpml/modules/mat4   : from_direction              :   139  : 0.0002 : 0.0   :    1 |
+| grid                : allocateGrid                :     9  : 0.0001 : 0.0   :    1 |
+| prop                : GridPropPrototype           :    76  : 0.0001 : 0.0   :    1 |
+| map                 : malformedCheck              :   374  : 0.0001 : 0.0   :    1 |
+| [love "callbacks.lua: Anon                        :    34  : 0.0001 : 0.0   :   26 |
+| iqm-exm/init        : translate_va                :   109  : 0.0001 : 0.0   :    6 |
+--------------------------------------------------------------------------------------
+| resolution          : update_resolution_ratio     :    11  : ~      : ~     :    2 |
+| mesh                : newFromMesh                 :    45  : ~      : ~     :    1 |
+| iqm-exm/init        : translate_format            :   122  : ~      : ~     :    6 |
+| iqm-exm/init        : check_magic                 :    18  : ~      : ~     :    4 |
+| cpml/modules/mat4   : from_ortho                  :   198  : ~      : ~     :    1 |
+| texture             : isTextureLoaded             :   204  : ~      : ~     :    5 |
+| propvalids          : valid                       :    34  : ~      : ~     :    2 |
+| texture             : mergeTextures               :   230  : ~      : ~     :    3 |
+| grid                : getHeight                   :    61  : ~      : ~     :    1 |
+| texture             : loadTexture                 :   195  : ~      : ~     :    2 |
+| [love "callbacks.lua: Anon                        :    43  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    91  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    94  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    97  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    31  : ~      : ~     :   28 |
+| [love "callbacks.lua: Anon                        :   106  : ~      : ~     :    2 |
+| main                : quit                        :    55  : ~      : ~     :    1 |
+| profiler            : stop                        :   225  : ~      : ~     :    1 |
+| [love "callbacks.lua: Anon                        :    37  : ~      : ~     :   95 |
+| cpml/modules/mat4   : identity                    :   102  : ~      : ~     : 8136 |
+| cpml/modules/mat4   : rotate                      :   475  : ~      : ~     : 8136 |
+| cpml/modules/vec3   : __unm                       :   383  : ~      : ~     :  904 |
+| cpml/modules/vec3   : vec3                        :    51  : ~      : ~     : 26881|
+| cpml/modules/vec3   : vec3                        :   379  : ~      : ~     : 26881|
+| cpml/modules/vec3   : cross                       :   173  : ~      : ~     : 8740 |
+| cpml/modules/vec3   : normalize                   :   139  : ~      : ~     : 8741 |
+| cpml/modules/mat4   : __index                     :   879  : ~      : ~     : 167891|
+| cpml/modules/vec3   : len                         :   192  : ~      : ~     : 18503|
+| walltile            : getMaxHeight                :    25  : ~      : ~     :  272 |
+| cpml/modules/vec3   : normalize                   :   229  : ~      : ~     : 8739 |
+| cpml/modules/mat4   : new                         :    20  : ~      : ~     : 90907|
+| prop                : __index                     :    62  : ~      : ~     : 435536|
+| grid                : allocateGrid                :    19  : ~      : ~     :    1 |
+| tile                : voidTile                    :    39  : ~      : ~     : 4096 |
+| texture             : openFilename                :    74  : ~      : ~     :    3 |
+| cpml/modules/quat   : new                         :    59  : ~      : ~     : 1628 |
+| cpml/modules/vec3   : new                         :    51  : ~      : ~     : 3256 |
+| cpml/modules/quat   : normalize                   :   193  : ~      : ~     : 1628 |
+| cpml/modules/quat   : len                         :   211  : ~      : ~     : 1628 |
+| cpml/modules/quat   : normalize                   :   226  : ~      : ~     : 1628 |
+| cpml/modules/quat   : quat                        :   444  : ~      : ~     : 1628 |
+| cpml/modules/quat   : quat                        :    59  : ~      : ~     : 1628 |
+| cpml/modules/mat4   : from_quaternion             :   131  : ~      : ~     : 1628 |
+| cpml/modules/mat4   : scale                       :   460  : ~      : ~     : 3436 |
+| cpml/modules/mat4   : translate                   :   509  : ~      : ~     : 4340 |
+| model               : newInstance                 :    51  : ~      : ~     :    1 |
+| cpml/modules/mat4   : from_quaternion             :    20  : ~      : ~     : 1628 |
+| cpml/modules/mat4   : from_quaternion             :   110  : ~      : ~     : 1628 |
+| cpml/modules/mat4   : mat4                        :   899  : ~      : ~     : 6149 |
+| cpml/modules/mat4   : __mul                       :   921  : ~      : ~     : 40820|
+| cpml/modules/vec3   : __sub                       :   102  : ~      : ~     :    1 |
+| cpml/modules/vec3   : __sub                       :   400  : ~      : ~     :    1 |
+| cpml/modules/vec3   : __add                       :    88  : ~      : ~     :    1 |
+| cpml/modules/vec3   : __add                       :   394  : ~      : ~     :    1 |
+| iqm-exm/init        : translate_love              :   130  : ~      : ~     :    6 |
+--------------------------------------------------------------------------------------

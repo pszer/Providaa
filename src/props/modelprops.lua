@@ -23,6 +23,20 @@ ModelPropPrototype = Props:prototype{
 	{"model_skeleton"  , nil, nil, nil, "model's skeleton"},
 	{"model_animated"  , "boolean", false, nil, "is model animated?"},
 
-	{"model_static"    , "boolean", false, nil, "is model static?"}
+	{"model_static"    , "boolean", false, nil, "is model instance static?"}
+}
+
+ModelInstancePropPrototype = Props:prototype{
+
+	-- prop      prop     prop default    prop input     prop      read
+	-- name      type        value        validation     info      only
+
+	{"model_i_reference", nil, nil, nil, "the model this instance is referencing" }, -- done
+
+	{"model_i_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position"},
+	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
+	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
+
+	{"model_i_static"    , "boolean", false, nil, "is model instance static?"}
 
 }

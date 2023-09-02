@@ -54,6 +54,7 @@ end
 
 function love.quit()
 	--profiler.stop()
+	--profiler.report("prof.log")
 end
 
 function love.keypressed(key)

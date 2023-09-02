@@ -14,7 +14,6 @@ extern mat4 u_lightspaces[24];
 
 #ifdef VERTEX
 
-//extern mat4 u_proj;
 extern mat4 u_view;
 extern mat4 u_rot;
 extern mat4 u_model;
@@ -33,7 +32,7 @@ attribute vec4 VertexTangent;
 attribute vec2 TextureScale;
 attribute vec2 TextureOffset;
 
-uniform mat4 u_bone_matrices[64];
+uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
 mat4 get_deform_matrix() {
@@ -60,17 +59,18 @@ vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = u_model * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
 
+	vec4 model_v = skin_u * vertex;
 	vec4 view_v = modelview_u * vertex;
 
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
 	frag_position = view_v.xyz;
-	frag_w_position = (skin_u * vertex).xyz;
+	frag_w_position = model_v.xyz;
 	frag_normal = get_normal_matrix(modelview_u) * VertexNormal;
 
 	for (int i = 0; i < LIGHT_COUNT; i++) {
-		frag_light_pos[i] = u_lightspaces[i] * vertex;
+		frag_light_pos[i] = u_lightspaces[i] * model_v;
 	}
 
 	texscale = TextureScale;
@@ -101,7 +101,7 @@ extern vec3 light_col;
 extern vec3 ambient_col;
 extern float ambient_str;
 
-extern Image shadow_maps[24]; 
+extern sampler2DShadow shadow_maps[24]; 
 
 vec3 ambient_lighting( vec3 ambient_col, float ambient_str ) {
 	return ambient_col*ambient_str;
@@ -114,14 +114,14 @@ vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec3 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec3 light_col ) {
-	float specular_strength = 0.01;
+	float specular_strength = 0.005;
 	vec3 view_dir = normalize(-frag_position);
 	vec3 light_dir_n = normalize(light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
 	//vec3 reflect_dir = reflect(-light_dir, normal);
 
-	float spec = pow(max(dot(normal,halfway_v),0.0), 48);
+	float spec = pow(max(dot(normal,halfway_v),0.0), 24);
 
 	return spec * specular_strength * light_col;
 }
@@ -137,15 +137,49 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 	}
 }
 
-float shadow_calculation( vec4 pos , mat4 lightspace, Image shadow_map ) {
-	//vec4 coords = lightspace * vec4(pos,1.0);
+const vec2 poissonDisk[16] = vec2[](
+   vec2( -0.94201624, -0.39906216 ),
+   vec2( 0.94558609, -0.76890725 ),
+   vec2( -0.094184101, -0.92938870 ),
+   vec2( 0.34495938, 0.29387760 ),
+   vec2( -0.91588581, 0.45771432 ),
+   vec2( -0.81544232, -0.87912464 ),
+   vec2( -0.38277543, 0.27676845 ),
+   vec2( 0.97484398, 0.75648379 ),
+   vec2( 0.44323325, -0.97511554 ),
+   vec2( 0.53742981, -0.47373420 ),
+   vec2( -0.26496911, -0.41893023 ),
+   vec2( 0.79197514, 0.19090188 ),
+   vec2( -0.24188840, 0.99706507 ),
+   vec2( -0.81409955, 0.91437590 ),
+   vec2( 0.19984126, 0.78641367 ),
+   vec2( 0.14383161, -0.14100790 )
+);
+
+float random(vec3 seed, int i){
+	vec4 seed4 = vec4(seed,i);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+
+float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map ) {
 	vec3 prooj_coords = pos.xyz / pos.w;
 	prooj_coords = prooj_coords * 0.5 + 0.5;
 
-	float closest_depth = Texel(shadow_map, prooj_coords.xy).r;
+	//float closest_depth = Texel(shadow_map, prooj_coords.xy).r;
 	float curr_depth    = prooj_coords.z;
-	float bias = 0.005;
-	return curr_depth - bias > closest_depth ? 1.0 : 0.0;
+	float bias = 0.0025;
+
+	float shadow = 0.0;
+	for (int i=0;i<4;i++){
+		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
+		//if ( Texel( shadow_map, prooj_coords.xy + poissonDisk[index]/5000.0 ).r  <  curr_depth - bias ){
+			shadow += 0.25 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/5000.0, curr_depth - bias), bias));
+		//}
+	}
+
+	return shadow;
+	//return curr_depth - bias > closest_depth ? 1.0 : 0.0;
 }
 
 vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
