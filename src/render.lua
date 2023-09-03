@@ -11,6 +11,7 @@ Renderer = {
 	vertex_shader = nil,
 	skybox_shader = nil,
 	shadow_shader = nil,
+	loglum_shader = nil,
 	hdr_shader    = nil,
 
 	skybox_model = nil,
@@ -18,8 +19,7 @@ Renderer = {
 	scene_viewport               = nil,
 	scene_bloom_viewport         = nil,
 
-	scene_bloom_blurred_viewport  = nil,
-	scene_bloom_blurred_viewport2 = nil,
+	scene_buffer  = {nil, nil},
 
 	scene_depthbuffer            = nil,
 
@@ -27,9 +27,11 @@ Renderer = {
 	viewport_h = 1000,
 
 	enable_hdr = true,
-	hdr_exposure = 0.24,
+	hdr_exposure = 0.15,
 
 	fps_draw_obj = nil,
+
+	logluminance_buffer_size = 1024
 }
 
 Renderer.__index = Renderer
@@ -38,6 +40,7 @@ function Renderer.loadShaders()
 	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
+	Renderer.loglum_shader = love.graphics.newShader("shader/loglum.glsl")
 	Renderer.hdr_shader    = love.graphics.newShader("shader/hdr.glsl")
 	Renderer.blur_shader   = love.graphics.newShader("shader/blur.glsl")
 end
@@ -45,11 +48,15 @@ end
 function Renderer.createCanvas()
 	local w,h = get_resolution()
 
-	Renderer.scene_viewport                = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.scene_bloom_viewport          = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.scene_bloom_blurred_viewport  = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.scene_bloom_blurred_viewport2 = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.scene_depthbuffer             = love.graphics.newCanvas (w,h, {format = "depth24"})
+	Renderer.scene_viewport                   = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_bloom_viewport             = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+
+	Renderer.scene_buffer[1] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_buffer[2] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_logluminance_buffer = love.graphics.newCanvas(Renderer.logluminance_buffer_size, Renderer.logluminance_buffer_size,
+	                                                             {format = "r16f", mipmaps = "manual"})
+
+	Renderer.scene_depthbuffer                = love.graphics.newCanvas (w,h, {format = "depth24"})
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h
 end
@@ -126,23 +133,28 @@ function Renderer.renderScaled(canvas, hdr)
 	end
 
 	if hdr.hdr_enabled then
-		Renderer.scene_bloom_blurred_viewport = 
-			Renderer.blurCanvas(Renderer.scene_bloom_viewport, Renderer.scene_bloom_blurred_viewport, 3)
+		Renderer.renderLogLuminance( Renderer.scene_viewport , Renderer.scene_logluminance_buffer )
+
+		local blurred_bloom =
+			Renderer.blurCanvas(Renderer.scene_bloom_viewport, 2)
 
 		love.graphics.setShader(Renderer.hdr_shader)
 		Renderer.hdr_shader:send("hdr_enabled", true)
+		Renderer.hdr_shader:send("bloom_blur", blurred_bloom)
 		Renderer.hdr_shader:send("exposure", exposure)
 		
 		love.graphics.setCanvas()
 		love.graphics.origin()
 		love.graphics.scale(RESOLUTION_RATIO)
 		love.graphics.draw(canvas, wpad, hpad)
+		--love.graphics.setShader()
+		--love.graphics.draw(blurred_bloom, wpad, hpad)
+		--love.graphics.draw(Renderer.scene_bloom_viewport, wpad, hpad)
 	else
 		love.graphics.setShader()
 		love.graphics.draw(canvas, wpad, hpad)
 	end
 
-	--love.graphics.draw( canvas, wpad,hpad )
 	Renderer.dropCanvas()
 end
 
@@ -153,9 +165,7 @@ function Renderer.transformCoordsFor3D()
 	love.graphics.translate(1,1)
 end
 
-function Renderer.blurCanvas(canvas, output, blur_amount)
-
-	local c1,c2 = Renderer.scene_bloom_blurred_viewport, Renderer.scene_bloom_blurred_viewport2
+function Renderer.blurCanvas(canvas, blur_amount)
 
 	love.graphics.setShader(Renderer.blur_shader)
 	love.graphics.origin()
@@ -163,14 +173,21 @@ function Renderer.blurCanvas(canvas, output, blur_amount)
 	local horizontal = true
 	local first_iteration = true
 
-	for i=1,blur_amount*2 do
+	local i1,i2 = 0,0
 
-		love.graphics.setCanvas(c2)
-		love.graphics.draw(c1)
+	for i=0,blur_amount*2-1 do
 
-		local c3 = c1
-		c1 = c2
-		c2 = c3
+		i1 =   i%2 + 1
+		i2 = (i+1)%2 + 1
+
+		love.graphics.setCanvas( Renderer.scene_buffer[i1] )
+		if first_iteration then
+			love.graphics.draw( canvas )
+		else
+			love.graphics.draw( Renderer.scene_buffer[i2])
+		end
+
+		Renderer.blur_shader:send("horizontal_flag", horizontal)
 
 		horizontal = not horizontal
 		first_iteration = false
@@ -179,7 +196,56 @@ function Renderer.blurCanvas(canvas, output, blur_amount)
 	love.graphics.setCanvas()
 	love.graphics.setShader()
 
-	return c2
+	return Renderer.scene_buffer[i1]
+end
+
+function Renderer.renderLogLuminance(canvas, loglum_buffer)
+	local cw,ch = canvas:getDimensions()
+	local lw,lh = loglum_buffer:getDimensions()
+
+	love.graphics.setCanvas(loglum_buffer)
+	love.graphics.setShader(Renderer.loglum_shader)
+	love.graphics.origin()
+	love.graphics.draw(canvas, 0,0,0, lw/cw, lh/ch)
+
+	loglum_buffer:generateMipmaps()
+end
+
+function Renderer.getAverageBrightness(canvas)
+	
+	love.graphics.setShader()
+	love.graphics.origin()
+
+	local w,h = canvas:getDimensions()
+	local i = 0
+
+	local c_min , c_mag = canvas:getFilter()
+	local b1_min,b1_mag = Renderer.scene_buffer[1]:getFilter()
+	local b2_min,b2_mag = Renderer.scene_buffer[2]:getFilter()
+
+	canvas:setFilter("linear","linear")
+	Renderer.scene_buffer[1]:setFilter("linear","linear")
+	Renderer.scene_buffer[2]:setFilter("linear","linear")
+
+	local scale_factor = 0.5
+
+	while true do
+
+		i1 =   i%2 + 1
+		i2 = (i+1)%2 + 1
+		i = i + 1
+
+		local w_half = w/2.0
+		local h_half = math.ceil(h/2.0)
+
+		love.graphics.setCanvas( Renderer.scene_buffer[i1] )
+		if first_iteration then
+			love.graphics.draw( canvas, 0,0,0, scale_factor,scale_factor )
+		else
+			love.graphics.draw( Renderer.scene_buffer[i2], 0,0,0, scale_factor,scale_factor )
+		end
+
+	end
 
 end
 
@@ -188,8 +254,6 @@ function Renderer.setupCanvasFor3D()
 		Renderer.createCanvas()
 	end
 
-	--love.graphics.setCanvas{Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
-	--love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
 	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
@@ -201,7 +265,7 @@ function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
 	--love.graphics.setCanvas(Renderer.scene_viewport)
-	love.graphics.setCanvas{{Renderer.scene_viewport, layer=1}}
+	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport}
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 end
 

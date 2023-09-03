@@ -4,5 +4,7 @@ GAMESTATE = {}
 
 function SET_GAMESTATE(gs)
 	GAMESTATE = gs
-	gs:load()
+	if gs.load then
+		gs:load()
+	end
 end

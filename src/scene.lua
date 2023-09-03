@@ -101,6 +101,8 @@ function Scene:draw(cam)
 	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
 	--
 	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
+	self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*1
+	self.props.scene_lights[1].props.light_dir[3] = math.sin(getTick()/45)*1
 	--self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)*2
 	--self.props.scene_lights[1]:generateLightSpaceMatrix()
 
@@ -157,14 +159,13 @@ function Scene:shadowPass()
 		local light_matrix = light:getLightSpaceMatrix()
 		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
-		love.graphics.setMeshCullMode("back")
+		love.graphics.setMeshCullMode("front")
 		self:drawModels(false)
 
-		love.graphics.setMeshCullMode("back")
+		love.graphics.setMeshCullMode("front")
 		--self:drawGridMap()
 		self:drawGridMapForShadowMapping()
 
-		love.graphics.setMeshCullMode("front")
 		Renderer.dropCanvas()
 	end
 end

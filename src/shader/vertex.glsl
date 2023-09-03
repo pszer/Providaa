@@ -112,13 +112,13 @@ vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 1.5;
+	float specular_strength = 0.5;
 
 	vec3 view_dir = normalize( view_pos - frag_position );
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4.0);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 0.5);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -169,7 +169,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	float shadow = 0.0;
 	for (int i=0;i<4;i++){
 		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
-		shadow += 0.20 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/20000.0, curr_depth), bias));
+		shadow += 0.25 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/20000.0, curr_depth-bias), 0));
 	}
 
 	return shadow;
@@ -208,7 +208,7 @@ void effect( ) {
 	float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
 
 	love_Canvases[0] = result;
-	if (brightness > 1.0) {
+	if (brightness > 1.5) {
 		love_Canvases[1] = result;
 	} else {
 		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);

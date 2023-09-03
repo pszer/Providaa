@@ -5,6 +5,7 @@ local tick_rate = 60
 local tick_rate_inv = 1/tick_rate
 
 FPS = 0
+FPS_LIMIT = 0
 
 function getTick()
 	return TICK

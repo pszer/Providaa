@@ -17,9 +17,18 @@ varying vec3 cube_coords;
 #endif
 
 #ifdef PIXEL
-    vec4 effect(vec4 pixel_color, Image tex, vec2 texture_coords, vec2 screen_coords)
+	void effect()
     {
 		vec3 pix_color = Texel(skybox, cube_coords).rgb;
-		return vec4(pix_color * skybox_brightness, 1.0);
+		vec4 result = vec4(pix_color * skybox_brightness,1.0);
+
+		float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+
+		love_Canvases[0] = result;
+		if (brightness > 1.5) {
+			love_Canvases[1] = result;
+		} else {
+			love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
+		}
 	}
 #endif

@@ -2,6 +2,8 @@ require "gamestate"
 require "render"
 require "console"
 
+local o_ten_one = require "o-ten-one"
+
 local profiler = require "profiler"
 
 function love.load()
@@ -17,33 +19,37 @@ function love.load()
 	Textures.loadTextures()
 	Textures.generateMissingTexture()
 	Models.loadModels()
-	--profiler.start()
-	SET_GAMESTATE(PROV)
+
+	SPLASH_SCREEN = o_ten_one()
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
+	SET_GAMESTATE(SPLASH_SCREEN)
+	--SET_GAMESTATE(PROV)
 end
 
-counter=0
-frames=0
+local DT_COUNTER=0
+local FRAMES=0
 function love.update(dt)
 	GAMESTATE:update(dt)
 
-	counter = counter + dt
-	frames=frames+1
-	if (counter > 1.0) then
-		FPS = frames
-		frames=0
-		counter = 0
+	DT_COUNTER = DT_COUNTER + dt
+	FRAMES=FRAMES+1
+	if (DT_COUNTER > 1.0) then
+		FPS = FRAMES
+		FRAMES=0
+		DT_COUNTER = 0
 	end
 
-	if love.keyboard.isDown("p") then
-		drawgame = not drawgame
-	end
+	if FPS_LIMIT > 0 then
+		local diff = (1/FPS_LIMIT) - dt
 
-	if love.keyboard.isDown("o") then
-		drawanim = not drawanim
+		local start_time = love.timer.getTime()
+		if diff > 0.0 then
+			love.timer.sleep(diff)
+		end
+		local time_slept = love.timer.getTime() - start_time
+		DT_COUNTER = DT_COUNTER + time_slept
 	end
 end
-
-local cpml = require "cpml"
 
 function love.draw()
 	GAMESTATE:draw()
@@ -63,6 +69,8 @@ function love.quit()
 end
 
 function love.keypressed(key)
+	SPLASH_SCREEN:skip()
+
 	if Console.isOpen() then
 		Console.keypressed(key)
 	end

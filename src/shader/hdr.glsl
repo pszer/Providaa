@@ -14,6 +14,8 @@
 	vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 		vec4 pix_color = Texel(tex, texture_coords);
 		vec3 hdr_color = pix_color.rgb;
+		vec3 bloom_color = Texel(bloom_blur, texture_coords).rgb;
+		hdr_color += bloom_color; // additive blending
 		float hdr_flag  = pix_color.a;
 
 		if (hdr_enabled) {
