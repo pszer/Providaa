@@ -65,7 +65,6 @@ function ModelInstance:modelMatrix()
 	local rot = props.model_i_rotation
 
 	local m = cpml.mat4():identity()
-	m = m * props.model_i_reference:getDirectionFixingMatrix()
 
 	m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
 
@@ -75,10 +74,10 @@ function ModelInstance:modelMatrix()
 
 	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
 
-	-- the xyz 3x3 section of the model matrix
-	norm_m = cpml.mat4.new(m[1],m[2],m[3], m[5],m[6],m[7], m[9],m[10],m[11])
+	m = m * props.model_i_reference:getDirectionFixingMatrix() 
 
-	norm_m = norm_m:invert(norm_m)
+	local norm_m = cpml.mat4.new()
+	norm_m = norm_m:invert(m)
 	norm_m = norm_m:transpose(norm_m)
 
 	self.static_model_matrix = m
@@ -134,70 +133,9 @@ function ModelInstance:draw(shader, update_animation)
 	self:sendToShader(shader)
 
 	local model = self:getModel()
+	love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
 	model.props.model_mesh:drawModel(shader)
-end
-
-function Model.openFilename(fname, texture_fname, load_anims)
-	local fpath = "models/" .. fname
-
-	local objs = Model.readIQM(fpath)
-
-	local texture = Textures.loadTexture(texture_fname)
-
-	local mesh = Mesh.newFromMesh(objs.mesh, texture)
-	local anims = nil
-	local skeleton = nil
-	local has_anims = false
-
-	if load_anims and objs.has_anims then
-		anims = Model.openAnimations(fname)
-		skeleton = anims.skeleton
-		has_anims = true
-	end
-
-	local model = Model:new{
-		["model_name"] = fname,
-		["model_mesh"] = mesh,
-		["model_skeleton"] = skeleton,
-		["model_animations"] = anims,
-		["model_animated"] = has_anims
-	}
-
-	if load_anims and objs.has_anims then
-		model:generateBaseFrames()
-		model:generateAnimationFrames()
-	end
-
-	model:generateDirectionFixingMatrix()
-
-	return model
-end
-
-function Model.openAnimations(fname)
-	print("openAnimations")
-	local fpath = "models/" .. fname
-	local anims = Model.readIQMAnimations(fpath)
-	return anims
-end
-
-function Model.readIQM(fname)
-	local finfo = love.filesystem.getInfo(fname)
-	if not finfo or finfo.type ~= "file" then return nil end
-
-	local objs = iqm.load(fname)
-	if not objs then return nil end
-
-	return objs
-end
-
-function Model.readIQMAnimations(fname)
-	local finfo = love.filesystem.getInfo(fname)
-	if not finfo or finfo.type ~= "file" then return nil end
-
-	local anims = iqm.load_anims(fname)
-	if not anims then return nil end
-
-	return anims
+	love.graphics.setFrontFaceWinding("ccw")
 end
 
 function Model:generateDirectionFixingMatrix()
@@ -212,86 +150,9 @@ function Model:getDirectionFixingMatrix()
 	return self.dir_matrix
 end
 
--- calculates returns model matrix and the model for normal vector transformation
--- if model is static this function calculates once and re-uses
-function Model:modelMatrix()
-	local is_static = self.props.model_static
-	if is_static and self.static_model_matrix then
-		return self.static_model_matrix, self.static_normal_matrix
-	end
-
-	local props = self.props
-	local pos = props.model_position
-
-	local m = cpml.mat4():identity()
-	m = m * self.dir_matrix
-	m:scale(m,  cpml.vec3(unpack(props.model_scale)))
-	m:rotate(m, props.model_rotation[1], cpml.vec3.unit_x)
-	m:rotate(m, props.model_rotation[2], cpml.vec3.unit_y)
-	m:rotate(m, props.model_rotation[3], cpml.vec3.unit_z)
-	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3]))
-
-	-- the xyz 3x3 section of the model matrix
-	norm_m = cpml.mat4.new(m[1],m[2],m[3], m[5],m[6],m[7], m[9],m[10],m[11])
-
-	norm_m = norm_m:invert(norm_m)
-	norm_m = norm_m:transpose(norm_m)
-
-	self.static_model_matrix = m
-	self.static_normal_matrix = norm_m
-
-	return m, norm_m
-end
-
---these functions have been moved to ModelInstance
---
---function Model:fillOutBoneMatrices(animation, frame)
---	if self.props.model_animated then
---		local bone_matrices = self:getBoneMatrices(animation, frame)
---
---		for i,v in ipairs(bone_matrices) do
---			bone_matrices[i] = matrix(v)
---		end
---
---		self.bone_matrices = bone_matrices
---	end
---end
-
--- called after fillOutBoneMatrices()
---function Model:sendBoneMatrices(shader)
---	if not self.props.model_animated then
---		shadersend(shader, "u_skinning", 0)
---	else
---		shadersend(shader, "u_skinning", 1)
---		shadersend(shader, "u_bone_matrices", "column", unpack(self.bone_matrices))
---	end
---end
-
 function Model:getSkeleton()
 	return self.props.model_skeleton
 end
-
---function Model:sendToShader(shader)
---	local shader = shader or love.graphics.getShader()
-
---	local model_u, normal_u = self:modelMatrix()
---	shadersend(shader, "u_model", "column", matrix(model_u))
---	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
-
---	self:sendBoneMatrices(shader)
---end
-
---function Model:draw(shader, update_animation)
---	local shader = shader or love.graphics.getShader()
---
---	if update_animation then
---		self:fillOutBoneMatrices("Walk", getTickSmooth())
---	end
---
---	self:sendToShader()
---
---	self.props.model_mesh:drawModel(shader)
---end
 
 function Model:generateBaseFrames()
 	local skeleton = self:getSkeleton()

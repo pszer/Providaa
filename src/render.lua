@@ -15,14 +15,21 @@ Renderer = {
 
 	skybox_model = nil,
 
-	scene_viewport = nil,
-	skybox_viewport = nil,
-	scene_depthbuffer = nil,
+	scene_viewport               = nil,
+	scene_bloom_viewport         = nil,
+
+	scene_bloom_blurred_viewport  = nil,
+	scene_bloom_blurred_viewport2 = nil,
+
+	scene_depthbuffer            = nil,
 
 	viewport_w = 1000,
 	viewport_h = 1000,
 
-	fps_draw_obj = nil
+	enable_hdr = true,
+	hdr_exposure = 0.24,
+
+	fps_draw_obj = nil,
 }
 
 Renderer.__index = Renderer
@@ -32,6 +39,27 @@ function Renderer.loadShaders()
 	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
 	Renderer.hdr_shader    = love.graphics.newShader("shader/hdr.glsl")
+	Renderer.blur_shader   = love.graphics.newShader("shader/blur.glsl")
+end
+
+function Renderer.createCanvas()
+	local w,h = get_resolution()
+
+	Renderer.scene_viewport                = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_bloom_viewport          = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_bloom_blurred_viewport  = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_bloom_blurred_viewport2 = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_depthbuffer             = love.graphics.newCanvas (w,h, {format = "depth24"})
+	Renderer.viewport_w = w
+	Renderer.viewport_h = h
+end
+
+function Renderer.enableHDR()
+	Renderer.enable_hdr = true end
+function Renderer.disableHDR()
+	Renderer.enable_hdr = false end
+function Renderer.setHDRExposure(new_exposure)
+	Renderer.hdr_exposure = new_exposure
 end
 
 function Renderer.setupSkyboxModel()
@@ -81,19 +109,11 @@ end
 function Renderer.renderScaled(canvas, hdr)
 	local canvas = canvas or Renderer.scene_viewport
 	local hdr = hdr or {}
-	local exposure = hdr.exposure or 1.0
+	local exposure = hdr.exposure or Renderer.hdr_exposure
 
 	love.graphics.setCanvas()
 	love.graphics.origin()
 	love.graphics.scale(RESOLUTION_RATIO)
-
-	if hdr.hdr_enabled then
-		love.graphics.setShader(Renderer.hdr_shader)
-		Renderer.hdr_shader:send("hdr_enabled", true)
-		Renderer.hdr_shader:send("exposure", exposure)
-	else
-		love.graphics.setShader()
-	end
 
 	local w,h = get_resolution()
 	local W,H = love.graphics.getWidth() / RESOLUTION_RATIO, love.graphics.getHeight() / RESOLUTION_RATIO
@@ -105,18 +125,25 @@ function Renderer.renderScaled(canvas, hdr)
 		hpad = (H-h)/2
 	end
 
-	love.graphics.draw( canvas, wpad,hpad )
+	if hdr.hdr_enabled then
+		Renderer.scene_bloom_blurred_viewport = 
+			Renderer.blurCanvas(Renderer.scene_bloom_viewport, Renderer.scene_bloom_blurred_viewport, 3)
+
+		love.graphics.setShader(Renderer.hdr_shader)
+		Renderer.hdr_shader:send("hdr_enabled", true)
+		Renderer.hdr_shader:send("exposure", exposure)
+		
+		love.graphics.setCanvas()
+		love.graphics.origin()
+		love.graphics.scale(RESOLUTION_RATIO)
+		love.graphics.draw(canvas, wpad, hpad)
+	else
+		love.graphics.setShader()
+		love.graphics.draw(canvas, wpad, hpad)
+	end
+
+	--love.graphics.draw( canvas, wpad,hpad )
 	Renderer.dropCanvas()
-end
-
-function Renderer.createCanvas()
-	local w,h = get_resolution()
-
-	Renderer.scene_viewport    = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.skybox_viewport   = love.graphics.newCanvas (w,h, {format = "rgba8"})
-	Renderer.scene_depthbuffer = love.graphics.newCanvas (w,h, {format = "depth24"})
-	Renderer.viewport_w = w
-	Renderer.viewport_h = h
 end
 
 function Renderer.transformCoordsFor3D()
@@ -126,40 +153,62 @@ function Renderer.transformCoordsFor3D()
 	love.graphics.translate(1,1)
 end
 
+function Renderer.blurCanvas(canvas, output, blur_amount)
+
+	local c1,c2 = Renderer.scene_bloom_blurred_viewport, Renderer.scene_bloom_blurred_viewport2
+
+	love.graphics.setShader(Renderer.blur_shader)
+	love.graphics.origin()
+
+	local horizontal = true
+	local first_iteration = true
+
+	for i=1,blur_amount*2 do
+
+		love.graphics.setCanvas(c2)
+		love.graphics.draw(c1)
+
+		local c3 = c1
+		c1 = c2
+		c2 = c3
+
+		horizontal = not horizontal
+		first_iteration = false
+	end
+
+	love.graphics.setCanvas()
+	love.graphics.setShader()
+
+	return c2
+
+end
+
 function Renderer.setupCanvasFor3D()
 	if not Renderer.scene_viewport then
 		Renderer.createCanvas()
 	end
 
-	love.graphics.setCanvas{Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
+	--love.graphics.setCanvas{Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
+	--love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
+	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
-	
-	--love.graphics.origin()
-	--Renderer.transformCoordsFor3D()
 end
 
 function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
-	love.graphics.setCanvas(Renderer.skybox_viewport)
+	--love.graphics.setCanvas(Renderer.scene_viewport)
+	love.graphics.setCanvas{{Renderer.scene_viewport, layer=1}}
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
-
-	--love.graphics.origin()
-	--Renderer.transformCoordsFor3D()
 end
 
 function Renderer.setupCanvasForShadowMapping(light)
-	--love.graphics.origin()
-	--Renderer.transformCoordsFor3D()
-
 	love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
-	--love.graphics.setCanvas{light.testcanvas, depthstencil = light.props.light_depthmap, depth=true}
-	--love.graphics.setCanvas{nil, depthstencil = light.props.light_depthmap, depth=true}
 	love.graphics.setDepthMode( "less", true )
-	love.graphics.setMeshCullMode("none")
+	love.graphics.setMeshCullMode("back")
 	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)
 end
 

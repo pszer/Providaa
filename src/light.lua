@@ -3,8 +3,8 @@ require "props.lightprops"
 require "math"
 local cpml = require 'cpml'
 
---local SHADOWMAP_SIZE = 8096
-local SHADOWMAP_SIZE = 8096
+-- THIS IS HUGE, DO SOMETHING ABOUT IT >:-[[[[[[[[[[[[[[[[[
+local SHADOWMAP_SIZE = 8192
 
 Light = {__type = "light",
 		 z_mult = 1.0 -- used to increase size of orthographic lightmap projection matrix when shadowmapping
@@ -21,7 +21,7 @@ function Light:new(props)
 	setmetatable(this,Light)
 
 	this:allocateDepthMap()
-	this:generateLightSpaceMatrix()
+	--this:generateLightSpaceMatrix()
 
 	return this
 end

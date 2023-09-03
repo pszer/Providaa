@@ -138,7 +138,7 @@ function Mesh:drawAsEnvironment(shader)
 		shadersend(shader,"texture_animated_dimx", tex.props.texture_merged_dim_x)
 
 		shadersend(shader,"u_model", matrix(cpml.mat4.identity()))
-		shadersend(shader,"u_normal_model", {1,0,0,0,1,0,0,0,1})
+		shadersend(shader,"u_normal_model", matrix(cpml.mat4.identity()))
 
 		shadersend(shader,"u_skinning", 0)
 

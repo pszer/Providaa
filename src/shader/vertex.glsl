@@ -6,23 +6,21 @@ varying vec4 frag_light_pos[24];
 varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
-varying vec3 view_pos;
-varying vec3 view_dir;
 
-extern int LIGHT_COUNT;
-extern mat4 u_lightspaces[24];
+uniform int LIGHT_COUNT;
+uniform mat4 u_lightspaces[24];
 
 #ifdef VERTEX
 
-extern mat4 u_view;
-extern mat4 u_rot;
-extern mat4 u_model;
-extern mat4 u_proj;
-extern mat3 u_normal_model;
+uniform mat4 u_view;
+uniform mat4 u_rot;
+uniform mat4 u_model;
+uniform mat4 u_proj;
+uniform mat4 u_normal_model;
 
 //
-extern float curve_coeff;
-extern bool curve_flag;
+uniform float curve_coeff;
+uniform bool curve_flag;
 
 attribute vec3 VertexNormal;
 attribute vec4 VertexWeight;
@@ -46,28 +44,30 @@ mat4 get_deform_matrix() {
 	return mat4(1.0);
 }
 
-mat3 get_normal_matrix(mat4 modelview_u) {
+mat3 get_normal_matrix(mat4 skin_u) {
 	// u_normal_model matrix is calculated outside and passed to shader
 	// if skinning is enabled then this needs to be recalculated
 	if (u_skinning != 0) {
-		return mat3(transpose(inverse(modelview_u)));
+		return mat3(transpose(inverse(skin_u)));
 	}
-	return u_normal_model;
+	return mat3(u_normal_model);
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = u_model * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
 
+	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
+
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = modelview_u * vertex;
 
+	// create a fake curved horizon effect
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
 	frag_position = view_v.xyz;
 	frag_w_position = model_v.xyz;
-	frag_normal = get_normal_matrix(modelview_u) * VertexNormal;
 
 	for (int i = 0; i < LIGHT_COUNT; i++) {
 		frag_light_pos[i] = u_lightspaces[i] * model_v;
@@ -78,34 +78,30 @@ vec4 position(mat4 transform, vec4 vertex) {
 	if (texscale.y == 0) { texscale.y = 1; }
 	texoffset = TextureOffset;
 
-	vec4 pos_v = u_proj * view_v;
-	return pos_v;
+	return u_proj * view_v;
 }
 #endif
 
-
-
 #ifdef PIXEL
 
-extern float fog_start;
-extern float fog_end;
-extern vec3  fog_colour;
+uniform float fog_start;
+uniform float fog_end;
+uniform vec3  fog_colour;
 
-extern bool texture_animated;
-extern int  texture_animated_dimx;
-extern int  texture_animated_frame;
-extern int  texture_animated_framecount;
+uniform bool texture_animated;
+uniform int  texture_animated_dimx;
+uniform int  texture_animated_frame;
+uniform int  texture_animated_framecount;
 
-extern vec3 light_dir;
-extern vec4 light_col;
-extern vec4 ambient_col;
-//extern float ambient_str;
+uniform vec3 view_pos;
+uniform vec3 light_dir;
+uniform vec4 light_col;
+uniform vec4 ambient_col;
 
-extern sampler2DShadow shadow_maps[24]; 
+uniform Image MainTex;
+uniform sampler2DShadow shadow_maps[24]; 
 
-//vec3 ambient_lighting( vec4 ambient_col, float ambient_str ) {
 vec3 ambient_lighting( vec4 ambient_col ) {
-	//return ambient_col*ambient_str;
 	return ambient_col.rgb * ambient_col.a;
 }
 
@@ -116,14 +112,13 @@ vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 0.005;
-	vec3 view_dir = normalize(-frag_position);
-	vec3 light_dir_n = normalize(light_dir);
+	float specular_strength = 1.5;
+
+	vec3 view_dir = normalize( view_pos - frag_position );
+	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	//vec3 reflect_dir = reflect(-light_dir, normal);
-
-	float spec = pow(max(dot(normal,halfway_v),0.0), 24);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4.0);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -168,24 +163,19 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	vec3 prooj_coords = pos.xyz / pos.w;
 	prooj_coords = prooj_coords * 0.5 + 0.5;
 
-	//float closest_depth = Texel(shadow_map, prooj_coords.xy).r;
 	float curr_depth    = prooj_coords.z;
-	//float bias = 0.00000006;
-	float bias = 0.000005;
+	float bias = 0.0005;
 
 	float shadow = 0.0;
 	for (int i=0;i<4;i++){
 		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
-		//if ( Texel( shadow_map, prooj_coords.xy + poissonDisk[index]/5000.0 ).r  <  curr_depth - bias ){
-			shadow += 0.20 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/5000.0, curr_depth - bias), bias));
-		//}
+		shadow += 0.20 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/20000.0, curr_depth), bias));
 	}
 
 	return shadow;
-	//return curr_depth - bias > closest_depth ? 1.0 : 0.0;
 }
 
-vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
+void effect( ) {
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 
@@ -193,25 +183,37 @@ vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
-	if (fog_r > 0.99) { return vec4(fog_colour, 1.0); }
 
-	//vec3 ambient = ambient_lighting(ambient_col, ambient_str);
-	vec3 ambient = ambient_lighting(ambient_col);
+	vec3 ambient = ambient_lighting( ambient_col );
 	vec3 diffuse = diffuse_lighting(frag_normal, light_dir_n, light_col);
 	vec3 specular = specular_highlight( frag_normal , light_dir_n, light_col);
 
+	// TODO implement multiple light sources
 	float shadow = shadow_calculation(frag_light_pos[0], u_lightspaces[0], shadow_maps[0]);
 
 	vec4 light = vec4(ambient + (1.0-shadow)*(diffuse + specular), 1.0);
 
 	vec4 texcolor;
-	vec2 coords = calc_tex_coords(texture_coords);
+	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
 	coords = coords / texscale;
 
-	texcolor = Texel(tex, coords);
+	//texcolor = Texel(tex, coords);
+	texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * light;
 
-	return vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
+	// TODO make the fog colour work properly with HDR
+	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
+
+	float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+
+	love_Canvases[0] = result;
+	if (brightness > 1.0) {
+		love_Canvases[1] = result;
+	} else {
+		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
+	}
+	//return result;
 }
+
 #endif

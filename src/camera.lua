@@ -31,6 +31,7 @@ function Camera:pushToShader(sh)
 	shadersend(sh, "u_proj", "column", matrix(props.cam_perspective_matrix))
 	shadersend(sh, "u_view", "column", matrix(props.cam_view_matrix))
 	shadersend(sh, "u_rot", "column", matrix(props.cam_rot_matrix))
+	shadersend(sh, "view_pos", {props.cam_x, props.cam_y, props.cam_z})
 
  	shadersend(sh, "curve_flag", props.cam_bend_enabled)
 	shadersend(sh, "curve_coeff", props.cam_bend_coefficient)

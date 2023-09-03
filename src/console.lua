@@ -29,8 +29,9 @@ function Console.keypressed(key)
         end
 	elseif key == "return" then
 		local code = "do "..Console.text.." end"
+		print("CONSOLE:", code)
 		local ok, func = pcall(loadstring,code)
-		if status then
+		if ok then
 			func()
 		end
 

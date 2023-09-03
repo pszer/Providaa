@@ -9,6 +9,7 @@
 #ifdef PIXEL
 	uniform bool hdr_enabled;
 	uniform float exposure;
+	uniform Image bloom_blur;
 
 	vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 		vec4 pix_color = Texel(tex, texture_coords);

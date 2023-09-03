@@ -34,7 +34,5 @@ vec4 position(mat4 transform, vec4 vertex) {
 	vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 		gl_FragDepth = gl_FragCoord.z;
 		return vec4(1.0);
-		//return vec4(vec3(1)*(gl_FragCoord.z/gl_FragCoord.w), 1);
-		//return vec4(vec3(1) * gl_FragCoord.z,0.8);
 	}
 #endif

@@ -5,6 +5,10 @@ require "console"
 local profiler = require "profiler"
 
 function love.load()
+ 	local major, minor, revision, codename = love.getVersion( )
+	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
+	print(str)
+
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	Renderer.loadShaders()
 	Renderer.createCanvas()
@@ -12,6 +16,7 @@ function love.load()
 
 	Textures.loadTextures()
 	Textures.generateMissingTexture()
+	Models.loadModels()
 	--profiler.start()
 	SET_GAMESTATE(PROV)
 end

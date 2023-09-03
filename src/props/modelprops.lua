@@ -9,13 +9,16 @@ ModelPropPrototype = Props:prototype{
 	-- prop      prop     prop default    prop input     prop      read
 	-- name      type        value        validation     info      only
 
-	{"model_name", "string", "", nil, "model's name" }, -- done
+	{"model_name"         , "string", "", nil, "model's name" },
+	{"model_texture_fname", "string", "", nil, "model's texture filename"},
 
 	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position"},
 	{"model_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
 	{"model_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
-	{"model_up_vector" , "table", { 0 ,  -1  , 0 }, nil, "model`s upward pointing vector",  "readonly"},
-	{"model_dir_vector", "table", { 0 , 0  , -1 }, nil, "model`s forward pointing vector", "readonly"},
+
+	{"model_up_vector" , "table", { 0 , -1 ,  0 }, nil, "model`s upward pointing vector",  "readonly"},
+	{"model_dir_vector", "table", { 0 ,  0 , -1 }, nil,  "model`s forward pointing vector", "readonly"},
+	{"model_vertex_winding", "string", "ccw", PropIsOneOf{"ccw","cw"},  "vertex winding for this model`s mesh", "readonly"},
 
 	{"model_mesh", nil, nil, nil, "model's love2d mesh"},
 

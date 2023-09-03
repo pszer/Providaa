@@ -1,4 +1,4 @@
-return{
+local TEXTURE_ATTRIBUTES = {
 	["nil"] = {
 		texture_type = "2d",
 		texture_animated = false
@@ -22,5 +22,6 @@ return{
 
 	["skyday01.png"] = {
 		texture_type = "cube"
-	},
+	}
 }
+return TEXTURE_ATTRIBUTES
