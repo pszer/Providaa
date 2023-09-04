@@ -88,9 +88,9 @@ function Scene:drawGridMapForShadowMapping()
 	props.scene_generic_mesh:drawGeneric()
 end
 
-function Scene:drawModels(updateAnims)
+function Scene:drawModels(update_anims, draw_outlines)
 	for i,v in ipairs(self.props.scene_models) do
-		v:draw(nil, updateAnims)
+		v:draw(nil, update_anims, draw_outlines)
 	end
 end
 
@@ -141,7 +141,7 @@ function Scene:draw(cam)
 
 	Renderer.sendLuminance()
 	self:drawGridMap()
-	self:drawModels(false)
+	self:drawModels(false, true)
 	
 	--for i,v in ipairs(self.props.scene_models) do
 	--	v:draw(nil, false)
@@ -161,7 +161,7 @@ function Scene:shadowPass()
 		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
 		love.graphics.setMeshCullMode("front")
-		self:drawModels(false)
+		self:drawModels(false, false)
 
 		love.graphics.setMeshCullMode("front")
 		--self:drawGridMap()

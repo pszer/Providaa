@@ -40,6 +40,10 @@ ModelInstancePropPrototype = Props:prototype{
 	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
 	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
 
+	{"model_i_outline_flag", "boolean", false, nil,                     "whether to draw an outline around this model"},
+	{"model_i_outline_colour", "table", nil, PropDefaultTable{0,0,0,1}, "model's outline colour"},
+	{"model_i_outline_scale", "number", 1.03, nil,                      "model's outline scale factor"},
+
 	{"model_i_static"    , "boolean", false, nil, "is model instance static?"}
 
 }

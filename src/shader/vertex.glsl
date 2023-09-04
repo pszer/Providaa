@@ -10,6 +10,8 @@ varying vec2 texoffset;
 uniform int LIGHT_COUNT;
 uniform mat4 u_lightspaces[24];
 
+uniform bool draw_as_solid_colour;
+
 #ifdef VERTEX
 
 uniform mat4 u_view;
@@ -32,6 +34,7 @@ attribute vec2 TextureOffset;
 
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
+uniform mat4 u_outline_scale;
 
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
@@ -54,7 +57,14 @@ mat3 get_normal_matrix(mat4 skin_u) {
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
-	mat4 skin_u = u_model * get_deform_matrix();
+	mat4 outline_u;
+	if (draw_as_solid_colour) {
+		outline_u = u_outline_scale;
+	} else {
+		outline_u = mat4(1.0);
+	}
+
+	mat4 skin_u = u_model * outline_u * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
 
 	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
@@ -179,6 +189,12 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 }
 
 void effect( ) {
+	if (draw_as_solid_colour) { // used when drawing outline for objects
+		love_Canvases[0] = VaryingColor;
+		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
+		return;
+	}
+
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 

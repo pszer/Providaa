@@ -32,6 +32,8 @@ function PROV:load()
 	alekin = Models.queryModel("alekin.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
 	instance = ModelInstance:newInstance(alekin)
+	instance.props.model_i_outline_flag = true
+
 	sphere = ModelInstance:newInstance(sphere)
 	--self.scene.props.scene_models = { instance , sphere }
 	self.scene.props.scene_models = { sphere, instance }

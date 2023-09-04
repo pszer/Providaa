@@ -30,6 +30,10 @@ function Model:new(props)
 	return this
 end
 
+function Model:getMesh()
+	return self.props.model_mesh
+end
+
 ModelInstance = {__type = "modelinstance"}
 ModelInstance.__index = ModelInstance
 
@@ -123,7 +127,7 @@ function ModelInstance:sendToShader(shader)
 	self:sendBoneMatrices(shader)
 end
 
-function ModelInstance:draw(shader, update_animation)
+function ModelInstance:draw(shader, update_animation, draw_outline)
 	local shader = shader or love.graphics.getShader()
 
 	if update_animation then
@@ -134,7 +138,41 @@ function ModelInstance:draw(shader, update_animation)
 
 	local model = self:getModel()
 	love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
-	model.props.model_mesh:drawModel(shader)
+
+	if self.props.model_i_outline_flag and draw_outline then
+		local mesh = model:getMesh().mesh
+		local colour = self.props.model_i_outline_colour
+
+		-- scaled up model matrix for drawing the outline
+		local scaled_u = cpml.mat4.new(1.0)
+		scaled_u:scale(scaled_u, cpml.vec3.new(self.props.model_i_outline_scale))
+
+		shadersend(shader,"texture_animated", false)
+
+		-- draw model to screen, setting every pixel rendered stencil to one
+		local stencil_function = function()
+			love.graphics.setColorMask( true, true, true, true )
+			love.graphics.draw(mesh)
+		end
+		love.graphics.stencil(stencil_function, "replace", 1)
+
+		-- draw outline when scaled up model's fragment stencil is 0, ie
+		-- outside the normal model
+		love.graphics.setStencilTest("less", 1)
+
+		-- send colour to draw outline with to shader
+		shadersend(shader,"draw_as_solid_colour", true)
+		love.graphics.setColor(colour)
+
+		-- draw scaled up mesh
+		shadersend(shader, "u_outline_scale", "column", matrix(scaled_u))
+		love.graphics.draw(mesh)
+
+		love.graphics.setStencilTest()
+		shadersend(shader,"draw_as_solid_colour", false)
+	else
+		model.props.model_mesh:drawModel(shader)
+	end
 	love.graphics.setFrontFaceWinding("ccw")
 end
 

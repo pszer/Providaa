@@ -9,11 +9,12 @@ local shadersend = require 'shadersend'
 
 Renderer = {
 	--vertex_shader = love.graphics.newShader("shader/vertex.glsl")
-	vertex_shader = nil,
-	skybox_shader = nil,
-	shadow_shader = nil,
-	avglum_shader = nil,
-	hdr_shader    = nil,
+	vertex_shader  = nil,
+	outline_shader = nil,
+	skybox_shader  = nil,
+	shadow_shader  = nil,
+	avglum_shader  = nil,
+	hdr_shader     = nil,
 
 	skybox_model = nil,
 
@@ -40,12 +41,13 @@ Renderer = {
 Renderer.__index = Renderer
 
 function Renderer.loadShaders()
-	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
-	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
-	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
-	Renderer.avglum_shader = love.graphics.newShader("shader/avglum.glsl")
-	Renderer.hdr_shader    = love.graphics.newShader("shader/hdr.glsl")
-	Renderer.blur_shader   = love.graphics.newShader("shader/blur.glsl")
+	Renderer.vertex_shader  = love.graphics.newShader("shader/vertex.glsl")
+	Renderer.outline_shader = love.graphics.newShader("shader/singlecolour.glsl")
+	Renderer.skybox_shader  = love.graphics.newShader("shader/skybox.glsl")
+	Renderer.shadow_shader  = love.graphics.newShader("shader/shadow.glsl")
+	Renderer.avglum_shader  = love.graphics.newShader("shader/avglum.glsl")
+	Renderer.hdr_shader     = love.graphics.newShader("shader/hdr.glsl")
+	Renderer.blur_shader    = love.graphics.newShader("shader/blur.glsl")
 end
 
 function Renderer.createCanvas()
@@ -240,7 +242,9 @@ function Renderer.setupCanvasFor3D()
 		Renderer.createCanvas()
 	end
 
-	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, depthstencil = Renderer.scene_depthbuffer, depth=true}
+	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport,
+		depthstencil = Renderer.scene_depthbuffer,
+		depth=true, stencil=true}
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
