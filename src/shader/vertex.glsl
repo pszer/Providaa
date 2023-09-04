@@ -10,8 +10,6 @@ varying vec2 texoffset;
 uniform int LIGHT_COUNT;
 uniform mat4 u_lightspaces[24];
 
-uniform bool draw_as_solid_colour;
-
 #ifdef VERTEX
 
 uniform mat4 u_view;
@@ -34,7 +32,6 @@ attribute vec2 TextureOffset;
 
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
-uniform mat4 u_outline_scale;
 
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
@@ -57,14 +54,7 @@ mat3 get_normal_matrix(mat4 skin_u) {
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
-	mat4 outline_u;
-	if (draw_as_solid_colour) {
-		outline_u = u_outline_scale;
-	} else {
-		outline_u = mat4(1.0);
-	}
-
-	mat4 skin_u = u_model * outline_u * get_deform_matrix();
+	mat4 skin_u = u_model * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
 
 	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
@@ -114,24 +104,31 @@ uniform sampler2DShadow shadow_maps[24];
 uniform Image luminance;
 uniform int luminance_mipmap_count;
 
+uniform bool draw_to_outline_buffer;
+uniform vec4 outline_colour;
+
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
 
 vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
-	float diff = max(0.0, dot(normal, normalize(light_dir)));
+	float diff = 0.0;
+	if (dot(normal, normalize(light_dir)) > 0.0) {
+		diff = 1.0 - pow(diff,10);
+	}
+	//float diff = max(0.0, dot(normal, normalize(light_dir)));
 	vec3 diff_col = light_col.rgb * light_col.a * diff;
 	return diff_col;
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 0.5;
+	float specular_strength = 1;
 
 	vec3 view_dir = normalize( view_pos - frag_position );
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 0.5);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -177,7 +174,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	prooj_coords = prooj_coords * 0.5 + 0.5;
 
 	float curr_depth    = prooj_coords.z;
-	float bias = 0.0005;
+	float bias = 0.0015;
 
 	float shadow = 0.0;
 	for (int i=0;i<4;i++){
@@ -189,12 +186,6 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 }
 
 void effect( ) {
-	if (draw_as_solid_colour) { // used when drawing outline for objects
-		love_Canvases[0] = VaryingColor;
-		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
-		return;
-	}
-
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 
@@ -237,6 +228,13 @@ void effect( ) {
 	} else {
 		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
 	}
+
+	if (draw_to_outline_buffer) { // used when drawing outline for objects
+		love_Canvases[2] = vec4(outline_colour);
+	} else {
+		love_Canvases[2] = vec4(0,0,0,0);
+	}
+
 	//return result;
 }
 

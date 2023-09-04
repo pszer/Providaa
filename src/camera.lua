@@ -49,7 +49,7 @@ function Camera:generatePerspectiveMatrix(aspect_ratio)
 
 	local props = self.props
 	props.cam_perspective_matrix = cpml.mat4.from_perspective(
-		props.cam_fov, aspect_ratio, 0.5, 2500)
+		props.cam_fov, aspect_ratio, 0.5, 2000)
 
 	--props.cam_perspective_matrix = cpml.mat4.from_ortho(
 	--	-1000*aspect_ratio, 1000*aspect_ratio, 1000, -1000, 1.0, 1000)

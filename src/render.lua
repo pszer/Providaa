@@ -13,13 +13,17 @@ Renderer = {
 	skybox_shader  = nil,
 	shadow_shader  = nil,
 	avglum_shader  = nil,
+	outline_shader = nil, 
 	hdr_shader     = nil,
 
 	skybox_model = nil,
 
 	scene_viewport               = nil,
+	scene_postprocess_viewport   = nil,
 	scene_bloom_viewport         = nil,
+	scene_outline_viewport       = nil,
 	scene_buffer  = {nil, nil},
+	scene_postprocess_viewport   = nil,
 	scene_avglum_buffer = nil,
 	scene_depthbuffer   = nil,
 
@@ -39,13 +43,20 @@ Renderer = {
 
 Renderer.__index = Renderer
 
+function Renderer.load()
+	love.graphics.setDefaultFilter( "nearest", "nearest" )
+	Renderer.loadShaders()
+	Renderer.createCanvas()
+	Renderer.setupSkyboxModel()
+end
+
 function Renderer.loadShaders()
 	Renderer.vertex_shader  = love.graphics.newShader("shader/vertex.glsl")
-	Renderer.outline_shader = love.graphics.newShader("shader/singlecolour.glsl")
 	Renderer.skybox_shader  = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader  = love.graphics.newShader("shader/shadow.glsl")
 	Renderer.avglum_shader  = love.graphics.newShader("shader/avglum.glsl")
 	Renderer.hdr_shader     = love.graphics.newShader("shader/hdr.glsl")
+	Renderer.outline_shader = love.graphics.newShader("shader/outline.glsl")
 	Renderer.blur_shader    = love.graphics.newShader("shader/blur.glsl")
 end
 
@@ -53,12 +64,16 @@ function Renderer.createCanvas()
 	local w,h = get_resolution()
 
 	Renderer.scene_viewport                   = love.graphics.newCanvas (w,h, {format = "rgba16f"})
+	Renderer.scene_postprocess_viewport       = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_bloom_viewport             = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_buffer[1] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_buffer[2] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_avglum_buffer = love.graphics.newCanvas(Renderer.avglum_buffer_size, Renderer.avglum_buffer_size,
 	                                                             {format = "r16f", mipmaps = "manual"})
-	Renderer.scene_depthbuffer                = love.graphics.newCanvas (w,h, {format = "depth24stencil8"})
+	Renderer.scene_outline_viewport           = love.graphics.newCanvas(w,h, {format = "rgba16f"})
+	Renderer.scene_depthbuffer                = love.graphics.newCanvas(w,h, {format = "depth24stencil8"})
+
+
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h
 end
@@ -137,6 +152,7 @@ function Renderer.renderScaled(canvas, hdr)
 	end
 
 	if hdr.hdr_enabled then
+		love.graphics.setColor(1,1,1,1)
 		Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
 
 		local blurred_bloom =
@@ -152,13 +168,17 @@ function Renderer.renderScaled(canvas, hdr)
 		Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
 		Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
 		
-		love.graphics.setCanvas()
+		love.graphics.setCanvas(Renderer.scene_postprocess_viewport)
 		love.graphics.origin()
+		love.graphics.draw(canvas)
+
+		Renderer.drawOutlineBuffer(Renderer.scene_postprocess_viewport, Renderer.scene_outline_viewport, 1)
+
+		love.graphics.origin()
+		love.graphics.setShader()
+		love.graphics.setCanvas()
 		love.graphics.scale(RESOLUTION_RATIO)
-		love.graphics.draw(canvas, wpad, hpad)
-		--love.graphics.setShader()
-		--love.graphics.draw(blurred_bloom, wpad, hpad)
-		--love.graphics.draw(Renderer.scene_bloom_viewport, wpad, hpad)
+		love.graphics.draw(Renderer.scene_postprocess_viewport,wpad,hpad)
 	else
 		love.graphics.setShader()
 		love.graphics.draw(canvas, wpad, hpad)
@@ -208,6 +228,63 @@ function Renderer.blurCanvas(canvas, blur_amount)
 	return Renderer.scene_buffer[i1]
 end
 
+function Renderer.enlargeOutline(outline, size)
+
+	if size > 8 then
+		size=8
+	elseif size < 0 then
+		size=0
+	end
+
+	love.graphics.setShader()
+	love.graphics.setCanvas(Renderer.scene_buffer[1])
+	love.graphics.clear(0,0,0,0)
+
+	love.graphics.setShader(Renderer.outline_shader)
+	love.graphics.origin()
+
+	local kernel = {}
+
+	for i = 0, (size*2+1)*(size*2+1)-1 do
+		local x = i % (size*2+1)
+		local y = math.floor(i / (size*2+1))
+
+		local dx = math.abs(x - size)
+		local dy = math.abs(y - size)
+
+		if (dx+dy <= size) then
+			kernel[i+1] = 1.0
+		else
+			kernel[i+1] = 0.0
+		end
+	end
+
+	shadersend(Renderer.outline_shader, "kernel", unpack(kernel))
+	shadersend(Renderer.outline_shader, "outline_size", size)
+
+	love.graphics.setCanvas( Renderer.scene_buffer[1] )
+	love.graphics.draw( outline )
+
+	love.graphics.setCanvas()
+	love.graphics.setShader()
+
+	return Renderer.scene_buffer[1]
+end
+
+function Renderer.drawOutlineBuffer(canvas, outline, size)
+	local outline_result = Renderer.enlargeOutline(outline, size)
+	love.graphics.setShader()
+	love.graphics.setCanvas{canvas,
+		depthstencil = Renderer.scene_depthbuffer, stencil=true , depth=false}
+
+	love.graphics.setStencilTest ("less", 1)
+	love.graphics.origin()
+	love.graphics.setColor(1,1,1,1)
+
+	love.graphics.draw(outline_result)
+	love.graphics.setStencilTest ()
+end
+
 function Renderer.sendLuminance(shader)
 	local shader = shader or love.graphics.getShader()
 	shadersend(shader, "luminance", Renderer.scene_avglum_buffer)
@@ -241,7 +318,7 @@ function Renderer.setupCanvasFor3D()
 		Renderer.createCanvas()
 	end
 
-	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport,
+	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, Renderer.scene_outline_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
 		depth=true, stencil=true}
 	love.graphics.setDepthMode( "less", true  )
@@ -272,6 +349,11 @@ function Renderer.dropCanvas()
 	love.graphics.origin()
 end
 
+function Renderer.clearCanvases()
+	love.graphics.setShader()
+	love.graphics.setCanvas()
+end
+
 function Renderer.drawFPS()
 	love.graphics.push("all")
 	love.graphics.reset()
@@ -299,5 +381,6 @@ function Renderer.drawFPS()
 		love.graphics.setColor(0,1,0,1)
 	end
 	love.graphics.draw(Renderer.fps_draw_obj, sw-w-3,3)
+	love.graphics.setColor(1,1,1,1)
 	love.graphics.pop()
 end

@@ -11,10 +11,7 @@ function love.load()
 	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
 	print(str)
 
-	love.graphics.setDefaultFilter( "nearest", "nearest" )
-	Renderer.loadShaders()
-	Renderer.createCanvas()
-	Renderer.setupSkyboxModel()
+	Renderer.load()
 
 	Textures.loadTextures()
 	Textures.generateMissingTexture()

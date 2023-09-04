@@ -21,11 +21,11 @@ function PROV:load()
 		Light:new{
 			["light_pos"] = {0,0,0},
 			--["light_dir"] = {0.5,1.0,-0.5},
-			["light_dir"] = {-1.0,2.0,0.3},
+			["light_dir"] = {-1.0,1.5,-1.0},
 			["light_col"] = {255/255, 235/255, 204/255, 10}
 		}
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 15
+	self.scene.props.scene_skybox_hdr_brightness = 9
 
 	--alekin = Model.openFilename("alekin.iqm", "models/alekin.png", true)
 	--sphere = Model.openFilename("Sphere.iqm", "blue.png", false)
@@ -85,7 +85,7 @@ function PROV:update(dt)
 	end
 
 	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+80,cam.cam_z-100*math.cos(cam.cam_yaw)}
-	instance.props.model_i_rotation[2] = -getTick()/60
+	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60
 	--

@@ -101,8 +101,8 @@ function Scene:draw(cam)
 	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
 	--
 	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
-	self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
-	self.props.scene_lights[1].props.light_dir[3] = math.sin(getTick()/45)*3
+	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
+	--self.props.scene_lights[1].props.light_dir[3] = math.sin(getTick()/45)*3
 	--self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)*2
 	--self.props.scene_lights[1]:generateLightSpaceMatrix()
 

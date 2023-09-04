@@ -4,7 +4,7 @@ require "math"
 local cpml = require 'cpml'
 
 -- THIS IS HUGE, DO SOMETHING ABOUT IT >:-[[[[[[[[[[[[[[[[[
-local SHADOWMAP_SIZE = 8192
+local SHADOWMAP_SIZE = 4096
 --local SHADOWMAP_SIZE = 4096
 
 Light = {__type = "light",
