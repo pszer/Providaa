@@ -10,7 +10,6 @@ local shadersend = require 'shadersend'
 Renderer = {
 	--vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	vertex_shader  = nil,
-	outline_shader = nil,
 	skybox_shader  = nil,
 	shadow_shader  = nil,
 	avglum_shader  = nil,
