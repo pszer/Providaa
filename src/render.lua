@@ -3,6 +3,7 @@ require 'math'
 require "camera"
 require "resolution"
 require "texturemanager"
+local shadersend = require 'shadersend'
 
 --CAM = Camera:new()
 
@@ -11,27 +12,29 @@ Renderer = {
 	vertex_shader = nil,
 	skybox_shader = nil,
 	shadow_shader = nil,
-	loglum_shader = nil,
+	avglum_shader = nil,
 	hdr_shader    = nil,
 
 	skybox_model = nil,
 
 	scene_viewport               = nil,
 	scene_bloom_viewport         = nil,
-
 	scene_buffer  = {nil, nil},
-
-	scene_depthbuffer            = nil,
+	scene_avglum_buffer = nil,
+	scene_depthbuffer   = nil,
 
 	viewport_w = 1000,
 	viewport_h = 1000,
 
 	enable_hdr = true,
 	hdr_exposure = 0.15,
+	hdr_exposure_min = 0.1,
+	hdr_exposure_max = 0.9,
 
 	fps_draw_obj = nil,
 
-	logluminance_buffer_size = 1024
+	avglum_buffer_size = 1024,
+	avglum_mipmap_count = -1
 }
 
 Renderer.__index = Renderer
@@ -40,7 +43,7 @@ function Renderer.loadShaders()
 	Renderer.vertex_shader = love.graphics.newShader("shader/vertex.glsl")
 	Renderer.skybox_shader = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader = love.graphics.newShader("shader/shadow.glsl")
-	Renderer.loglum_shader = love.graphics.newShader("shader/loglum.glsl")
+	Renderer.avglum_shader = love.graphics.newShader("shader/avglum.glsl")
 	Renderer.hdr_shader    = love.graphics.newShader("shader/hdr.glsl")
 	Renderer.blur_shader   = love.graphics.newShader("shader/blur.glsl")
 end
@@ -50,13 +53,11 @@ function Renderer.createCanvas()
 
 	Renderer.scene_viewport                   = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_bloom_viewport             = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-
 	Renderer.scene_buffer[1] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_buffer[2] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
-	Renderer.scene_logluminance_buffer = love.graphics.newCanvas(Renderer.logluminance_buffer_size, Renderer.logluminance_buffer_size,
+	Renderer.scene_avglum_buffer = love.graphics.newCanvas(Renderer.avglum_buffer_size, Renderer.avglum_buffer_size,
 	                                                             {format = "r16f", mipmaps = "manual"})
-
-	Renderer.scene_depthbuffer                = love.graphics.newCanvas (w,h, {format = "depth24"})
+	Renderer.scene_depthbuffer                = love.graphics.newCanvas (w,h, {format = "depth24stencil8"})
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h
 end
@@ -117,6 +118,8 @@ function Renderer.renderScaled(canvas, hdr)
 	local canvas = canvas or Renderer.scene_viewport
 	local hdr = hdr or {}
 	local exposure = hdr.exposure or Renderer.hdr_exposure
+	local exposure_min = hdr.exposure_min or Renderer.hdr_exposure_min
+	local exposure_max = hdr.exposure_max or Renderer.hdr_exposure_max
 
 	love.graphics.setCanvas()
 	love.graphics.origin()
@@ -133,15 +136,20 @@ function Renderer.renderScaled(canvas, hdr)
 	end
 
 	if hdr.hdr_enabled then
-		Renderer.renderLogLuminance( Renderer.scene_viewport , Renderer.scene_logluminance_buffer )
+		Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
 
 		local blurred_bloom =
 			Renderer.blurCanvas(Renderer.scene_bloom_viewport, 2)
 
 		love.graphics.setShader(Renderer.hdr_shader)
+
 		Renderer.hdr_shader:send("hdr_enabled", true)
+		Renderer.hdr_shader:send("exposure_min", exposure_min)
+		Renderer.hdr_shader:send("exposure_max", exposure_max)
 		Renderer.hdr_shader:send("bloom_blur", blurred_bloom)
 		Renderer.hdr_shader:send("exposure", exposure)
+		Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
+		Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
 		
 		love.graphics.setCanvas()
 		love.graphics.origin()
@@ -199,54 +207,32 @@ function Renderer.blurCanvas(canvas, blur_amount)
 	return Renderer.scene_buffer[i1]
 end
 
-function Renderer.renderLogLuminance(canvas, loglum_buffer)
-	local cw,ch = canvas:getDimensions()
-	local lw,lh = loglum_buffer:getDimensions()
+function Renderer.sendLuminance(shader)
+	local shader = shader or love.graphics.getShader()
+	shadersend(shader, "luminance", Renderer.scene_avglum_buffer)
+	shadersend(shader, "luminance_mipmap_count", Renderer.avglum_mipmap_count)
+end
 
-	love.graphics.setCanvas(loglum_buffer)
-	love.graphics.setShader(Renderer.loglum_shader)
+function Renderer.renderLuminance(canvas, avglum_buffer)
+	local cw,ch = canvas:getDimensions()
+	local lw,lh = avglum_buffer:getDimensions()
+
+	love.graphics.setCanvas(avglum_buffer)
+	love.graphics.setShader(Renderer.avglum_shader)
 	love.graphics.origin()
 	love.graphics.draw(canvas, 0,0,0, lw/cw, lh/ch)
 
-	loglum_buffer:generateMipmaps()
+	avglum_buffer:generateMipmaps()
+	Renderer.avglum_mipmap_count = avglum_buffer:getMipmapCount()
+
+	love.graphics.setCanvas()
+	love.graphics.setShader()
 end
 
-function Renderer.getAverageBrightness(canvas)
-	
-	love.graphics.setShader()
-	love.graphics.origin()
-
-	local w,h = canvas:getDimensions()
-	local i = 0
-
-	local c_min , c_mag = canvas:getFilter()
-	local b1_min,b1_mag = Renderer.scene_buffer[1]:getFilter()
-	local b2_min,b2_mag = Renderer.scene_buffer[2]:getFilter()
-
-	canvas:setFilter("linear","linear")
-	Renderer.scene_buffer[1]:setFilter("linear","linear")
-	Renderer.scene_buffer[2]:setFilter("linear","linear")
-
-	local scale_factor = 0.5
-
-	while true do
-
-		i1 =   i%2 + 1
-		i2 = (i+1)%2 + 1
-		i = i + 1
-
-		local w_half = w/2.0
-		local h_half = math.ceil(h/2.0)
-
-		love.graphics.setCanvas( Renderer.scene_buffer[i1] )
-		if first_iteration then
-			love.graphics.draw( canvas, 0,0,0, scale_factor,scale_factor )
-		else
-			love.graphics.draw( Renderer.scene_buffer[i2], 0,0,0, scale_factor,scale_factor )
-		end
-
-	end
-
+function Renderer.resetLuminance(avglum_buffer)
+	love.graphics.setCanvas(avglum_buffer)
+	love.graphics.clear(1,1,1,1)
+	love.graphics.setCanvas()
 end
 
 function Renderer.setupCanvasFor3D()
@@ -264,7 +250,6 @@ end
 function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
-	--love.graphics.setCanvas(Renderer.scene_viewport)
 	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport}
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 end

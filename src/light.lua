@@ -4,8 +4,8 @@ require "math"
 local cpml = require 'cpml'
 
 -- THIS IS HUGE, DO SOMETHING ABOUT IT >:-[[[[[[[[[[[[[[[[[
---local SHADOWMAP_SIZE = 8192
-local SHADOWMAP_SIZE = 4096
+local SHADOWMAP_SIZE = 8192
+--local SHADOWMAP_SIZE = 4096
 
 Light = {__type = "light",
 		 z_mult = 1.0 -- used to increase size of orthographic lightmap projection matrix when shadowmapping

@@ -101,6 +101,9 @@ uniform vec4 ambient_col;
 uniform Image MainTex;
 uniform sampler2DShadow shadow_maps[24]; 
 
+uniform Image luminance;
+uniform int luminance_mipmap_count;
+
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
@@ -206,10 +209,15 @@ void effect( ) {
 	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
 
 	float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+	float avg_lum = 1.5;
+	if (luminance_mipmap_count > 0) {
+		avg_lum = texelFetch(luminance, ivec2(0,0), luminance_mipmap_count-1).r;
+	}
 
 	love_Canvases[0] = result;
-	if (brightness > 1.5) {
-		love_Canvases[1] = result;
+	if (brightness > avg_lum) {
+		float bloom_diff = min((brightness - avg_lum)/10.0,1.0);
+		love_Canvases[1] = vec4(result.rgb*bloom_diff,1.0);
 	} else {
 		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
 	}

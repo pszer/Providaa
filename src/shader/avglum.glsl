@@ -7,9 +7,9 @@
 #endif
 
 #ifdef PIXEL
-	float effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
+	vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
 		vec4 result = Texel(tex, texture_coords);
 		float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
-    	return log(brightness);
+    	return vec4(brightness,brightness,brightness,1.0);
 	}
 #endif

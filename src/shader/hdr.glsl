@@ -9,9 +9,19 @@
 #ifdef PIXEL
 	uniform bool hdr_enabled;
 	uniform float exposure;
+	uniform float exposure_min;
+	uniform float exposure_max;
 	uniform Image bloom_blur;
 
+	uniform Image luminance;
+	uniform int luminance_mipmap_count;
+
 	vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords ) {
+		float avg_lum = texelFetch(luminance, ivec2(0,0), luminance_mipmap_count-1).r;
+
+		float exposure_val = 1.0/(avg_lum)   + exposure/100000000.0;
+		exposure_val = clamp(exposure_val, exposure_min, exposure_max);
+
 		vec4 pix_color = Texel(tex, texture_coords);
 		vec3 hdr_color = pix_color.rgb;
 		vec3 bloom_color = Texel(bloom_blur, texture_coords).rgb;
@@ -19,7 +29,8 @@
 		float hdr_flag  = pix_color.a;
 
 		if (hdr_enabled) {
-			vec3 result = vec3(1.0) - exp(-hdr_color * exposure);
+			//vec3 result = vec3(1.0) - exp(-hdr_color * exposure);
+			vec3 result = vec3(1.0) - exp(-hdr_color * exposure_val);
 			return vec4(result, pix_color.a);
 		} else {
 			return vec4(hdr_color, 1.0);
