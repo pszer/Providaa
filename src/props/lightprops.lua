@@ -15,8 +15,11 @@ LightPropPrototype = Props:prototype{
 	{"light_col", "table", nil, PropDefaultTable{1,1,1,1}, "light's colour; alpha channel determines light`s strength"},
 
 	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
-	{"light_staticdepthmap", nil, nil, nil,    "light's depthbuffer for shadow mapping static objects"},
+	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
+
 	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
+	{"light_static_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light`s (for static shadowmapping)"},
+	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection"},
 
 	{"light_static", "boolean", true, nil,     "true if light is never expected to change in property"}
 

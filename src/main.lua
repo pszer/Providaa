@@ -3,13 +3,19 @@ require "render"
 require "console"
 
 local o_ten_one = require "o-ten-one"
+local limit = require "syslimits"
 
 local profiler = require "profiler"
 
+function __print_info()
+
+end
+
 function love.load()
- 	local major, minor, revision, codename = love.getVersion( )
-	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
-	print(str)
+	print(limit.sysInfoString())
+ --	local major, minor, revision, codename = love.getVersion( )
+--	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
+--	print(str)
 
 	Renderer.load()
 

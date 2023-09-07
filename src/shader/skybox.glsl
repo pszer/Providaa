@@ -25,10 +25,5 @@ varying vec3 cube_coords;
 		float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
 
 		love_Canvases[0] = result;
-		if (brightness > 1.5) {
-			love_Canvases[1] = result;
-		} else {
-			love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
-		}
 	}
 #endif

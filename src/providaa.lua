@@ -19,24 +19,40 @@ function PROV:load()
 	self.scene:loadMap(testmap)
 	self.scene.props.scene_lights = {
 		Light:new{
-			["light_pos"] = {0,0,0},
+			["light_pos"] = {0,0,0,0},
 			--["light_dir"] = {0.5,1.0,-0.5},
 			["light_dir"] = {-1.0,1.5,-1.0},
 			["light_col"] = {255/255, 235/255, 204/255, 10}
 		}
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 9
+	self.scene.props.scene_skybox_hdr_brightness = 10
 
-	--alekin = Model.openFilename("alekin.iqm", "models/alekin.png", true)
+	--pianko = Model.openFilename("pianko.iqm", "models/pianko.png", true)
 	--sphere = Model.openFilename("Sphere.iqm", "blue.png", false)
-	alekin = Models.queryModel("alekin.iqm")
+	pianko = Models.queryModel("pianko.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
-	instance = ModelInstance:newInstance(alekin)
+	crate = Models.queryModel("shittycrate.iqm")
+	instance = ModelInstance:newInstance(pianko)
 	instance.props.model_i_outline_flag = true
+	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}})
+
+	--local insts = {}
+	--for i=1,10000 do
+	--	insts[i] = ModelInfo.new({0,-i*1,-i*1,},{0,0,i/10.0}, 1.0)
+	--end
+	--crate_inst = ModelInstance:newInstances(crate,
+	--	{
+	--		ModelInfo.new({300,-60,-256},{0,0,0},1),
+	--		ModelInfo.new({256,-300,-700},{0,1,1},1),
+	--		ModelInfo.new({256,-48,-350},{0,0,0},2)
+	--	}
+	--)
 
 	sphere = ModelInstance:newInstance(sphere)
 	--self.scene.props.scene_models = { instance , sphere }
-	self.scene.props.scene_models = { sphere, instance }
+	--self.scene.props.scene_models = { sphere, instance , crate_i , crate_inst, crate_i2, crate_i2, crate_i3, crate_i4, crate_i5} 
+	--self.scene.props.scene_models = { sphere, instance , crate_i , crate_inst } 
+	self.scene.props.scene_models = { sphere, instance , crate_i } 
 	--self.scene.props.scene_models = { instance }
 end
 
@@ -84,7 +100,7 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+80,cam.cam_z-100*math.cos(cam.cam_yaw)}
+	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
 	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60

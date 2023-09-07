@@ -4,6 +4,7 @@ local matrix = require 'matrix'
 local shadersend = require 'shadersend'
 
 require "props.modelprops"
+require "modelinstancing"
 require "texturemanager"
 
 Model = {__type = "model"}
@@ -55,6 +56,21 @@ end
 function ModelInstance:newInstance(model, props)
 	local props = props or {}
 	props.model_i_reference = model
+	return ModelInstance:new(props)
+end
+
+function ModelInstance:newInstances(model, instances)
+	local count = #instances
+	instances.mesh = ModelInfo.newMeshFromInfoTable(model, instances)
+
+	local props = {
+		["model_i_static"] = true,
+		["model_i_reference"] = model,
+		["model_i_draw_instances"] = true,
+		["model_i_instances"] = instances,
+		["model_i_instances_count"] = count
+	}
+
 	return ModelInstance:new(props)
 end
 
@@ -139,14 +155,16 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 	local model = self:getModel()
 	love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
 
-	if self.props.model_i_outline_flag and draw_outline then
+	if self.props.model_i_draw_instances then
+		self:drawInstances(shader)
+	elseif self.props.model_i_outline_flag and draw_outline then
 
 		local mesh = model:getMesh().mesh
 		local colour = self.props.model_i_outline_colour
 
 		-- scaled up model matrix for drawing the outline
 		shadersend(shader,"texture_animated", false)
-		shadersend(shader,"draw_to_outline_buffer", true)
+		shadersend(shader,"draw_to_outline_buffer", 1.0)
 		shadersend(shader,"outline_colour", colour)
 
 		-- draw model to screen, setting every pixel rendered stencil to one
@@ -156,11 +174,34 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 		end
 		love.graphics.stencil(stencil_function, "replace", 1)
 
-		shadersend(shader,"draw_to_outline_buffer", false)
+		shadersend(shader,"draw_to_outline_buffer", 0.0)
 	else
 		model.props.model_mesh:drawModel(shader)
 	end
 	love.graphics.setFrontFaceWinding("ccw")
+end
+
+function ModelInstance:drawInstances(shader) 
+	local shader = shader or love.graphics.getShader()
+	local attr_mesh = self:getInstancesAttributeMesh()
+	local model_mesh = self:getModel():getMesh().mesh
+	model_mesh:attachAttribute("InstanceColumn1", attr_mesh, "perinstance")
+	model_mesh:attachAttribute("InstanceColumn2", attr_mesh, "perinstance")
+	model_mesh:attachAttribute("InstanceColumn3", attr_mesh, "perinstance")
+	model_mesh:attachAttribute("InstanceColumn4", attr_mesh, "perinstance")
+
+	shadersend(shader, "instance_draw_call", true)
+	love.graphics.drawInstanced(model_mesh, self.props.model_i_instances_count)
+	shadersend(shader, "instance_draw_call", false)
+
+	--model_mesh:detachAttribute("InstanceColumn1", attr_mesh)
+	--model_mesh:detachAttribute("InstanceColumn2", attr_mesh)
+	--model_mesh:detachAttribute("InstanceColumn3", attr_mesh)
+	--model_mesh:detachAttribute("InstanceColumn4", attr_mesh)
+end
+
+function ModelInstance:getInstancesAttributeMesh()
+	return self.props.model_i_instances.mesh
 end
 
 function Model:generateDirectionFixingMatrix()
@@ -255,7 +296,19 @@ end
 function Model:getBoneMatrices(animation, frame)
 	if not self.props.model_animated then return end
 
+	local skeleton = self:getSkeleton()
+
 	local anim_data   = self.props.model_animations[animation]
+	if not anim_data then
+		local outframe = self.outframes
+		print("getBoneMatrices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+		for i,v in ipairs(skeleton) do
+			local mat = cpml.mat4.new(1.0)
+			outframe[i] = mat
+		end
+		return outframe
+	end
+
 	local anim_first  = anim_data.first
 	local anim_last   = anim_data.last
 	local anim_length = anim_last - anim_first
@@ -268,10 +321,8 @@ function Model:getBoneMatrices(animation, frame)
 	local frame1_id = anim_first + (frame_floor-1) % anim_length
 	local frame2_id = anim_first + (frame_floor) % anim_length
 
-	local skeleton = self:getSkeleton()
-
 	local outframe = self.outframes
-	for i,pose1 in pairs(self.frames[frame1_id]) do
+	for i,pose1 in ipairs(self.frames[frame1_id]) do
 		pose2 = self.frames[frame2_id][i]
 
 		local pose_interp = {}

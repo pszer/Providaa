@@ -2,6 +2,7 @@ require 'math'
 
 require "props.sceneprops"
 require "light"
+require "tick"
 
 local shadersend = require 'shadersend'
 local matrix     = require 'matrix'
@@ -13,6 +14,10 @@ Scene.__index = Scene
 function Scene:new(props)
 	local this = {
 		props = ScenePropPrototype(props),
+
+		shadow_last_update = 0,
+		static_models = {},
+		dynamic_models = {}
 	}
 
 	setmetatable(this,Scene)
@@ -32,6 +37,15 @@ function Scene:loadMap(map)
 	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)
 end
 
+function Scene:addModelInstance(inst)
+	table.insert(self.props.scene_models, inst)
+	if inst.props.model_i_static then
+		table.insert(self.static_models, inst)
+	else
+		table.insert(self.dynamic_models, inst)
+	end
+end
+
 function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local props = self.props
 
@@ -44,10 +58,8 @@ function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 		table.insert(props.scene_meshes,mesh) end
 
 	self:generateGenericMesh(map, props.scene_meshes)
-	--props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("nil.png"), props.scene_meshes)
 
 	props.scene_grid:applyAttributes()
-	--Wall.applyAttributes(props.scene_walls)
 	WallTile.applyAttributes(props.scene_wall_tiles, props.scene_width, props.scene_height)
 end
 
@@ -55,8 +67,9 @@ function Scene:generateGenericMesh(map, scene_meshes)
 	local props = self.props
 	local bottom_mesh = Map.generateBottomMesh(map)
 	local meshes = {bottom_mesh, unpack(scene_meshes)}
+	--local meshes = scene_meshes
 
-	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("dirt.png"), meshes)
+	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("nil.png"), meshes)
 end
 
 function Scene:pushFog()
@@ -69,10 +82,8 @@ end
 function Scene:pushAmbience()
 	local sh = love.graphics.getShader()
 	sh:send("light_col", self.props.scene_light_col)
-	--sh:send("light_dir", self.props.scene_light_dir)
 	sh:send("light_dir", self.props.scene_lights[1].props.light_dir)
 	sh:send("ambient_col", self.props.scene_ambient_col)
-	--sh:send("ambient_str", self.props.scene_ambient_str)
 end
 
 function Scene:drawGridMap()
@@ -97,60 +108,39 @@ end
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
-	--self.props.scene_light_dir[1] = math.sin(getTick()/50)/2
-	--self.props.scene_light_dir[3] = math.cos(getTick()/50)/2
-	--
-	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
-	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
-	--self.props.scene_lights[1].props.light_dir[3] = math.sin(getTick()/45)*3
-	--self.props.scene_lights[1].props.light_dir[1] = math.sin(getTick()/45)*2
-	--self.props.scene_lights[1]:generateLightSpaceMatrix()
-
 	cam:update()
 	cam:generateViewMatrix()
-	cam:generateFrustrumCornersWorldSpace()
-
-	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
-
-	--local corners = cam:getFrustrumCornersWorldSpace()
+	--cam:generateFrustrumCornersWorldSpace()
 
 	Renderer.setupCanvasFor3D()
 	love.graphics.clear(0,0,0,0)
 
-	local skybox_drawn = self:drawSkybox()
+	self:drawSkybox()
 
 	for i,v in ipairs(self.props.scene_models) do
 		v:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
 
-	--self.props.scene_camera:pushToShader()
-	self:shadowPass()
+	self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
+	self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
+	self:shadowPass( cam )
 
 	Renderer.setupCanvasFor3D()
+	self:pushShadowMaps()
 
 	self:pushFog()
 	self:pushAmbience()
 	self.props.scene_camera:pushToShader()
-	self:pushShadowMaps()
 
-	local props = self.props
-
-	local fog = props.scene_fog_colour
-	local fog_end = props.scene_fog_end
-	if not skybox_drawn then love.graphics.clear(fog[1],fog[2],fog[3],1) end
-
-	Renderer.sendLuminance()
 	self:drawGridMap()
 	self:drawModels(false, true)
-	
-	--for i,v in ipairs(self.props.scene_models) do
-	--	v:draw(nil, false)
-	--end
 
 	Renderer.dropCanvas()
 end
 
-function Scene:shadowPass()
+function Scene:shadowPass( cam )
+	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
+
 	local props = self.props
 	for i,light in ipairs(props.scene_lights) do
 		light:clearDepthMap()
@@ -164,6 +154,7 @@ function Scene:shadowPass()
 		self:drawModels(false, false)
 
 		love.graphics.setMeshCullMode("front")
+
 		--self:drawGridMap()
 		self:drawGridMapForShadowMapping()
 

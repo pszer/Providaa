@@ -7,8 +7,10 @@ varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 
+const int MAX_LIGHTS = 24;
 uniform int LIGHT_COUNT;
-uniform mat4 u_lightspaces[24];
+uniform float disable_shadows;
+uniform mat4 u_lightspaces[MAX_LIGHTS];
 
 #ifdef VERTEX
 
@@ -26,6 +28,12 @@ attribute vec3 VertexNormal;
 attribute vec4 VertexWeight;
 attribute vec4 VertexBone;
 attribute vec4 VertexTangent;
+
+uniform bool instance_draw_call;
+attribute vec4 InstanceColumn1;
+attribute vec4 InstanceColumn2;
+attribute vec4 InstanceColumn3;
+attribute vec4 InstanceColumn4;
 
 attribute vec2 TextureScale;
 attribute vec2 TextureOffset;
@@ -47,14 +55,32 @@ mat4 get_deform_matrix() {
 mat3 get_normal_matrix(mat4 skin_u) {
 	// u_normal_model matrix is calculated outside and passed to shader
 	// if skinning is enabled then this needs to be recalculated
-	if (u_skinning != 0) {
+	if (u_skinning != 0 || instance_draw_call) {
 		return mat3(transpose(inverse(skin_u)));
 	}
 	return mat3(u_normal_model);
 }
 
+mat4 get_instance_model() {
+	return mat4(InstanceColumn1,
+				InstanceColumn2,
+				InstanceColumn3,
+				InstanceColumn4);
+}
+
+mat4 get_model_matrix() {
+	if (instance_draw_call) {
+		return mat4(InstanceColumn1,
+		            InstanceColumn2,
+		            InstanceColumn3,
+		            InstanceColumn4);
+	} else {
+		return u_model;
+	}
+}
+
 vec4 position(mat4 transform, vec4 vertex) {
-	mat4 skin_u = u_model * get_deform_matrix();
+	mat4 skin_u = get_model_matrix() * get_deform_matrix();
 	mat4 modelview_u = u_rot * u_view * skin_u;
 
 	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
@@ -66,13 +92,16 @@ vec4 position(mat4 transform, vec4 vertex) {
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
+	// interpolate fragment position in viewspace and worldspace
 	frag_position = view_v.xyz;
 	frag_w_position = model_v.xyz;
 
+	// calculate fragment position in lightspaces
 	for (int i = 0; i < LIGHT_COUNT; i++) {
-		frag_light_pos[i] = u_lightspaces[i] * model_v;
+		frag_light_pos[i] = (u_lightspaces[i] * model_v) * (1.0-disable_shadows);
 	}
 
+	// apply texture offset/scaling
 	texscale = TextureScale;
 	if (texscale.x == 0) { texscale.x = 1; }
 	if (texscale.y == 0) { texscale.y = 1; }
@@ -99,13 +128,16 @@ uniform vec4 light_col;
 uniform vec4 ambient_col;
 
 uniform Image MainTex;
-uniform sampler2DShadow shadow_maps[24]; 
+uniform sampler2DShadow shadow_maps[MAX_LIGHTS]; 
 
 uniform Image luminance;
 uniform int luminance_mipmap_count;
 
-uniform bool draw_to_outline_buffer;
+uniform float draw_to_outline_buffer;
 uniform vec4 outline_colour;
+
+uniform bool draw_as_solid_colour;
+uniform vec4 solid_colour;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -128,7 +160,7 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 5);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -163,29 +195,86 @@ const vec2 poissonDisk[16] = vec2[](
    vec2( 0.14383161, -0.14100790 )
 );
 
+const vec2 distantPoints[4] = vec2[](
+   vec2( -0.9, -0.9 ),
+   vec2(  0.9, -0.9 ),
+   vec2(  0.9,  0.9 ),
+   vec2( -0.9,  0.9 )
+);
+
 float random(vec3 seed, int i){
 	vec4 seed4 = vec4(seed,i);
 	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
 	return fract(sin(dot_product) * 43758.5453);
 }
 
-float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map ) {
-	vec3 prooj_coords = pos.xyz / pos.w;
-	prooj_coords = prooj_coords * 0.5 + 0.5;
+// unfortunately Texture:setWrap("clampone") is only in Love2D 12.0 (not released yet)
+// have to do to it manually...
+float texture_shadow_clampone(sampler2DShadow shadow, vec3 vec) {
+	if (vec.x <= 0.0 || vec.x >= 1.0 || vec.y <= 0.0 || vec.y >= 1.0 || vec.z <= 0.0 || vec.z >= 1.0) {
+		return 1.0;
+	} else {
+		return texture(shadow, vec);
+	}
+}
+
+float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map , vec3 normal , vec3 light_dir) {
+	vec4 prooj_coords = pos.xyzw;
+	prooj_coords = vec4(prooj_coords.xyz * 0.5 + 0.5, prooj_coords.w);
+
+	float cosTheta = clamp( dot( normal,light_dir ), 0,1 );
 
 	float curr_depth    = prooj_coords.z;
-	float bias = 0.0015;
 
-	float shadow = 0.0;
-	for (int i=0;i<4;i++){
+	float bias = 0.00125*tan(acos(cosTheta));
+	float radius = 15000.0;
+	bias = clamp(bias, 0.000125,0.00180);
+
+	float shadow = 1.0;
+
+	// first we sample 4 distant points, if all 4 are either in shadow or in light its likely that any other points
+	// we sample would also be in shadow or in light
+	for (int i=0; i<4; i++) {
+		float s = texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + distantPoints[i]/radius, (curr_depth/prooj_coords.w)-bias));
+		shadow -= (1.0/16.0) * s;
+	}
+
+	// if all distant points are in shadow, then return 1.0 (fully in shadow)
+	// otherwise 0.0 (fully in light)
+	if (shadow == 1.0) {
+		return 1.0;
+	} else if (shadow <= 1.0 - 3.8 * (1/16.0)) {
+		return 0.0;
+	}
+
+	for (int i=0; i<12; i++) {
 		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
-		shadow += 0.25 * (1.0- texture( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/20000.0, curr_depth-bias), 0));
+		shadow -= (1.0/16.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
 	}
 
 	return shadow;
 }
 
+// for old bloom method
+// love_Canvases[0] = HDR color
+// love_Canvases[1] = bloom extraction
+// love_Canvases[2] = outline buffer
+//
+// for physically based bloom (current method)
+// love_Canvases[0] = HDR color
+// love_Canvases[1] = outline buffer
+
 void effect( ) {
+	if (draw_as_solid_colour) {
+		//love_Canvases[1] = vec4(0,0,0,0);
+		//love_Canvases[2] = vec4(0,0,0,0);
+
+		love_Canvases[0] = solid_colour;
+		love_Canvases[1] = vec4(0,0,0,0);
+
+		return;
+	}
+
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 
@@ -198,44 +287,34 @@ void effect( ) {
 	vec3 diffuse = diffuse_lighting(frag_normal, light_dir_n, light_col);
 	vec3 specular = specular_highlight( frag_normal , light_dir_n, light_col);
 
+	float shadow = 0.0;
 	// TODO implement multiple light sources
-	float shadow = shadow_calculation(frag_light_pos[0], u_lightspaces[0], shadow_maps[0]);
+	if (disable_shadows == 0.0) {
+		shadow = shadow_calculation(frag_light_pos[0], u_lightspaces[0], shadow_maps[0], frag_normal , light_dir_n);
+	}
 
 	vec4 light = vec4(ambient + (1.0-shadow)*(diffuse + specular), 1.0);
 
-	vec4 texcolor;
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
 	coords = coords / texscale;
 
 	//texcolor = Texel(tex, coords);
-	texcolor = Texel(MainTex, coords);
+	vec4 texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * light;
 
 	// TODO make the fog colour work properly with HDR
 	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
 
-	float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
-	float avg_lum = 1.5;
-	if (luminance_mipmap_count > 0) {
-		avg_lum = texelFetch(luminance, ivec2(0,0), luminance_mipmap_count-1).r;
-	}
+	// for old bloom method
+	//float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+	//float avg_lum = 1.5;
+	//if (luminance_mipmap_count > 0) {
+	//	avg_lum = texelFetch(luminance, ivec2(0,0), luminance_mipmap_count-1).r;
+	//}
 
 	love_Canvases[0] = result;
-	if (brightness > avg_lum) {
-		float bloom_diff = min((brightness - avg_lum)/10.0,1.0);
-		love_Canvases[1] = vec4(result.rgb*bloom_diff,1.0);
-	} else {
-		love_Canvases[1] = vec4(0.0,0.0,0.0,1.0);
-	}
-
-	if (draw_to_outline_buffer) { // used when drawing outline for objects
-		love_Canvases[2] = vec4(outline_colour);
-	} else {
-		love_Canvases[2] = vec4(0,0,0,0);
-	}
-
-	//return result;
+	love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;
 }
 
 #endif

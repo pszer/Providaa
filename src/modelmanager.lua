@@ -36,7 +36,7 @@ end
 -- loads all models in cfg/model_attributes
 -- not a good idea
 function Models.loadModels()
-	print("loading from cfg/mpdel_attributes (Model.loadModels() should not be used!)")
+	print("loading from cfg/model_attributes (Model.loadModels() should not be used!)")
 	for i,v in pairs(model_attributes) do
 		Models.loadModel(i)
 	end
@@ -49,6 +49,10 @@ function Models.openFilename(fname, texture_fname, load_anims)
 	local winding    = attributes["model_vertex_winding"] or "ccw"
 
 	local objs = Models.readIQM(fpath)
+
+	if not objs then
+		print("Models.openFilename(): model " .. fname .. " does not exist")
+	end
 
 	local texture = Textures.loadTexture(texture_fname)
 

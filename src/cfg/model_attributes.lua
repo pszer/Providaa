@@ -1,6 +1,6 @@
 local MODEL_ATTRIBUTES = {
-	["alekin.iqm"] = {
-		["model_texture_fname"]  = "models/alekin.png",
+	["pianko.iqm"] = {
+		["model_texture_fname"]  = "models/pianko.png",
 		["model_vertex_winding"] = "ccw"
 	},
 
@@ -8,5 +8,9 @@ local MODEL_ATTRIBUTES = {
 		["model_texture_fname"]  = "blue.png",
 		["model_vertex_winding"] = "cw"
 	},
+	["shittycrate.iqm"] = {
+		["model_texture_fname"]  = "models/shittycrate.png",
+		["model_vertex_winding"] = "cw"
+	}
 }
 return MODEL_ATTRIBUTES

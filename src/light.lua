@@ -2,10 +2,14 @@ require "props.lightprops"
 
 require "math"
 local cpml = require 'cpml'
+local limit = require 'syslimits'
 
 -- THIS IS HUGE, DO SOMETHING ABOUT IT >:-[[[[[[[[[[[[[[[[[
-local SHADOWMAP_SIZE = 4096
---local SHADOWMAP_SIZE = 4096
+local SHADOWMAP_SIZE = 2048*2
+local STATIC_SHADOWMAP_SIZE = 1024
+
+-- number of ticks between each shadow re-draw
+SHADOW_UPDATE_FREQ = 0.0
 
 Light = {__type = "light",
 		 z_mult = 1.0 -- used to increase size of orthographic lightmap projection matrix when shadowmapping
@@ -16,24 +20,43 @@ Light.__index = Light
 function Light:new(props)
 	local this = {
 		props = LightPropPrototype(props),
-		testcanvas
 	}
 
 	setmetatable(this,Light)
 
 	this:allocateDepthMap()
 	--this:generateLightSpaceMatrix()
+	--
+	if this.props.light_pos[4] == 0 and not this.props.light_static then
+		error("dynamic directional lights are not supported")
+	elseif this.props.light_pos[4] ~= 0.0 and this.props.light_pos[4] ~= 1.0 then
+		error("Light:new(): light_pos w component is "..tostring(this.props.light_pos[4])..", neither 0 or 1, ill defined light")
+	end
 
 	return this
 end
 
-function Light:allocateDepthMap()
-	self.props.light_depthmap = love.graphics.newCanvas (SHADOWMAP_SIZE,SHADOWMAP_SIZE,{format = "depth16", readable=true})
-	--self.props.light_depthmap = love.graphics.newCanvas (SHADOWMAP_SIZE,SHADOWMAP_SIZE,3,{type="array", format = "depth16", readable=true})
-	self.props.light_depthmap:setDepthSampleMode("greater")
-	--self.testcanvas = love.graphics.newCanvas(SHADOWMAP_SIZE,SHADOWMAP_SIZE)
+-- returns either "directional" or "point"
+function Light:getLightType()
+	local w = self.props.light_pos[4]
+	if w == 0 then return "directional"
+	elseif w == 1 then return "point"
+	else return nil end
 end
 
+function Light:allocateDepthMap(size)
+	local size = size or SHADOWMAP_SIZE
+	local w,h = limit.clampTextureSize(size)
+	self.props.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
+	self.props.light_depthmap:setDepthSampleMode("greater")
+
+	if self:getLightType() == "directional" then
+		local w2, h2 = limit.clampTextureSize(STATIC_SHADOWMAP_SIZE)
+		self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
+	end
+end
+
+-- unused, use other LightSpaceMatrix functions
 function Light:generateLightSpaceMatrix()
 	local props = self.props
 	if props.light_static and self.props.light_lightspace_matrix then
@@ -64,9 +87,9 @@ function Light:generateLightSpaceMatrix()
 end
 
 function Light:generateLightSpaceMatrixFromCamera( cam )
-	local mat = 
-	self:calculateLightSpaceMatrixFromFrustrum(
-		cam:getFrustrumCornersWorldSpace())
+	local proj = cam:calculatePerspectiveMatrix(nil, 360)
+	local mat = self:calculateLightSpaceMatrixFromFrustrum(
+		cam:generateFrustrumCornersWorldSpace(proj))
 	self.props.light_lightspace_matrix = mat
 end
 
@@ -121,15 +144,24 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 	end
 
 
-	--print(min_x, max_x, max_y, min_y, min_z, max_z)
 	local light_proj = cpml.mat4.from_ortho(min_x, max_x, max_y, min_y, min_z, max_z)
-	--print(light_proj)
+	local dimensions = {
+		min_x + pos.x,
+		max_x + pos.x,
+		min_y + pos.y,
+		max_y + pos.y,
+		min_z + pos.z,
+		max_z + pos.z,
+	}
+
 	props.light_lightspace_matrix = light_proj * light_view
 	return light_proj * light_view
 end
 
 function Light:getDepthMap()
 	return self.props.light_depthmap end
+function Light:getStaticDepthMap()
+	return self.props.light_static_depthmap end
 function Light:getLightSpaceMatrix()
 	return self.props.light_lightspace_matrix end
 

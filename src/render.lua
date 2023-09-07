@@ -3,6 +3,7 @@ require 'math'
 require "camera"
 require "resolution"
 require "texturemanager"
+require "bloom"
 local shadersend = require 'shadersend'
 
 --CAM = Camera:new()
@@ -20,12 +21,14 @@ Renderer = {
 
 	scene_viewport               = nil,
 	scene_postprocess_viewport   = nil,
-	scene_bloom_viewport         = nil,
+	--scene_bloom_viewport         = nil,
 	scene_outline_viewport       = nil,
 	scene_buffer  = {nil, nil},
 	scene_postprocess_viewport   = nil,
 	scene_avglum_buffer = nil,
 	scene_depthbuffer   = nil,
+
+	bloom_renderer = nil,
 
 	viewport_w = 1000,
 	viewport_h = 1000,
@@ -72,7 +75,11 @@ function Renderer.createCanvas()
 	                                                             {format = "r16f", mipmaps = "manual"})
 	Renderer.scene_outline_viewport           = love.graphics.newCanvas(w,h, {format = "rgba16f"})
 	Renderer.scene_depthbuffer                = love.graphics.newCanvas(w,h, {format = "depth24stencil8"})
-
+	if Renderer.bloom_renderer then
+		Renderer.bloom_renderer:reallocateMips(w,h)
+	else
+		Renderer.bloom_renderer = BloomRenderer:new(w,h)
+	end
 
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h
@@ -155,15 +162,14 @@ function Renderer.renderScaled(canvas, hdr)
 		love.graphics.setColor(1,1,1,1)
 		Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
 
-		local blurred_bloom =
-			Renderer.blurCanvas(Renderer.scene_bloom_viewport, 2)
+		local bloom = Renderer.bloom_renderer:renderBloomTexture(Renderer.scene_viewport, 0.006)
 
 		love.graphics.setShader(Renderer.hdr_shader)
 
 		Renderer.hdr_shader:send("hdr_enabled", true)
 		Renderer.hdr_shader:send("exposure_min", exposure_min)
 		Renderer.hdr_shader:send("exposure_max", exposure_max)
-		Renderer.hdr_shader:send("bloom_blur", blurred_bloom)
+		Renderer.hdr_shader:send("bloom_blur", bloom)
 		Renderer.hdr_shader:send("exposure", exposure)
 		Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
 		Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
@@ -318,7 +324,7 @@ function Renderer.setupCanvasFor3D()
 		Renderer.createCanvas()
 	end
 
-	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport, Renderer.scene_outline_viewport,
+	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_outline_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
 		depth=true, stencil=true}
 	love.graphics.setDepthMode( "less", true  )
@@ -330,14 +336,14 @@ end
 function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
-	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_bloom_viewport}
+	love.graphics.setCanvas{Renderer.scene_viewport}
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 end
 
 function Renderer.setupCanvasForShadowMapping(light)
 	love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
 	love.graphics.setDepthMode( "less", true )
-	love.graphics.setMeshCullMode("back")
+	love.graphics.setMeshCullMode("front")
 	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)
 end
 
