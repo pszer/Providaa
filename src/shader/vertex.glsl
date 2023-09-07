@@ -104,9 +104,6 @@ vec4 position(mat4 transform, vec4 vertex) {
 	frag_w_position = model_v.xyz;
 
 	// calculate fragment position in lightspaces
-	//for (int i = 0; i < LIGHT_COUNT; i++) {
-	//	frag_light_pos[i] = (u_lightspaces[i] * model_v) * (1.0-disable_shadows);
-	//}
 	dir_frag_light_pos = (u_dir_lightspace * model_v) * (1.0-disable_shadows);
 	dir_static_frag_light_pos = (u_dir_static_lightspace * model_v) * (1.0-disable_shadows);
 
@@ -146,9 +143,6 @@ uniform vec4 dir_light_col;
 
 uniform float draw_to_outline_buffer;
 uniform vec4 outline_colour;
-
-uniform bool draw_as_solid_colour;
-uniform vec4 solid_colour;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -304,13 +298,6 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 }
 
 void effect( ) {
-	if (draw_as_solid_colour) {
-		love_Canvases[0] = solid_colour;
-		love_Canvases[1] = vec4(0,0,0,0);
-
-		return;
-	}
-
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 

@@ -3,6 +3,7 @@ local cpml = require 'cpml'
 local matrix = require 'matrix'
 local shadersend = require 'shadersend'
 
+require "cfg.gfx"
 require "props.modelprops"
 require "modelinstancing"
 require "texturemanager"
@@ -158,27 +159,47 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 	if self.props.model_i_draw_instances then
 		self:drawInstances(shader)
 	elseif self.props.model_i_outline_flag and draw_outline then
-
-		local mesh = model:getMesh().mesh
-		local colour = self.props.model_i_outline_colour
-
-		-- scaled up model matrix for drawing the outline
-		shadersend(shader,"texture_animated", false)
-		shadersend(shader,"draw_to_outline_buffer", 1.0)
-		shadersend(shader,"outline_colour", colour)
-
-		-- draw model to screen, setting every pixel rendered stencil to one
-		local stencil_function = function()
-			love.graphics.setColorMask( true, true, true, true )
-			love.graphics.draw(mesh)
-		end
-		love.graphics.stencil(stencil_function, "replace", 1)
-
-		shadersend(shader,"draw_to_outline_buffer", 0.0)
+		self:drawOutlined(shader)
 	else
 		model.props.model_mesh:drawModel(shader)
 	end
 	love.graphics.setFrontFaceWinding("ccw")
+end
+
+function ModelInstance:drawOutlined(shader)
+	if self.props.model_i_contour_flag and gfxSetting("enable_contour") then
+		self:drawContour(shader)
+	end
+
+	local model = self:getModel()
+	local mesh = model:getMesh().mesh
+	local colour = self.props.model_i_outline_colour
+
+	-- scaled up model matrix for drawing the outline
+	shadersend(shader,"texture_animated", false)
+	shadersend(shader,"draw_to_outline_buffer", 1.0)
+	shadersend(shader,"outline_colour", colour)
+
+	-- draw model to screen, setting every pixel rendered stencil to one
+	local stencil_function = function()
+		love.graphics.setColorMask( true, true, true, true )
+		love.graphics.draw(mesh)
+	end
+	love.graphics.stencil(stencil_function, "replace", 1)
+
+	shadersend(shader,"draw_to_outline_buffer", 0.0)
+end
+
+function ModelInstance:drawContour(shader)
+	local model = self:getModel()
+	local mesh = model:getMesh().mesh
+	local colour = self.props.model_i_outline_colour
+
+	Renderer.setupCanvasForContour()
+	self:sendToShader()
+	shadersend(love.graphics.getShader(), "solid_colour", colour)
+	model.props.model_mesh:drawModel(shader)
+	Renderer.setupCanvasFor3D()
 end
 
 function ModelInstance:drawInstances(shader) 

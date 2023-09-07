@@ -29,13 +29,11 @@ function Console.keypressed(key)
         end
 	elseif key == "return" then
 		local code = "do "..Console.text.." end"
-		print("CONSOLE:", code)
-		local ok, func = pcall(loadstring,code)
-		if ok then
-			func()
-		end
+		print("console invoked: " .. code)
+		local status = pcall(loadstring,code)
 
 		Console.text = ""
+		Console.open_flag = false
 	elseif key == "escape" or key == "f8" then
 		Console.open_flag = false
     end

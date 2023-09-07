@@ -15,6 +15,7 @@ Renderer = {
 	shadow_shader  = nil,
 	avglum_shader  = nil,
 	outline_shader = nil, 
+	contour_shader = nil,
 	hdr_shader     = nil,
 
 	skybox_model = nil,
@@ -55,6 +56,7 @@ end
 
 function Renderer.loadShaders()
 	Renderer.vertex_shader  = love.graphics.newShader("shader/vertex.glsl")
+	Renderer.contour_shader = love.graphics.newShader("shader/contour.glsl")
 	Renderer.skybox_shader  = love.graphics.newShader("shader/skybox.glsl")
 	Renderer.shadow_shader  = love.graphics.newShader("shader/shadow.glsl")
 	Renderer.avglum_shader  = love.graphics.newShader("shader/avglum.glsl")
@@ -178,7 +180,7 @@ function Renderer.renderScaled(canvas, hdr)
 		love.graphics.origin()
 		love.graphics.draw(canvas)
 
-		Renderer.drawOutlineBuffer(Renderer.scene_postprocess_viewport, Renderer.scene_outline_viewport, 1)
+		--Renderer.drawOutlineBuffer(Renderer.scene_postprocess_viewport, Renderer.scene_outline_viewport, 1)
 
 		love.graphics.origin()
 		love.graphics.setShader()
@@ -281,14 +283,16 @@ function Renderer.drawOutlineBuffer(canvas, outline, size)
 	local outline_result = Renderer.enlargeOutline(outline, size)
 	love.graphics.setShader()
 	love.graphics.setCanvas{canvas,
-		depthstencil = Renderer.scene_depthbuffer, stencil=true , depth=false}
+		depthstencil = Renderer.scene_depthbuffer, stencil=true , depth=true}
 
 	love.graphics.setStencilTest ("less", 1)
+	love.graphics.setDepthMode("less", false)
 	love.graphics.origin()
 	love.graphics.setColor(1,1,1,1)
 
 	love.graphics.draw(outline_result)
 	love.graphics.setStencilTest ()
+	love.graphics.setDepthMode("less", false)
 end
 
 function Renderer.sendLuminance(shader)
@@ -331,6 +335,15 @@ function Renderer.setupCanvasFor3D()
 	love.graphics.setMeshCullMode("front")
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
+end
+
+function Renderer.setupCanvasForContour()
+	love.graphics.setCanvas{ Renderer.scene_viewport, depthstencil = Renderer.scene_depthbuffer,
+		depth=true }
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("back")
+
+	love.graphics.setShader(Renderer.contour_shader)
 end
 
 function Renderer.setupCanvasForSkybox()

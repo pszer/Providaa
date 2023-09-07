@@ -32,6 +32,7 @@ function PROV:load()
 	crate = Models.queryModel("shittycrate.iqm")
 	instance = ModelInstance:newInstance(pianko)
 	instance.props.model_i_outline_flag = true
+	instance.props.model_i_contour_flag = true
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
 	--local insts = {}
@@ -95,7 +96,7 @@ function PROV:update(dt)
 	end
 
 	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
-	--instance.props.model_i_rotation[2] = -getTick()/60
+	instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60
 	--

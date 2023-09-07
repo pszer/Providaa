@@ -141,6 +141,9 @@ function Scene:draw(cam)
 	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
 	self:shadowPass( cam )
 
+	Renderer.setupCanvasForContour()
+	self.props.scene_camera:pushToShader()
+
 	Renderer.setupCanvasFor3D()
 	self:pushShadowMaps()
 

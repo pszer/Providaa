@@ -102,8 +102,6 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		local corners, centre = cam:generateFrustrumCornersWorldSpace(proj)
 		
 		if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
-			print(getTick(),"new!")
-
 			local static_mat, static_map_dim = self:calculateLightSpaceMatrixFromFrustrum(
 				corners, centre, 700)
 
