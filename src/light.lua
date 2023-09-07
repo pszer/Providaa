@@ -87,10 +87,22 @@ function Light:generateLightSpaceMatrix()
 end
 
 function Light:generateLightSpaceMatrixFromCamera( cam )
+	-- use perspective matrix with far plane very close to camera for dynamic shadowmapping
 	local proj = cam:calculatePerspectiveMatrix(nil, 360)
 	local mat = self:calculateLightSpaceMatrixFromFrustrum(
 		cam:generateFrustrumCornersWorldSpace(proj))
 	self.props.light_lightspace_matrix = mat
+
+	-- for static shadowmapping we allocate a lightspace matrix larger than the camera's
+	-- frustrum and then render the shadowmap once, only drawing static objects in the scene.
+	-- whenever the camera's frustrum goes
+	-- outside this lightspace matrix we generate a new one and render the shadowmap again.
+	-- this way
+	local static_mat, static_map_dim = self:calculateLightSpaceMatrixFromFrustrum(
+		cam:generateFrustrumCornersWorldSpace(nil, nil, 1.5)
+	)
+	self.props.light_static_lightspace_matrix = static_mat
+	self.props.light_static_lightspace_matrix_dimensions = static_map_dim
 end
 
 function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum_centre )
@@ -154,7 +166,7 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 		max_z + pos.z,
 	}
 
-	props.light_lightspace_matrix = light_proj * light_view
+	--props.light_lightspace_matrix = light_proj * light_view
 	return light_proj * light_view
 end
 
