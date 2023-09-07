@@ -340,8 +340,12 @@ function Renderer.setupCanvasForSkybox()
 	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
 end
 
-function Renderer.setupCanvasForShadowMapping(light)
-	love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
+function Renderer.setupCanvasForShadowMapping(light, map_type)
+	if map_type == "static" then
+		love.graphics.setCanvas{depthstencil = light.props.light_static_depthmap, depth=true}
+	else
+		love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
+	end
 	love.graphics.setDepthMode( "less", true )
 	love.graphics.setMeshCullMode("front")
 	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)

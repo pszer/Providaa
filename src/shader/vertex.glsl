@@ -1,16 +1,23 @@
 #pragma language glsl3
 
+//const int MAX_POINT_LIGHTS = 10;
+// the distance at which the dynamic shadowmap ends, its here
+// we transition from sampling the dynamic shadowmap to the static one
+const float DIR_LIGHT_TRANSITION_DISTANCE = 360;
+
 varying vec3 frag_position;
 varying vec3 frag_w_position;
-varying vec4 frag_light_pos[24];
+varying vec4 dir_frag_light_pos;
+varying vec4 dir_static_frag_light_pos;
 varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 
-const int MAX_LIGHTS = 24;
-uniform int LIGHT_COUNT;
+//uniform int POINT_LIGHT_COUNT;
 uniform float disable_shadows;
-uniform mat4 u_lightspaces[MAX_LIGHTS];
+uniform mat4 u_dir_lightspace;
+uniform mat4 u_dir_static_lightspace;
+//uniform mat4 u_point_lightspaces[MAX_POINT_LIGHTS];
 
 #ifdef VERTEX
 
@@ -97,9 +104,11 @@ vec4 position(mat4 transform, vec4 vertex) {
 	frag_w_position = model_v.xyz;
 
 	// calculate fragment position in lightspaces
-	for (int i = 0; i < LIGHT_COUNT; i++) {
-		frag_light_pos[i] = (u_lightspaces[i] * model_v) * (1.0-disable_shadows);
-	}
+	//for (int i = 0; i < LIGHT_COUNT; i++) {
+	//	frag_light_pos[i] = (u_lightspaces[i] * model_v) * (1.0-disable_shadows);
+	//}
+	dir_frag_light_pos = (u_dir_lightspace * model_v) * (1.0-disable_shadows);
+	dir_static_frag_light_pos = (u_dir_static_lightspace * model_v) * (1.0-disable_shadows);
 
 	// apply texture offset/scaling
 	texscale = TextureScale;
@@ -128,10 +137,12 @@ uniform vec4 light_col;
 uniform vec4 ambient_col;
 
 uniform Image MainTex;
-uniform sampler2DShadow shadow_maps[MAX_LIGHTS]; 
+uniform sampler2DShadow dir_shadow_map; 
+uniform sampler2DShadow dir_static_shadow_map;
+uniform vec3 dir_light_dir;
+uniform vec4 dir_light_col;
 
-uniform Image luminance;
-uniform int luminance_mipmap_count;
+//uniform sampler2DShadow point_shadow_maps[MAX_POINT_LIGHTS];
 
 uniform float draw_to_outline_buffer;
 uniform vec4 outline_colour;
@@ -255,20 +266,45 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	return shadow;
 }
 
-// for old bloom method
-// love_Canvases[0] = HDR color
-// love_Canvases[1] = bloom extraction
-// love_Canvases[2] = outline buffer
-//
-// for physically based bloom (current method)
 // love_Canvases[0] = HDR color
 // love_Canvases[1] = outline buffer
 
+vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 lightspace, mat4 static_lightspace, sampler2DShadow map, sampler2DShadow static_map,
+ vec3 normal, vec3 dir, vec4 col, float frag_dist) {
+	
+	vec3 light_dir_n = normalize(-dir);
+	vec3 diffuse = diffuse_lighting( normal, light_dir_n, col);
+	vec3 specular = specular_highlight( normal , light_dir_n, col);
+
+	float shadow = 0.0;
+	if (disable_shadows == 0.0) {
+		const float transition_end = DIR_LIGHT_TRANSITION_DISTANCE;
+		const float transition_start = DIR_LIGHT_TRANSITION_DISTANCE - 30;
+		const float difference = transition_end - transition_start;
+
+		float interp = clamp((frag_dist - transition_start)/difference,0.0,1.0);
+
+		float close_shadow = 0.0;
+		float static_shadow = 0.0;
+
+		if (interp >= 0.0) {
+			close_shadow = shadow_calculation(frag_light_pos, lightspace,
+			  map, normal , light_dir_n);
+		}
+		if (interp <= 1.0) {
+			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,
+			  static_map, normal, light_dir_n);
+		}
+
+
+		shadow = close_shadow * (1.0 - interp) + static_shadow * interp;
+	}
+
+	return (1.0-shadow)*(diffuse + specular);
+}
+
 void effect( ) {
 	if (draw_as_solid_colour) {
-		//love_Canvases[1] = vec4(0,0,0,0);
-		//love_Canvases[2] = vec4(0,0,0,0);
-
 		love_Canvases[0] = solid_colour;
 		love_Canvases[1] = vec4(0,0,0,0);
 
@@ -278,40 +314,25 @@ void effect( ) {
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
 
-	vec3 light_dir_n = normalize(-light_dir);
-
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
 
-	vec3 ambient = ambient_lighting( ambient_col );
-	vec3 diffuse = diffuse_lighting(frag_normal, light_dir_n, light_col);
-	vec3 specular = specular_highlight( frag_normal , light_dir_n, light_col);
+	vec3 light = ambient_lighting( ambient_col );
+	vec3 dir_light_result = calc_dir_light_col(dir_frag_light_pos, dir_static_frag_light_pos, u_dir_lightspace, u_dir_static_lightspace,
+		dir_shadow_map, dir_static_shadow_map,
+		frag_normal, dir_light_dir, dir_light_col, dist);
 
-	float shadow = 0.0;
-	// TODO implement multiple light sources
-	if (disable_shadows == 0.0) {
-		shadow = shadow_calculation(frag_light_pos[0], u_lightspaces[0], shadow_maps[0], frag_normal , light_dir_n);
-	}
-
-	vec4 light = vec4(ambient + (1.0-shadow)*(diffuse + specular), 1.0);
+	light += dir_light_result;
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
 	coords = coords / texscale;
 
-	//texcolor = Texel(tex, coords);
 	vec4 texcolor = Texel(MainTex, coords);
-	vec4 pix = texcolor * light;
+	vec4 pix = texcolor * vec4(light,1.0);
 
 	// TODO make the fog colour work properly with HDR
 	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
-
-	// for old bloom method
-	//float brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
-	//float avg_lum = 1.5;
-	//if (luminance_mipmap_count > 0) {
-	//	avg_lum = texelFetch(luminance, ivec2(0,0), luminance_mipmap_count-1).r;
-	//}
 
 	love_Canvases[0] = result;
 	love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;

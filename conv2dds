@@ -1,0 +1,3 @@
+#!/bin/bash
+echo $1 $2
+convert -format dds -define dds:compression=ext5 $1 $2

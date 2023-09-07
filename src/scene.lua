@@ -37,12 +37,24 @@ function Scene:loadMap(map)
 	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)
 end
 
+-- argument can be a model instance or a table of model instances
 function Scene:addModelInstance(inst)
-	table.insert(self.props.scene_models, inst)
-	if inst.props.model_i_static then
-		table.insert(self.static_models, inst)
-	else
-		table.insert(self.dynamic_models, inst)
+
+	if provtype(inst) == "modelinstance" then
+
+		table.insert(self.props.scene_models, inst)
+		if inst.props.model_i_static then
+			table.insert(self.static_models, inst)
+		else
+			table.insert(self.dynamic_models, inst)
+		end
+
+	elseif type(inst) == "table" then
+	
+		for i,inst in ipairs(inst) do
+			self:addModelInstance(inst)
+		end
+
 	end
 end
 
@@ -81,8 +93,6 @@ end
 
 function Scene:pushAmbience()
 	local sh = love.graphics.getShader()
-	sh:send("light_col", self.props.scene_light_col)
-	sh:send("light_dir", self.props.scene_lights[1].props.light_dir)
 	sh:send("ambient_col", self.props.scene_ambient_col)
 end
 
@@ -105,6 +115,12 @@ function Scene:drawModels(update_anims, draw_outlines)
 	end
 end
 
+function Scene:drawStaticModels()
+	for i,v in ipairs(self.static_models) do
+		v:draw(nil, nil, nil)
+	end
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
@@ -121,8 +137,8 @@ function Scene:draw(cam)
 		v:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
 
-	self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
-	self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
+	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
+	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
 	self:shadowPass( cam )
 
 	Renderer.setupCanvasFor3D()
@@ -142,11 +158,12 @@ function Scene:shadowPass( cam )
 	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
 
 	local props = self.props
+	-- dynamic shadow mapping
 	for i,light in ipairs(props.scene_lights) do
 		light:clearDepthMap()
 		Renderer.setupCanvasForShadowMapping(light)
-		local shader = love.graphics.getShader()
 
+		local shader = love.graphics.getShader()
 		local light_matrix = light:getLightSpaceMatrix()
 		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
@@ -154,11 +171,30 @@ function Scene:shadowPass( cam )
 		self:drawModels(false, false)
 
 		love.graphics.setMeshCullMode("front")
-
-		--self:drawGridMap()
 		self:drawGridMapForShadowMapping()
 
 		Renderer.dropCanvas()
+	end
+
+	-- static shadow mapping
+	for i,light in ipairs(props.scene_lights) do
+		if light.props.light_static_depthmap_redraw_flag then
+			light.props.light_static_depthmap_redraw_flag = false
+			light:clearStaticDepthMap()
+			Renderer.setupCanvasForShadowMapping(light, "static")
+
+			local shader = love.graphics.getShader()
+			local light_matrix = light:getStaticLightSpaceMatrix()
+			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
+
+			love.graphics.setMeshCullMode("front")
+			self:drawStaticModels()
+
+			love.graphics.setMeshCullMode("front")
+			self:drawGridMapForShadowMapping()
+
+			Renderer.dropCanvas()
+		end
 	end
 end
 
@@ -167,17 +203,47 @@ function Scene:pushShadowMaps(shader)
 	local light_count = #lights
 	local shader = shader or love.graphics.getShader()
 
-	local lightspace_mats = {}
-	local shadow_maps = {}
+	local dir_light_found = false
+	local dir_lightspace_mat
+	local dir_static_lightspace_mat
+	local dir_shadow_map
+	local dir_static_shadow_map
+	local dir_light_dir
+	local dir_light_col
+
+	--local point_shadow_maps = {}
 
 	for i,light in ipairs(lights) do
-		shadow_maps[i] = light.props.light_depthmap
-		lightspace_mats[i] = matrix(light.props.light_lightspace_matrix)
+		local light_type = light:getLightType()
+
+		if light_type == "directional" then
+			if not dir_light_found then
+				dir_light_found = true
+				dir_lightspace_mat = light:getLightSpaceMatrix()
+				dir_static_lightspace_mat = light:getStaticLightSpaceMatrix()
+				dir_shadow_map = light:getDepthMap()
+				dir_static_shadow_map = light:getStaticDepthMap()
+				dir_light_dir = light:getLightDirection()
+				dir_light_col = light:getLightColour()
+			else
+				print("MULTIPLE DIRECTIONAL LIGHTS, IGNORING")
+			end
+			--shadow_maps[i] = light.props.light_static_depthmap
+			--lightspace_mats[i] = matrix(light.props.light_static_lightspace_matrix)
+		else
+
+		end
 	end
 	
-	shadersend(shader, "u_lightspaces", "column", unpack(lightspace_mats))
-	shadersend(shader, "shadow_maps", unpack(shadow_maps))
-	shadersend(shader, "LIGHT_COUNT", light_count)
+	--shadersend(shader, "u_lightspaces", "column", unpack(lightspace_mats))
+	--shadersend(shader, "shadow_maps", unpack(shadow_maps))
+	--shadersend(shader, "LIGHT_COUNT", light_count)
+	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
+	shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
+	shadersend(shader, "dir_shadow_map", dir_shadow_map)
+	shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
+	shadersend(shader, "dir_light_dir", dir_light_dir)
+	shadersend(shader, "dir_light_col", dir_light_col)
 end
 
 -- returns true if skybox drawn

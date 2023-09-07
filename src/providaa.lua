@@ -22,19 +22,17 @@ function PROV:load()
 			["light_pos"] = {0,0,0,0},
 			--["light_dir"] = {0.5,1.0,-0.5},
 			["light_dir"] = {-1.0,1.5,-1.0},
-			["light_col"] = {255/255, 235/255, 204/255, 10}
+			["light_col"] = {255/255, 235/255, 224/255, 10}
 		}
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 10
 
-	--pianko = Model.openFilename("pianko.iqm", "models/pianko.png", true)
-	--sphere = Model.openFilename("Sphere.iqm", "blue.png", false)
 	pianko = Models.queryModel("pianko.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
 	crate = Models.queryModel("shittycrate.iqm")
 	instance = ModelInstance:newInstance(pianko)
 	instance.props.model_i_outline_flag = true
-	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}})
+	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
 	--local insts = {}
 	--for i=1,10000 do
@@ -49,11 +47,7 @@ function PROV:load()
 	--)
 
 	sphere = ModelInstance:newInstance(sphere)
-	--self.scene.props.scene_models = { instance , sphere }
-	--self.scene.props.scene_models = { sphere, instance , crate_i , crate_inst, crate_i2, crate_i2, crate_i3, crate_i4, crate_i5} 
-	--self.scene.props.scene_models = { sphere, instance , crate_i , crate_inst } 
-	self.scene.props.scene_models = { sphere, instance , crate_i } 
-	--self.scene.props.scene_models = { instance }
+	self.scene:addModelInstance{ sphere, instance, crate_i }
 end
 
 function PROV:update(dt)

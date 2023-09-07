@@ -22,7 +22,7 @@ LightPropPrototype = Props:prototype{
 	{"light_static_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light`s (for static shadowmapping)."},
 	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
 	{"light_static_depthmap_redraw_flag", "boolean", false, nil, [[set to true whenever a new static lightspace matrix is generated.
-	                                                               set it to false after rendering a new static shadowmap!]]}
+	                                                               set it to false after rendering a new static shadowmap!]]},
 
 	{"light_static", "boolean", true, nil,     "true if light is never expected to change in property"}
 

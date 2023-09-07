@@ -49,7 +49,7 @@ function Camera:generatePerspectiveMatrix(aspect_ratio)
 
 	local props = self.props
 	props.cam_perspective_matrix = cpml.mat4.from_perspective(
-		props.cam_fov, aspect_ratio, 0.5, 20000)
+		props.cam_fov, aspect_ratio, 0.5, props.cam_far_plane)
 
 	return props.cam_perspective_matrix
 end
@@ -87,7 +87,7 @@ end
 
 -- returns corners of camera`s view frustrum in world space,
 -- also returns the vector in the middle of this frustrum
-function Camera:generateFrustrumCornersWorldSpace(proj, view, scale)
+function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	local props = self.props
 	local proj = proj or props.cam_perspective_matrix
 	local view = view or props.cam_rot_matrix * props.cam_view_matrix
@@ -101,9 +101,9 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view, scale)
 	-- used to find vector in the centre
 	local sum_x, sum_y, sum_z = 0.0, 0.0, 0.0
 
-	local X = {-scale,scale}
-	local Y = {-scale,scale}
-	local Z = {-scale,scale}
+	local X = {-1.0,1.0}
+	local Y = {-1.0,1.0}
+	local Z = {-1.0,1.0}
 
 	for x=1,2 do
 		for y=1,2 do

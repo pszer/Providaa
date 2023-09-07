@@ -1,6 +1,6 @@
 local MODEL_ATTRIBUTES = {
 	["pianko.iqm"] = {
-		["model_texture_fname"]  = "models/pianko.png",
+		["model_texture_fname"]  = "models/pianko.dds",
 		["model_vertex_winding"] = "ccw"
 	},
 
