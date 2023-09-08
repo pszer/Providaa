@@ -2,6 +2,7 @@ require "props.tileprops"
 
 require "texture"
 require "mesh"
+require "math"
 
 TILE_SIZE = 32
 TILE_HEIGHT = -24
@@ -77,4 +78,18 @@ function Tile.getAttributeIndex(name)
 		if v[1] == name then return i end
 	end
 	return nil
+end
+
+-- checks if this tile identical attributes to another tile
+function Tile:attributeEquals(tile2)
+	if not tile2 then return false end
+	local t1,t2 = self.props, tile2.props
+
+	local function mod1(a) return math.fmod(a,1.0) end
+	local tex_eq    =      t1.tile_texture        ==      t2.tile_texture
+	local scalex_eq =      t1.tile_texture_scalex ==      t2.tile_texture_scalex
+	local scaley_eq =      t1.tile_texture_scaley ==      t2.tile_texture_scaley
+	local offx_eq   = mod1(t1.tile_texture_offx)  == mod1(t2.tile_texture_offx)
+	local offy_eq   = mod1(t1.tile_texture_offy)  == mod1(t2.tile_texture_offy)
+	return scalex_eq and scaley_eq and offx_eq and offy_eq
 end

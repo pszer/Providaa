@@ -11,9 +11,9 @@ TexturePropPrototype = Props:prototype{
 
 	{"texture_name", "string", "", nil, "texture name", "readonly" }, -- done
 
-	{"texture_imgs", "table", PropDefaultTable{}, nil,  "table of textures animation frames"},
+	{"texture_imgs", "table", nil, PropDefaultTable{},       "table of textures animation frames"},
 	{"texture_frames", "number", 1, nil,                "number of animation frames"},
-	{"texture_sequence", "table", {}, nil,              "table of indices "},
+	{"texture_sequence", "table", nil, PropDefaultTable{},              "table of indices "},
 	{"texture_sequence_length", "number", 1, nil,       "table of indices "},
 
 	{"texture_merged_img", nil, nil, nil,               "all the frames of an animated texture in one"},

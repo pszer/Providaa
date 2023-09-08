@@ -3,7 +3,7 @@
 //const int MAX_POINT_LIGHTS = 10;
 // the distance at which the dynamic shadowmap ends, its here
 // we transition from sampling the dynamic shadowmap to the static one
-const float DIR_LIGHT_TRANSITION_DISTANCE = 360;
+const float DIR_LIGHT_TRANSITION_DISTANCE = 350;
 
 varying vec3 frag_position;
 varying vec3 frag_w_position;
@@ -88,16 +88,19 @@ mat4 get_model_matrix() {
 
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
-	mat4 modelview_u = u_rot * u_view * skin_u;
+	//mat4 modelview_u = u_rot * u_view * skin_u;
+	mat4 skinview_u = u_view * skin_u;
 
 	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
 
 	vec4 model_v = skin_u * vertex;
-	vec4 view_v = modelview_u * vertex;
+	vec4 view_v = skinview_u * vertex;
 
 	// create a fake curved horizon effect
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
+
+	view_v = u_rot * view_v;
 
 	// interpolate fragment position in viewspace and worldspace
 	frag_position = view_v.xyz;
@@ -151,7 +154,7 @@ vec3 ambient_lighting( vec4 ambient_col ) {
 vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
 	float diff = 0.0;
 	if (dot(normal, normalize(light_dir)) > 0.0) {
-		diff = 1.0 - pow(diff,10);
+		diff = 1.0 - pow(diff,4);
 	}
 	//float diff = max(0.0, dot(normal, normalize(light_dir)));
 	vec3 diff_col = light_col.rgb * light_col.a * diff;
@@ -232,8 +235,8 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	float curr_depth    = prooj_coords.z;
 
 	float bias = 0.00125*tan(acos(cosTheta));
-	float radius = 15000.0;
-	bias = clamp(bias, 0.000125,0.00180);
+	float radius = 2000.0;
+	bias = clamp(bias, 0.00100,0.00230);
 
 	float shadow = 1.0;
 
@@ -248,7 +251,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	// otherwise 0.0 (fully in light)
 	if (shadow == 1.0) {
 		return 1.0;
-	} else if (shadow <= 1.0 - 3.8 * (1/16.0)) {
+	} else if (shadow <= 1.0 - 3.9 * (1/16.0)) {
 		return 0.0;
 	}
 

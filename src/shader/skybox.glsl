@@ -12,6 +12,7 @@ varying vec3 cube_coords;
 	vec4 position(mat4 mvp, vec4 v_position)
     {
         cube_coords = normalize(v_position.xyz);
+		cube_coords.y = -cube_coords.y;
 		return u_proj * u_rot * v_position;
 	}
 #endif

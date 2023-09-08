@@ -1,4 +1,5 @@
 require "providaa"
+require "testmode"
 
 GAMESTATE = {}
 

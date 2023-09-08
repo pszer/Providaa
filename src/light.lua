@@ -88,7 +88,7 @@ end
 function Light:generateLightSpaceMatrixFromCamera( cam )
 	if self:getLightType() == "directional" then
 		-- use perspective matrix with far plane very close to camera for dynamic shadowmapping
-		local proj = cam:calculatePerspectiveMatrix(nil, 360)
+		local proj = cam:calculatePerspectiveMatrix(nil, 350)
 		local mat = self:calculateLightSpaceMatrixFromFrustrum(
 			cam:generateFrustrumCornersWorldSpace(proj))
 		self.props.light_lightspace_matrix = mat

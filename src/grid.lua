@@ -102,6 +102,8 @@ function Grid:applyTileAttribute(x,z)
 	local starti,endi = tileprops.tile_mesh_vstart_index, tileprops.tile_mesh_vend_index
 	local mesh = tileprops.tile_mesh
 
+	if not mesh then return end
+
 	--local animationoffset = Tile.getAttributeIndex("AnimationOffset")
 	local texscale = Tile.getAttributeIndex("TextureScale")
 	local texoffset = Tile.getAttributeIndex("TextureOffset")

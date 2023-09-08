@@ -1,9 +1,9 @@
 GFX_SETTINGS = {
 	
-	["shadow_map_size"] = { "high" ,
+	["shadow_map_size"] = { "medium" ,
 		default = "medium" , low = 1024  , medium = 1024*2 , high = 1024*4 },
 	["static_shadow_map_size"] = { "high" ,
-		default = "medium" , low = 512 , medium = 1024   , high = 1024*2 },
+		default = "medium" , low = 1024 , medium = 1024+2   , high = 1024*4 },
 	["enable_contour"] = { "enable" ,
 		default = "enable" , enable = true, disable = false }
 

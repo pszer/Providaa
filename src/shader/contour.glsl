@@ -45,17 +45,20 @@ mat4 get_model_matrix() {
 
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
-	mat4 modelview_u = u_rot * u_view * skin_u;
-
-	vec3 frag_normal = mat3(u_rot) * get_normal_matrix(skin_u) * VertexNormal;
-	vec4 surface_offset = vec4(frag_normal * 0.25, 0.0);
+	mat4 skinview_u = u_view * skin_u;
 
 	vec4 model_v = skin_u * vertex;
-	vec4 view_v = modelview_u * vertex + surface_offset;
+	vec4 view_v = skinview_u * vertex;
 
 	// create a fake curved horizon effect
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
+
+	view_v = u_rot * view_v;
+
+	vec3 frag_normal = mat3(u_rot) * get_normal_matrix(skin_u) * VertexNormal;
+	vec4 surface_offset = vec4(frag_normal * 0.25, 0.0);
+	view_v += surface_offset;
 
 	return u_proj * view_v;
 }

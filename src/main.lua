@@ -11,7 +11,7 @@ function __print_info()
 
 end
 
-function love.load()
+function love.load( args )
 	print(limit.sysInfoString())
  --	local major, minor, revision, codename = love.getVersion( )
 --	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
@@ -24,9 +24,9 @@ function love.load()
 	Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one()
-	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
+	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(TESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)
-	--SET_GAMESTATE(PROV)
 end
 
 local DT_COUNTER=0

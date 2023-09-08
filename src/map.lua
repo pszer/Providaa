@@ -333,6 +333,27 @@ function Map.generateTileMesh(map, z,x, tile, texture)
 	return mesh
 end
 
+function Map.generateLongTileMesh(map, z,x, tile, texture, length)
+	local mesh = Mesh:new(texture, 6, "triangles", "dynamic")
+
+	local u = {0,length,length,0}
+	local v = {0,0,1,1}
+
+	local tprops = tile.props
+
+	local x1,y1,z1 = Tile.tileCoordToWorld( x , tprops.tile_height1, (z+1) )
+	local x2,y2,z2 = Tile.tileCoordToWorld( x+length, tprops.tile_height2, (z+1) )
+	local x3,y3,z3 = Tile.tileCoordToWorld( x+length, tprops.tile_height3, (z+0) )
+	local x4,y4,z4 = Tile.tileCoordToWorld( x+0, tprops.tile_height4, (z+0) )
+	
+	v1 = {x1,y1,z1, u[1], v[1]}
+	v2 = {x2,y2,z2, u[2], v[2]}
+	v3 = {x3,y3,z3, u[3], v[3]}
+	v4 = {x4,y4,z4, u[4], v[4]}
+	mesh:setRectangle(1, v1,v2,v3,v4)
+	return mesh
+end
+
 -- generates a rectangle spanning the entire bottom of the map, facing downwards, slightly below y=0
 -- to be used when shadow mapping
 function Map.generateBottomMesh(map)
@@ -363,6 +384,34 @@ function Map.generateBottomMesh(map)
 	return mesh
 end
 
+-- returns table set with {x,z} for identical consecutive tiles, and how
+-- many tiles are in this set
+function Map.getIndenticalConsecutiveTiles(grid, x,z)
+	local tile = grid:queryTile(x,z)
+	if not tile:isLand() then
+		return {},0 end
+
+	local flat, height = tile:isFlat()
+	if not flat then
+		return {{x,z}}, 1 end
+
+	local tiles = {{x,z}}
+	local X = x + 1
+	while X <= grid:getWidth() do
+		local tile2 = grid:queryTile(X,z)
+
+		local flat2, height2 = tile2:isFlat()
+		if not tile2:isLand() or not flat2 then break end
+		if height ~= height2 then break end
+		if not tile:attributeEquals(tile2) then break end
+
+		table.insert(tiles, {X,z})
+		X=X+1
+	end
+
+	return tiles, X-x
+end
+
 function Map.getGridMeshes(map, grid, gridset)
 	local meshes = {}
 
@@ -372,17 +421,34 @@ function Map.getGridMeshes(map, grid, gridset)
 		local set_meshes = {}
 		local set_tiles  = {}
 
+		-- sort elements in increasing x coordinate order
+		table.sort(v, function(a,b) return a[2]<b[2] end)
+
+		local grid_w = grid:getWidth()
+		local tiles_done = {nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil,nil} -- filled with nil's to reduce table resizes
+		local tiles_done_index = function(x,z) return x+z*grid_w end
+
 		for _,tile_in_set in ipairs(v) do
 			local z,x = tile_in_set[1], tile_in_set[2]
+
+			if not tiles_done[tiles_done_index(x,z)] then
+
+				local consec, count = Map.getIndenticalConsecutiveTiles(grid, x,z)
+				-- add all included tiles to tiles_done
+				for i,v in ipairs(consec) do
+					tiles_done[ tiles_done_index(v[1],v[2]) ] = true end
+
+				print(x,z,count)
 			
-			--print(map.wall_set[i], unpack(wall_in_set))
-			local tile = grid:queryTile(x,z)
-			local mesh = Map.generateTileMesh(map, z,x, grid:queryTile(x,z), texture)
-			table.insert(set_meshes, mesh)
-			table.insert(set_tiles, tile)
+				--local tile = grid:queryTile(x,z)
+				--local mesh = Map.generateTileMesh(map, z,x, grid:queryTile(x,z), texture)
+				local tile = grid:queryTile(x,z)
+				local mesh = Map.generateLongTileMesh(map, z,x, tile, texture, count)
+				table.insert(set_meshes, mesh)
+				table.insert(set_tiles, tile)
+
+			end
 		end
-
-
 
 		local vindices = {}
 		local merge = Mesh.mergeMeshes(texture, set_meshes, vindices, Tile.atypes)

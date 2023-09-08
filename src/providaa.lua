@@ -6,6 +6,7 @@ require "map"
 require "tick"
 require "scene"
 require "modelmanager"
+require "facialfeatures"
 
 local testmap = require "maps.test"
 
@@ -35,17 +36,13 @@ function PROV:load()
 	instance.props.model_i_contour_flag = true
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
-	--local insts = {}
-	--for i=1,10000 do
-	--	insts[i] = ModelInfo.new({0,-i*1,-i*1,},{0,0,i/10.0}, 1.0)
-	--end
-	--crate_inst = ModelInstance:newInstances(crate,
-	--	{
-	--		ModelInfo.new({300,-60,-256},{0,0,0},1),
-	--		ModelInfo.new({256,-300,-700},{0,1,1},1),
-	--		ModelInfo.new({256,-48,-350},{0,0,0},2)
-	--	}
-	--)
+	crate_inst = ModelInstance:newInstances(crate,
+		{
+			ModelInfo.new({300,-60,-256},{0,0,0},1),
+			ModelInfo.new({256,-300,-700},{0,1,1},1),
+			ModelInfo.new({256,-48,-350},{0,0,0},2)
+		}
+	)
 
 	sphere = ModelInstance:newInstance(sphere)
 	self.scene:addModelInstance{ sphere, instance, crate_i }
@@ -96,7 +93,7 @@ function PROV:update(dt)
 	end
 
 	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
-	instance.props.model_i_rotation[2] = -getTick()/60
+	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60
 	--

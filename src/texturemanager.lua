@@ -38,6 +38,38 @@ function Textures.loadTextures()
 	end
 end
 
+-- completely releases texture
+function Textures.releaseTexture(fname)
+	local t = Textures.loaded[fname]
+	if t then t:release() end
+end
+
+-- removes reference to texture in Textures.loaded
+-- without releasing the texture data. if any object
+-- referencing this texture exist the image data will share
+-- it's lifetime.
+-- use releaseTexture to explicitly release a texture
+-- from memory
+function Textures.releaseReference(fname)
+	Textures.loaded[fname] = nil
+end
+
+-- loads and returns a texture from filename without
+-- internally storing it in Textures.loaded. nil if
+-- loading failed
+function Textures.handOverTexture(fname)
+	local tex = Textures.loadTexture(fname)
+	Textures.releaseReference(fname)
+	return tex
+end
+
+-- returns a raw love2d image from file without a Texture object
+function Textures.rawLoadTexture(fname)
+	local T = Textures.openFilename(fname)
+	if T then return T.props.texture_imgs[1] end
+	return nil
+end
+
 function Textures.openFilename(filename, attributes)
 	if not attributes then attributes = tex_attributes[filename] or {} end
 

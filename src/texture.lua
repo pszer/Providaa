@@ -90,6 +90,14 @@ function Texture:animationChangesThisTick()
 	return false
 end
 
+function Texture:release()
+	for i,v in ipairs(self.props.texture_imgs) do
+		v:release()
+	end
+	if self.props.texture_merged_img then
+		self.props.texture_merged_img:release() end
+end
+
 function Texture:getWidth()
 	return self.props.texture_width
 end
