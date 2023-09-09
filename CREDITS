@@ -1,0 +1,15 @@
+Inter-Quake Model + Excessive Model (.iqm/.exm) Loader
+src/iqm-exm/
+https://github.com/excessive/iqm-exm/tree/b88492de0f121cdb1877ced3484657c248c3ad93
+
+Cirno's Perfect Math Library
+src/cpml/
+https://github.com/excessive/cpml
+
+Quadtree Implementation
+src/quadtree/
+https://love2d.org/forums/viewtopic.php?t=83296
+
+splashes
+src/o-ten-one/
+https://github.com/love2d-community/splashes

@@ -90,6 +90,10 @@ end
 function Models.openAnimations(fname)
 	local fpath = "models/" .. fname
 	local anims = Models.readIQMAnimations(fpath)
+	if not anims then
+		local fpath = "anims/" .. fname
+		anims = Models.readIQMAnimations(fpath)
+	end
 	return anims
 end
 

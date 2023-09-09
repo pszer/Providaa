@@ -3,7 +3,7 @@
 //const int MAX_POINT_LIGHTS = 10;
 // the distance at which the dynamic shadowmap ends, its here
 // we transition from sampling the dynamic shadowmap to the static one
-const float DIR_LIGHT_TRANSITION_DISTANCE = 350;
+const float DIR_LIGHT_TRANSITION_DISTANCE = 360;
 
 varying vec3 frag_position;
 varying vec3 frag_w_position;
@@ -226,7 +226,7 @@ float texture_shadow_clampone(sampler2DShadow shadow, vec3 vec) {
 	}
 }
 
-float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map , vec3 normal , vec3 light_dir) {
+float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map , vec3 normal , vec3 light_dir, float bias) {
 	vec4 prooj_coords = pos.xyzw;
 	prooj_coords = vec4(prooj_coords.xyz * 0.5 + 0.5, prooj_coords.w);
 
@@ -235,9 +235,9 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	float curr_depth    = prooj_coords.z;
 
 	//float bias = 0.00125*tan(acos(cosTheta));
-	float radius = 5000.0; // the smaller, the larger the pcf radius
+	float radius = 3000.0; // the smaller, the larger the pcf radius
 	//bias = clamp(bias, 0.00100,0.00230);
-	float bias = 0.0018;
+	//float bias = 0.0025;
 
 	float shadow = 1.0;
 
@@ -245,20 +245,20 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	// we sample would also be in shadow or in light
 	for (int i=0; i<4; i++) {
 		float s = texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + distantPoints[i]/radius, (curr_depth/prooj_coords.w)-bias));
-		shadow -= (1.0/10.0) * s;
+		shadow -= (1.0/14.0) * s;
 	}
 
 	// if all distant points are in shadow, then return 1.0 (fully in shadow)
 	// otherwise 0.0 (fully in light)
 	if (shadow == 1.0) {
 		return 1.0;
-	} else if (shadow <= 1.0 - 3.9 * (1/16.0)) {
+	} else if (shadow <= 1.0 - 3.9 * (1/14.0)) {
 		return 0.0;
 	}
 
-	for (int i=0; i<6; i++) {
-		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
-		shadow -= (1.0/10.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
+	for (int i=0; i<10; i++) {
+		int index = int(14.0*random(floor(frag_w_position.xyz*10.0), i))%16;
+		shadow -= (1.0/14.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
 	}
 
 	return shadow;
@@ -274,7 +274,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	float shadow = 0.0;
 	if (disable_shadows == 0.0) {
 		const float transition_end = DIR_LIGHT_TRANSITION_DISTANCE;
-		const float transition_start = DIR_LIGHT_TRANSITION_DISTANCE - 30;
+		const float transition_start = DIR_LIGHT_TRANSITION_DISTANCE - 20;
 		const float difference = transition_end - transition_start;
 
 		float interp = clamp((frag_dist - transition_start)/difference,0.0,1.0);
@@ -284,13 +284,12 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 
 		if (interp >= 0.0) {
 			close_shadow = shadow_calculation(frag_light_pos, lightspace,
-			  map, normal , light_dir_n);
+			  map, normal , light_dir_n, 0.0025);
 		}
 		if (interp <= 1.0) {
 			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,
-			  static_map, normal, light_dir_n);
+			  static_map, normal, light_dir_n, 0.0015);
 		}
-
 
 		shadow = close_shadow * (1.0 - interp) + static_shadow * interp;
 	}
@@ -301,8 +300,11 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 // love_Canvases[0] is HDR color
 // love_Canvases[1] is outline buffer
 void effect( ) {
-	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
+	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x + frag_position.y*frag_position.y;
 	dist = sqrt(dist);
+
+	//vec3 diff = 
+	//float frag_light_dist = 
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);

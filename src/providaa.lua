@@ -26,7 +26,7 @@ function PROV:load()
 			["light_col"] = {255/255, 235/255, 224/255, 10}
 		}
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 10
+	self.scene.props.scene_skybox_hdr_brightness = 14
 
 	pianko = Models.queryModel("pianko.iqm")
 	piankoface = Models.queryModel("piankoface.iqm")
@@ -135,7 +135,7 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-50*math.cos(cam.cam_yaw)}
+	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
 	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60
