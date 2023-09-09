@@ -12,7 +12,7 @@ function getTick()
 end
 
 function getTickSmooth()
-	return TICK + tick_dt_counter/tick_rate_inv
+	return TICK + tick_dt_counter * tick_rate
 end
 
 function setTick(i)
@@ -37,4 +37,24 @@ end
 
 function tickRate()
 	return tick_rate
+end
+
+-- READ TODO
+--
+--
+-- Add a functioniality that helps in tick limiting functions
+-- e.g. only calc new lightspace matrices every tick instead of every frame
+--
+function periodicUpdate(delay)
+	--local timer_start = getTickSmooth()
+	local timer_start = -100000000.0
+	local delay = delay
+	return function()
+		local t = getTickSmooth()
+		if t - timer_start > delay then
+			timer_start = t
+			return true
+		end
+		return false
+	end
 end

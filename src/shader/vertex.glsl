@@ -230,13 +230,14 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	vec4 prooj_coords = pos.xyzw;
 	prooj_coords = vec4(prooj_coords.xyz * 0.5 + 0.5, prooj_coords.w);
 
-	float cosTheta = clamp( dot( normal,light_dir ), 0,1 );
+	//float cosTheta = clamp( dot( normal,light_dir ), 0,1 );
 
 	float curr_depth    = prooj_coords.z;
 
-	float bias = 0.00125*tan(acos(cosTheta));
-	float radius = 2000.0;
-	bias = clamp(bias, 0.00100,0.00230);
+	//float bias = 0.00125*tan(acos(cosTheta));
+	float radius = 5000.0; // the smaller, the larger the pcf radius
+	//bias = clamp(bias, 0.00100,0.00230);
+	float bias = 0.0018;
 
 	float shadow = 1.0;
 
@@ -244,7 +245,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	// we sample would also be in shadow or in light
 	for (int i=0; i<4; i++) {
 		float s = texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + distantPoints[i]/radius, (curr_depth/prooj_coords.w)-bias));
-		shadow -= (1.0/16.0) * s;
+		shadow -= (1.0/10.0) * s;
 	}
 
 	// if all distant points are in shadow, then return 1.0 (fully in shadow)
@@ -255,16 +256,13 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 		return 0.0;
 	}
 
-	for (int i=0; i<12; i++) {
+	for (int i=0; i<6; i++) {
 		int index = int(16.0*random(floor(frag_w_position.xyz*1000.0), i))%16;
-		shadow -= (1.0/16.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
+		shadow -= (1.0/10.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
 	}
 
 	return shadow;
 }
-
-// love_Canvases[0] = HDR color
-// love_Canvases[1] = outline buffer
 
 vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 lightspace, mat4 static_lightspace, sampler2DShadow map, sampler2DShadow static_map,
  vec3 normal, vec3 dir, vec4 col, float frag_dist) {
@@ -300,6 +298,8 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	return (1.0-shadow)*(diffuse + specular);
 }
 
+// love_Canvases[0] is HDR color
+// love_Canvases[1] is outline buffer
 void effect( ) {
 	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x;
 	dist = sqrt(dist);
@@ -325,7 +325,7 @@ void effect( ) {
 	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, pix.a);
 
 	love_Canvases[0] = result;
-	love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;
+	//love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;
 }
 
 #endif

@@ -135,7 +135,7 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-50*math.cos(cam.cam_yaw)}
+	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-50*math.cos(cam.cam_yaw)}
 	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60

@@ -97,8 +97,8 @@ function Scene:pushAmbience()
 end
 
 function Scene:drawGridMap()
-	local props = self.props
-	for i,v in ipairs(props.scene_meshes) do
+	local meshes = self.props.scene_meshes
+	for i,v in ipairs(meshes) do
 		v:drawAsEnvironment()
 	end
 	--props.scene_generic_mesh:drawGeneric()
@@ -110,9 +110,12 @@ function Scene:drawGridMapForShadowMapping()
 end
 
 function Scene:drawModels(update_anims, draw_outlines)
-	for i,v in ipairs(self.props.scene_models) do
+	prof.push("draw_models")
+	local models = self.props.scene_models
+	for i,v in ipairs(models) do
 		v:draw(nil, update_anims, draw_outlines)
 	end
+	prof.pop("draw_models")
 end
 
 function Scene:drawStaticModels()
@@ -124,69 +127,97 @@ end
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
+
 	cam:update()
 	cam:generateViewMatrix()
 	--cam:generateFrustrumCornersWorldSpace()
 
-	Renderer.setupCanvasFor3D()
+	--Renderer.setupCanvasFor3D()
+	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
 	love.graphics.clear(0,0,0,0)
 
+	prof.push("skybox")
 	self:drawSkybox()
+	prof.pop("skybox")
 
-	for i,v in ipairs(self.props.scene_models) do
-		v:fillOutBoneMatrices("Reference Pose", getTickSmooth())
+	prof.push("bullshit")
+	for i,v in ipairs(self.dynamic_models) do
+		v:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
+	prof.pop("bullshit")
 
 	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
 	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
+	prof.push("shadowpass")
 	self:shadowPass( cam )
+	prof.pop("shadowpass")
 
-	Renderer.setupCanvasForContour()
+	prof.push("contourpass")
+	--Renderer.setupCanvasForContour()
+	love.graphics.setShader(Renderer.contour_shader)
 	self.props.scene_camera:pushToShader()
+	prof.pop("contourpass")
 
+	prof.push("shaderpushes")
 	Renderer.setupCanvasFor3D()
 	self:pushShadowMaps()
 
 	self:pushFog()
 	self:pushAmbience()
 	self.props.scene_camera:pushToShader()
+	prof.pop("shaderpushes")
 
+	prof.push("drawgrid")
 	self:drawGridMap()
+	prof.pop("drawgrid")
+	prof.push("drawmodels")
 	self:drawModels(false, true)
+	prof.pop("drawmodels")
 
 	Renderer.dropCanvas()
 end
 
 function Scene:shadowPass( cam )
+	prof.push("lightspace_mat_gen")
 	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
+	prof.pop("lightspace_mat_gen")
+
+	local shader = Renderer.shadow_shader
+	love.graphics.setDepthMode( "less", true )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setShader(Renderer.shadow_shader)
 
 	local props = self.props
 	-- dynamic shadow mapping
+	prof.push("dyn_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
-		light:clearDepthMap()
-		Renderer.setupCanvasForShadowMapping(light)
+		light:clearDepthMap(true)
+		Renderer.setupCanvasForShadowMapping(light, "dynamic", true)
 
-		local shader = love.graphics.getShader()
 		local light_matrix = light:getLightSpaceMatrix()
 		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
-		love.graphics.setMeshCullMode("front")
+		--love.graphics.setMeshCullMode("front")
+		prof.push("dyn_models")
 		self:drawModels(false, false)
+		prof.pop("dyn_models")
 
-		love.graphics.setMeshCullMode("front")
+		--love.graphics.setMeshCullMode("front")
+		prof.push("dyn_grid")
 		self:drawGridMapForShadowMapping()
+		prof.pop("dyn_grid")
 
-		Renderer.dropCanvas()
 	end
+	prof.pop("dyn_shadow_map")
 
 	-- static shadow mapping
+	prof.push("static_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
 		if light.props.light_static_depthmap_redraw_flag then
 			light.props.light_static_depthmap_redraw_flag = false
-			light:clearStaticDepthMap()
-			Renderer.setupCanvasForShadowMapping(light, "static")
+			light:clearStaticDepthMap(true)
+			Renderer.setupCanvasForShadowMapping(light, "static", "true")
 
-			local shader = love.graphics.getShader()
 			local light_matrix = light:getStaticLightSpaceMatrix()
 			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
@@ -195,10 +226,10 @@ function Scene:shadowPass( cam )
 
 			love.graphics.setMeshCullMode("front")
 			self:drawGridMapForShadowMapping()
-
-			Renderer.dropCanvas()
 		end
 	end
+	--Renderer.dropCanvas()
+	prof.pop("static_shadow_map")
 end
 
 function Scene:pushShadowMaps(shader)
@@ -252,10 +283,11 @@ end
 -- returns true if skybox drawn
 -- otherwise nil
 function Scene:drawSkybox(cam)
-	local skybox_tex_fname = self.props.scene_skybox
+	local props = self.props
+	local skybox_tex_fname = props.scene_skybox
 	if skybox_tex_fname == "" then return nil end
 
-	local skybox_img = Textures.queryTexture(self.props.scene_skybox)
+	local skybox_img = Textures.queryTexture(props.scene_skybox)
 	if not skybox_img then return nil end
 	if skybox_img.props.texture_type ~= "cube" then
 		print(skybox_img.props.texture_name, " is not a cube image (drawSkybox))",skybox_img.props.texture_type)
@@ -264,14 +296,18 @@ function Scene:drawSkybox(cam)
 
 	Renderer.setupCanvasForSkybox()
 
+	prof.push("skybox_push")
 	local sh = love.graphics.getShader()
 	shadersend(sh, "skybox", skybox_img:getImage())
-	shadersend(sh, "skybox_brightness", self.props.scene_skybox_hdr_brightness)
+	shadersend(sh, "skybox_brightness", props.scene_skybox_hdr_brightness)
 	self.props.scene_camera:pushToShader(sh)
+	prof.pop("skybox_push")
 
+	prof.push("skybox_draw")
 	love.graphics.draw(Renderer.skybox_model)
+	prof.pop("skybox_draw")
 
-	Renderer.dropCanvas()
+	--Renderer.dropCanvas()
 
 	return true
 end

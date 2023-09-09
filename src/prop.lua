@@ -101,12 +101,13 @@ Props.__call = function (proto, init)
 			end
 		end
 
-		if row.type ~= nil and row.type ~= provtype(validvalue) then
+		local vvaltype = provtype(validvalue)
+		if row.type ~= nil and row.type ~= vvaltype then
 			error("property [" .. tostring(key) .. "] is a " .. row.type .. ", tried to assign a " .. provtype(val)
 			       .. " (" .. tostring(val) .. ")")
 		end
 
-		if row.type == "link" and provtype(validvalue) ~= "link" then
+		if row.type == "link" and vvaltype ~= "link" then
 			(rawget(p.__proptabledata, key)[2]) (validvalue)
 		end
 
@@ -126,8 +127,9 @@ Props.__call = function (proto, init)
 			--end
 			return v
 		else
-			if p.__proto[key] then
-				return p.__proto[key].default
+			local prot = p.__proto[key]
+			if prot then
+				return prot.default
 			else
 				error("key " .. tostring(key) .. "doesn't exist")
 				return nil

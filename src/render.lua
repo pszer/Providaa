@@ -148,9 +148,9 @@ function Renderer.renderScaled(canvas, hdr)
 	local exposure_min = hdr.exposure_min or Renderer.hdr_exposure_min
 	local exposure_max = hdr.exposure_max or Renderer.hdr_exposure_max
 
-	love.graphics.setCanvas()
-	love.graphics.origin()
-	love.graphics.scale(RESOLUTION_RATIO)
+	--love.graphics.setCanvas()
+	--love.graphics.origin()
+	--love.graphics.scale(RESOLUTION_RATIO)
 
 	local w,h = get_resolution()
 	local W,H = love.graphics.getWidth() / RESOLUTION_RATIO, love.graphics.getHeight() / RESOLUTION_RATIO
@@ -330,9 +330,12 @@ function Renderer.setupCanvasFor3D()
 		Renderer.createCanvas()
 	end
 
-	love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_outline_viewport,
+	--love.graphics.setCanvas{Renderer.scene_viewport, Renderer.scene_outline_viewport,
+	--	depthstencil = Renderer.scene_depthbuffer,
+	--	depth=true, stencil=true}
+	love.graphics.setCanvas{Renderer.scene_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
-		depth=true, stencil=true}
+		depth=true, stencil=false}
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
@@ -351,19 +354,21 @@ end
 function Renderer.setupCanvasForSkybox()
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setDepthMode( "always", false )
-	love.graphics.setCanvas{Renderer.scene_viewport}
-	love.graphics.setShader(Renderer.skybox_shader, Renderer.skybox_shader)
+	love.graphics.setCanvas(Renderer.scene_viewport)
+	love.graphics.setShader(Renderer.skybox_shader)
 end
 
-function Renderer.setupCanvasForShadowMapping(light, map_type)
+function Renderer.setupCanvasForShadowMapping(light, map_type, keep_shader)
 	if map_type == "static" then
 		love.graphics.setCanvas{depthstencil = light.props.light_static_depthmap, depth=true}
 	else
 		love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
 	end
-	love.graphics.setDepthMode( "less", true )
-	love.graphics.setMeshCullMode("front")
-	love.graphics.setShader(Renderer.shadow_shader, Renderer.shadow_shader)
+	if not keep_shader then
+		love.graphics.setDepthMode( "less", true )
+		love.graphics.setMeshCullMode("front")
+		love.graphics.setShader(Renderer.shadow_shader)
+	end
 end
 
 function Renderer.dropCanvas()

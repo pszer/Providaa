@@ -47,10 +47,14 @@ function ModelInstance:new(props)
 		static_model_matrix = nil,
 		static_normal_matrix = nil,
 
-		bone_matrices = {}
+		bone_matrices = {},
+
+		update_model = true,
+		update_bones = periodicUpdate(1)
 	}
 
 	setmetatable(this,ModelInstance)
+	this:fillOutBoneMatrices(nil, 0)
 
 	return this
 end
@@ -78,16 +82,31 @@ end
 
 function ModelInstance:modelMatrix()
 	local is_static = self.props.model_i_static
-	if is_static and self.static_model_matrix then
+	if (is_static and self.static_model_matrix) or not self.update_model then
 		return self.static_model_matrix, self.static_normal_matrix
 	end
 
+	--
+	--
+	--
+	--
+	--
+	--
+	--TODO
+	--only recalculate model matrix if there is a change in location
+	--
+	--
+	--
+	--
+
+	prof.push("model_matrix")
 	local props = self.props
 	local pos = props.model_i_position
 	local rot = props.model_i_rotation
 
 	local m = cpml.mat4():identity()
 
+	prof.push("calc")
 	m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
 
 	m:rotate(m, rot[1], cpml.vec3.unit_x)
@@ -96,16 +115,46 @@ function ModelInstance:modelMatrix()
 
 	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
 
+	prof.pop("calc")
+	prof.push("fixdir")
 	m = m * props.model_i_reference:getDirectionFixingMatrix() 
+	prof.pop("fixdir")
+	prof.pop("model_matrix")
 
+	prof.push("normal model_matrix")
 	local norm_m = cpml.mat4.new()
 	norm_m = norm_m:invert(m)
 	norm_m = norm_m:transpose(norm_m)
+	prof.pop("normal model_matrix")
 
 	self.static_model_matrix = m
 	self.static_normal_matrix = norm_m
 
+	self.update_model = false
+
 	return m, norm_m
+end
+
+function ModelInstance:setPosition(pos)
+	local v = self.props.model_i_position
+	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
+		self.props.model_i_position = pos
+		self.update_model = true
+	end
+end
+function ModelInstance:setRotation(rot)
+	local r = self.props.model_i_rotation
+	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] then
+		self.props.model_i_rotation = rot
+		self.update_model = true
+	end
+end
+function ModelInstance:setScale(scale)
+	local s = self.props.model_i_scale
+	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
+		self.props.model_i_scale = scale
+		self.update_model = true
+	end
 end
 
 function ModelInstance:getModel()
@@ -117,9 +166,13 @@ function ModelInstance:queryModelMatrix()
 end
 
 function ModelInstance:fillOutBoneMatrices(animation, frame)
+	if not self.update_bones() then return end
+
 	local model = self:getModel()
 	if model.props.model_animated then
+		prof.push("get_bone_matrices")
 		local bone_matrices = model:getBoneMatrices(animation, frame)
+		prof.pop("get_bone_matrices")
 
 		for i,v in ipairs(bone_matrices) do
 			bone_matrices[i] = matrix(v)
@@ -139,10 +192,15 @@ function ModelInstance:sendBoneMatrices(shader)
 	end
 end
 
-function ModelInstance:sendToShader(shader)
+function ModelInstance:sendToShader(shader, reuse_model_matrix)
 	local shader = shader or love.graphics.getShader()
 
-	local model_u, normal_u = self:modelMatrix()
+	local model_u, normal_u
+	if reuse_model_matrix then
+		model_u, normal_u = self:queryModelMatrix()
+	else
+		model_u, normal_u = self:modelMatrix()
+	end
 	shadersend(shader, "u_model", "column", matrix(model_u))
 	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
 
@@ -153,31 +211,42 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 	local shader = shader or love.graphics.getShader()
 
 	if update_animation then
-		self:fillOutBoneMatrices("Reference Pose", getTickSmooth())
+		self:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
 
+	prof.push("model_shader_send")
 	self:sendToShader(shader)
+	prof.pop("model_shader_send")
 
-	local model = self:getModel()
-	love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
+	local modelprops = self:getModel().props
+	love.graphics.setFrontFaceWinding(modelprops.model_vertex_winding)
 
-	if self.props.model_i_draw_instances then
+	local props = self.props
+
+	prof.push("model_drawwww")
+	if props.model_i_draw_instances then
 		self:drawInstances(shader)
-	elseif self.props.model_i_outline_flag and draw_outline then
+	elseif draw_outline and props.model_i_outline_flag then
 		self:drawOutlined(shader)
 		self:drawDecorations(shader)
 	else
-		model.props.model_mesh:drawModel(shader)
+		modelprops.model_mesh:drawModel(shader)
 		self:drawDecorations(shader)
 	end
+	prof.pop("model_drawwww")
 	love.graphics.setFrontFaceWinding("ccw")
 end
 
 function ModelInstance:drawOutlined(shader)
+	local shader = shader or love.graphics.getShader()
+
 	if self.props.model_i_contour_flag and gfxSetting("enable_contour") then
 		self:drawContour(shader)
 	end
-
+	local model = self:getModel()
+	local mesh = model:getMesh()
+	mesh:drawModel(shader)
+	--[[
 	local model = self:getModel()
 	local mesh = model:getMesh().mesh
 	local colour = self.props.model_i_outline_colour
@@ -194,7 +263,7 @@ function ModelInstance:drawOutlined(shader)
 	end
 	love.graphics.stencil(stencil_function, "replace", 1)
 
-	shadersend(shader,"draw_to_outline_buffer", 0.0)
+	shadersend(shader,"draw_to_outline_buffer", 0.0)--]]
 end
 
 function ModelInstance:drawContour(shader)
@@ -202,11 +271,19 @@ function ModelInstance:drawContour(shader)
 	local mesh = model:getMesh().mesh
 	local colour = self.props.model_i_outline_colour
 
-	Renderer.setupCanvasForContour()
+	--Renderer.setupCanvasForContour()
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("back")
+	love.graphics.setShader(Renderer.contour_shader)
+
 	self:sendToShader()
 	shadersend(love.graphics.getShader(), "solid_colour", colour)
 	model.props.model_mesh:drawModel(shader)
-	Renderer.setupCanvasFor3D()
+
+	--Renderer.setupCanvasFor3D()
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 end
 
 function ModelInstance:drawInstances(shader) 
@@ -329,17 +406,28 @@ function Model:generateAnimationFrames()
 	end
 end
 
+-- if animation is nil, then default reference pose is used
 function Model:getBoneMatrices(animation, frame)
 	if not self.props.model_animated then return end
 
 	local skeleton = self:getSkeleton()
 
-	local anim_data   = self.props.model_animations[animation]
+	local mat4 = cpml.mat4
+	local mat4new = mat4.new
+	local mat4mul = mat4.mul
+
+	local anim_data = nil
+	if animation then
+		anim_data = self.props.model_animations[animation]
+	end
 	if not anim_data then
 		local outframe = self.outframes
+		if animation then
 		print("getBoneMatrices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+		end
+
 		for i,v in ipairs(skeleton) do
-			local mat = cpml.mat4.new(1.0)
+			local mat = mat4new(1.0)
 			outframe[i] = mat
 		end
 		return outframe
@@ -353,26 +441,31 @@ function Model:getBoneMatrices(animation, frame)
 	local frame_fitted = frame * anim_rate / tickRate()
 	local frame_floor  = math.floor(frame_fitted)
 	local frame_interp = frame_fitted - frame_floor
+	local frame_interp_i = 1.0 - frame_interp 
 
 	local frame1_id = anim_first + (frame_floor-1) % anim_length
 	local frame2_id = anim_first + (frame_floor) % anim_length
 
+	local frame1 = self.frames[frame1_id]
+	local frame2 = self.frames[frame2_id]
+
 	local outframe = self.outframes
-	for i,pose1 in ipairs(self.frames[frame1_id]) do
-		pose2 = self.frames[frame2_id][i]
+	for i,pose1 in ipairs(frame1) do
+		pose2 = frame2[i]
 
-		local pose_interp = {}
+		local pose_interp = { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }
 
-		for i,v in ipairs(pose1) do
+		for i=1,16 do
 			pose_interp[i] =
-			 (1-frame_interp)*pose1[i] + frame_interp*pose2[i]
+			 (frame_interp_i)*pose1[i] + frame_interp*pose2[i]
 		end
 
-		local mat = cpml.mat4.new(pose_interp)
+		local mat = mat4new(pose_interp)
 
 		local parent_i = skeleton[i].parent
 		if parent_i > 0 then
-			outframe[i] = outframe[parent_i] * mat
+			outframe[i] = mat4new()
+			outframe[i] = mat4mul(outframe[i], outframe[parent_i], mat)
 		else
 			outframe[i] = mat
 		end

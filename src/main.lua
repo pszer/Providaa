@@ -5,7 +5,8 @@ require "console"
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
 
-local profiler = require "profiler"
+PROF_CAPTURE = false
+prof = require("jprof") 
 
 function __print_info()
 
@@ -13,6 +14,7 @@ end
 
 function love.load( args )
 	print(limit.sysInfoString())
+	print(love.filesystem.getSaveDirectory())
  --	local major, minor, revision, codename = love.getVersion( )
 --	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
 --	print(str)
@@ -31,12 +33,19 @@ end
 
 local DT_COUNTER=0
 local FRAMES=0
+local TIMER_START=0
 function love.update(dt)
+	--prof.enabled(not PROFILE_DRAW)
+	prof.push("frame")
+	prof.push("update")
+
 	GAMESTATE:update(dt)
 
 	DT_COUNTER = DT_COUNTER + dt
 	FRAMES=FRAMES+1
-	if (DT_COUNTER > 1.0) then
+	--if (DT_COUNTER > 1.0) then
+	if (love.timer.getTime() - TIMER_START > 1.0) then
+		TIMER_START = love.timer.getTime()
 		FPS = FRAMES
 		FRAMES=0
 		DT_COUNTER = 0
@@ -52,13 +61,23 @@ function love.update(dt)
 		local time_slept = love.timer.getTime() - start_time
 		DT_COUNTER = DT_COUNTER + time_slept
 	end
+
+	prof.pop("update")
+	--prof.pop("frame")
+	--prof.enabled(false)
 end
 
 function love.draw()
+	--prof.pop("frame")
+	--prof.enabled(false)
+	prof.push("draw")
 	GAMESTATE:draw()
 
 	if Console.isOpen() then Console.draw() end
 	Renderer.drawFPS()
+	prof.pop("draw")
+	prof.pop("frame")
+	--prof.enabled(false)
 end
 
 function love.resize( w,h )
@@ -67,8 +86,7 @@ function love.resize( w,h )
 end
 
 function love.quit()
-	--profiler.stop()
-	--profiler.report("prof.log")
+	prof.write("prof.mpack")
 end
 
 function love.keypressed(key)

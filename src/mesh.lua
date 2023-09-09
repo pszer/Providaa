@@ -15,8 +15,9 @@ Mesh = {
 
 	vertex_attribute = 1,
 	texcoord_attribute = 2,
-	normal_attribute = 3
+	normal_attribute = 3,
 
+	IDMAT =matrix(cpml.mat4.identity())
 }
 Mesh.__index = Mesh
 
@@ -137,8 +138,8 @@ function Mesh:drawAsEnvironment(shader)
 		shadersend(shader,"texture_animated_frame", tex:getAnimationFrame() - 1)
 		shadersend(shader,"texture_animated_dimx", tex.props.texture_merged_dim_x)
 
-		shadersend(shader,"u_model", matrix(cpml.mat4.identity()))
-		shadersend(shader,"u_normal_model", matrix(cpml.mat4.identity()))
+		shadersend(shader,"u_model", self.IDMAT)
+		shadersend(shader,"u_normal_model", self.IDMAT)
 
 		shadersend(shader,"u_skinning", 0)
 
@@ -151,7 +152,7 @@ function Mesh:drawGeneric(shader)
 	if self.mesh then
 		local tex = self.texture
 		shadersend(shader,"texture_animated", false)
-		shadersend(shader,"u_model", matrix(cpml.mat4.identity()))
+		shadersend(shader,"u_model", self.IDMAT)
 		shadersend(shader,"u_skinning", 0)
 
 		love.graphics.draw(self.mesh)
@@ -162,7 +163,9 @@ function Mesh:drawModel(shader)
 	shader = shader or love.graphics.getShader()
 	if self.mesh then
 		shadersend(shader,"texture_animated", false)
+		prof.push("mesh_drawmodel")
 		love.graphics.draw(self.mesh)
+		prof.pop("mesh_drawmodel")
 	end
 end
 

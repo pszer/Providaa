@@ -12,7 +12,7 @@ ModelPropPrototype = Props:prototype{
 	{"model_name"         , "string", "", nil, "model's name" },
 	{"model_texture_fname", "string", "", nil, "model's texture filename"},
 
-	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position"},
+	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position", "readonly"},
 	{"model_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
 	{"model_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
 
@@ -34,9 +34,9 @@ ModelInstancePropPrototype = Props:prototype{
 
 	{"model_i_reference", nil, nil, nil, "the model this instance is referencing" },
 
-	{"model_i_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position"},
-	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
-	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
+	{"model_i_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position, don't change directly use setPosition"},
+	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation, don't change directly use setRotation"},
+	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale, don't change directly use setScale"},
 
 	{"model_i_outline_flag", "boolean", false, nil,                     "whether to draw an outline around this model"},
 	{"model_i_outline_colour", "table", nil, PropDefaultTable{0,0,0,1}, "model's outline colour"},

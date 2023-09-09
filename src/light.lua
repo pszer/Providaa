@@ -1,5 +1,6 @@
 require "props.lightprops"
 require "cfg.gfx"
+require "tick"
 
 require "math"
 local cpml = require 'cpml'
@@ -9,8 +10,8 @@ local limit = require 'syslimits'
 SHADOW_UPDATE_FREQ = 0.0
 
 Light = {__type = "light",
-		 z_mult = 1.0 -- used to increase size of orthographic lightmap projection matrix when shadowmapping
-
+		 z_mult = 1.0, -- used to increase size of orthographic lightmap projection matrix when shadowmapping
+		checkIfUpdateMatrix = periodicUpdate(6)
 }
 Light.__index = Light
 
@@ -86,6 +87,8 @@ function Light:generateLightSpaceMatrix()
 end
 
 function Light:generateLightSpaceMatrixFromCamera( cam )
+	if not self:checkIfUpdateMatrix() then return end
+
 	if self:getLightType() == "directional" then
 		-- use perspective matrix with far plane very close to camera for dynamic shadowmapping
 		local proj = cam:calculatePerspectiveMatrix(nil, 350)
@@ -215,21 +218,20 @@ function Light:getLightSpaceMatrix()
 function Light:getStaticLightSpaceMatrix()
 	return self.props.light_static_lightspace_matrix end
 
-function Light:clearDepthMap()
+function Light:clearDepthMap(opt)
 	love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
 	love.graphics.clear(0,0,0,0)
-	love.graphics.setCanvas()
+	if not opt then love.graphics.setCanvas() end
+end
+function Light:clearStaticDepthMap(opt)
+	if self.props.light_static_depthmap then
+		love.graphics.setCanvas{nil, depthstencil=self.props.light_static_depthmap}
+		love.graphics.clear(0,0,0,0)
+		if not opt then love.graphics.setCanvas() end
+	end
 end
 
 function Light:getLightDirection()
 	return self.props.light_dir end
 function Light:getLightColour()
 	return self.props.light_col end
-
-function Light:clearStaticDepthMap()
-	if self.props.light_static_depthmap then
-		love.graphics.setCanvas{nil, depthstencil=self.props.light_static_depthmap}
-		love.graphics.clear(0,0,0,0)
-		love.graphics.setCanvas()
-	end
-end
