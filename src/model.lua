@@ -6,6 +6,7 @@ local shadersend = require 'shadersend'
 require "cfg.gfx"
 require "props.modelprops"
 require "modelinstancing"
+require "modelaccessory"
 require "texturemanager"
 
 Model = {__type = "model"}
@@ -111,6 +112,10 @@ function ModelInstance:getModel()
 	return self.props.model_i_reference
 end
 
+function ModelInstance:queryModelMatrix()
+	return self.static_model_matrix, self.static_normal_matrix
+end
+
 function ModelInstance:fillOutBoneMatrices(animation, frame)
 	local model = self:getModel()
 	if model.props.model_animated then
@@ -148,7 +153,7 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 	local shader = shader or love.graphics.getShader()
 
 	if update_animation then
-		self:fillOutBoneMatrices("Walk", getTickSmooth())
+		self:fillOutBoneMatrices("Reference Pose", getTickSmooth())
 	end
 
 	self:sendToShader(shader)
@@ -160,8 +165,10 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 		self:drawInstances(shader)
 	elseif self.props.model_i_outline_flag and draw_outline then
 		self:drawOutlined(shader)
+		self:drawDecorations(shader)
 	else
 		model.props.model_mesh:drawModel(shader)
+		self:drawDecorations(shader)
 	end
 	love.graphics.setFrontFaceWinding("ccw")
 end
@@ -223,6 +230,14 @@ end
 
 function ModelInstance:getInstancesAttributeMesh()
 	return self.props.model_i_instances.mesh
+end
+
+function ModelInstance:drawDecorations(shader)
+	local shader = shader or love.graphics.getShader()
+
+	for i,decor in ipairs(self:decorations()) do
+		decor:draw(self, shader)
+	end
 end
 
 function Model:generateDirectionFixingMatrix()
@@ -366,4 +381,46 @@ function Model:getBoneMatrices(animation, frame)
 	return outframe
 end
 
+function Model:getBoneIndex(bone)
+	local joint_map = self.props.model_animations.joint_map
+	return joint_map[bone]
+end
 
+function ModelInstance:queryBoneMatrix(bone)
+	local index = self:getModel():getBoneIndex(bone)
+	if index then
+		return self.bone_matrices[index]
+	else
+		return nil
+	end
+end
+
+function ModelInstance:decorations()
+	return self.props.model_i_decorations
+end
+
+function ModelInstance:attachDecoration(decor)
+	local name = decor:name()
+	local decor_table = self.props.model_i_decorations
+	table.insert(decor_table, decor)
+	decor_table[name] = decor
+end
+
+-- name argument can either be the decor_name of the decoration
+-- or an index in the decor_table
+function ModelInstance:detachDecoration(name)
+	local decor_table = self.props.model_i_decorations
+	if name == "string" then
+		decor_table[name] = nil
+		for i,decor in ipairs(decor_table) do
+			if decor:name() == name then
+				table.remove(decor_table, i)
+				return
+			end
+		end
+	else -- if the argument name is a number index
+		decor_name = decor_table[name]:name()
+		decor_table[decor_name] = nil
+		table.remove(decor_table, name)
+	end
+end

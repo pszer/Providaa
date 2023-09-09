@@ -134,7 +134,7 @@ function Scene:draw(cam)
 	self:drawSkybox()
 
 	for i,v in ipairs(self.props.scene_models) do
-		v:fillOutBoneMatrices("Walk", getTickSmooth())
+		v:fillOutBoneMatrices("Reference Pose", getTickSmooth())
 	end
 
 	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2

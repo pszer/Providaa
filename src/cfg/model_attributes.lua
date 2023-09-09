@@ -4,6 +4,11 @@ local MODEL_ATTRIBUTES = {
 		["model_vertex_winding"] = "ccw"
 	},
 
+	["piankoface.iqm"] = {
+		["model_texture_fname"]  = "models/pianko/FaceMeshTest.png",
+		["model_vertex_winding"] = "ccw"
+	},
+
 	["Sphere.iqm"] = {
 		["model_texture_fname"]  = "blue.png",
 		["model_vertex_winding"] = "cw"

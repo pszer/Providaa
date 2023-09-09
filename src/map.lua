@@ -279,8 +279,6 @@ function Map.getWallMeshes(map, walls, wallset, walltiles)
 
 	for i,v in pairs(wallset) do
 		local texture = Textures.queryTexture(map.wall_set[i])
-		print("texture",texture)
-
 		local set_meshes = {}
 		local set_walls = {}
 
@@ -373,11 +371,6 @@ function Map.generateBottomMesh(map)
 	v2 = {x2,y2,z2, u[2], v[2]}
 	v3 = {x3,y3,z3, u[3], v[3]}
 	v4 = {x4,y4,z4, u[4], v[4]}
-
-	print(x1,y1,z1)
-	print(x2,y2,z2)
-	print(x3,y3,z3)
-	print(x4,y4,z4)
 	
 	local mesh = Mesh:new(Textures.queryTexture("nil.png"), 6, "triangles", "dynamic")
 	mesh:setRectangle(1, v1,v2,v3,v4) -- vertices in opposite order to face downwards
@@ -438,8 +431,6 @@ function Map.getGridMeshes(map, grid, gridset)
 				for i,v in ipairs(consec) do
 					tiles_done[ tiles_done_index(v[1],v[2]) ] = true end
 
-				print(x,z,count)
-			
 				--local tile = grid:queryTile(x,z)
 				--local mesh = Map.generateTileMesh(map, z,x, grid:queryTile(x,z), texture)
 				local tile = grid:queryTile(x,z)

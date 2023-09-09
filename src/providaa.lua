@@ -6,7 +6,7 @@ require "map"
 require "tick"
 require "scene"
 require "modelmanager"
-require "facialfeatures"
+require "animatedface"
 
 local testmap = require "maps.test"
 
@@ -29,6 +29,7 @@ function PROV:load()
 	self.scene.props.scene_skybox_hdr_brightness = 10
 
 	pianko = Models.queryModel("pianko.iqm")
+	piankoface = Models.queryModel("piankoface.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
 	crate = Models.queryModel("shittycrate.iqm")
 	instance = ModelInstance:newInstance(pianko)
@@ -36,16 +37,58 @@ function PROV:load()
 	instance.props.model_i_contour_flag = true
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
+	insts = {}
+
+	--for i=1,1000 do
+	--	table.insert(insts, ModelInfo.new({0,-i,-i*6},{0,0,0},1))
+	--end
+
+	table.insert(insts, ModelInfo.new({300,-60,-256},{0,0,0},1))
+	table.insert(insts, ModelInfo.new({256,-300,-700},{0,1,1},1))
+	table.insert(insts, ModelInfo.new({256,-48,-350},{0,0,0},2))
+
 	crate_inst = ModelInstance:newInstances(crate,
-		{
-			ModelInfo.new({300,-60,-256},{0,0,0},1),
-			ModelInfo.new({256,-300,-700},{0,1,1},1),
-			ModelInfo.new({256,-48,-350},{0,0,0},2)
-		}
+		insts
 	)
 
-	sphere = ModelInstance:newInstance(sphere)
-	self.scene:addModelInstance{ sphere, instance, crate_i }
+	face_decor = ModelDecor:new{
+		decor_name = "face",
+		decor_reference = piankoface,
+		decor_parent_bone = "Head",
+		decor_position = {0,0,0.015},
+	}
+	instance:attachDecoration(face_decor)
+
+	testeyes = EyesData:openFilename("models/pianko/eyes.png",
+	 {
+	  eyes_dimensions = {32,32},
+	  eyes_radius = 12,
+	  eyes_poses = {
+	   {name="neutral"},
+	   {name="close_phase1"},
+	   {name="close_phase2"},
+	   {name="close_phase3"}
+	  }
+	 }
+	 )
+
+	 animface = AnimFace:new{
+		animface_decor_reference = face_decor,
+		animface_eyesdata = testeyes,
+		animface_texture_dim = {256,256},
+		animface_righteye_position = {46,49},
+		animface_lefteye_position  = {178,49},
+		animface_righteye_pose     = "neutral",
+		animface_lefteye_pose      = "neutral",
+		animface_righteye_dir      = {0,0,1},
+		animface_lefteye_dir       = {0,0,1}
+	 }
+
+	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
+	self.scene:addModelInstance{ sphere, instance, crate_i , crate_inst }
+
+	-- only load once
+	self.load = function() end
 end
 
 function PROV:update(dt)
@@ -92,11 +135,21 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
+	instance.props.model_i_position = {cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-50*math.cos(cam.cam_yaw)}
 	--instance.props.model_i_rotation[2] = -getTick()/60
 	--instance.props.model_i_rotation[1] = getTick()/120
 	--sphere.props.model_i_rotation[1] = getTick()/60
 	--
+	
+	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
+	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
+	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
+	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral"
+	 }
+	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
+	animface.props.animface_lefteye_pose = pose
+	animface.props.animface_righteye_pose = pose
+	animface:pushComposite()
 end
 
 function PROV:draw()

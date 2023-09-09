@@ -17,6 +17,7 @@ Renderer = {
 	outline_shader = nil, 
 	contour_shader = nil,
 	hdr_shader     = nil,
+	mask_shader    = nil,
 
 	skybox_model = nil,
 
@@ -63,6 +64,7 @@ function Renderer.loadShaders()
 	Renderer.hdr_shader     = love.graphics.newShader("shader/hdr.glsl")
 	Renderer.outline_shader = love.graphics.newShader("shader/outline.glsl")
 	Renderer.blur_shader    = love.graphics.newShader("shader/blur.glsl")
+	Renderer.mask_shader    = love.graphics.newShader("shader/mask.glsl")
 end
 
 function Renderer.createCanvas()

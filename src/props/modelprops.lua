@@ -54,6 +54,8 @@ ModelInstancePropPrototype = Props:prototype{
 															  once a ModelInstance is created, this table should have a member called ["mesh"]
 															  with the vertex attributes for each instane (see love.graphics.drawInstanced())
 															  ]], "readonly"},
-	{"model_i_instances_count", "number", 0, nil, "count of instances in model_i_instances", "readonly"}
+	{"model_i_instances_count", "number", 0, nil, "count of instances in model_i_instances", "readonly"},
+
+	{"model_i_decorations", "table", nil, PropDefaultTable{}, "model's ModelDecor objects"}
 												
 }

@@ -322,7 +322,7 @@ void effect( ) {
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	// TODO make the fog colour work properly with HDR
-	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, 1.0);
+	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, pix.a);
 
 	love_Canvases[0] = result;
 	love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;

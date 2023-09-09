@@ -24,8 +24,8 @@ function love.load( args )
 	Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one()
-	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
-	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(TESTMODE) end
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
+	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(EYETESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
 
