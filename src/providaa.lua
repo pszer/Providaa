@@ -32,9 +32,12 @@ function PROV:load()
 	piankoface = Models.queryModel("piankoface.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
 	crate = Models.queryModel("shittycrate.iqm")
+
 	instance = ModelInstance:newInstance(pianko)
+
 	instance.props.model_i_outline_flag = true
 	instance.props.model_i_contour_flag = true
+
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
 	insts = {}
@@ -85,7 +88,8 @@ function PROV:load()
 	 }
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, instance, crate_i , crate_inst }
+	self.scene:addModelInstance{ sphere, instance, crate_i , crate_inst , instance2, instance3, instance4, instance5, instance6, instance7 ,
+	instance8, instance9, instance10, instance11, instance12, instance13 }
 
 	-- only load once
 	self.load = function() end
@@ -135,11 +139,7 @@ function PROV:update(dt)
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
-	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-100*math.cos(cam.cam_yaw)}
-	--instance.props.model_i_rotation[2] = -getTick()/60
-	--instance.props.model_i_rotation[1] = getTick()/120
-	--sphere.props.model_i_rotation[1] = getTick()/60
-	--
+	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-75*math.cos(cam.cam_yaw)}
 	
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
@@ -153,10 +153,13 @@ function PROV:update(dt)
 end
 
 function PROV:draw()
+	prof.push("scene_draw")
 	self.scene:draw()
+	prof.pop("scene_draw")
 
-	--Renderer.renderScaled(Renderer.skybox_viewport, {hdr_enabled=false})
+	prof.push("hdr_postprocess")
 	Renderer.renderScaled(nil, {hdr_enabled=true})
+	prof.pop("hdr_postprocess")
 end
 
 function PROV:onTickChange()

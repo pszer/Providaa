@@ -8,16 +8,13 @@ local limit = require "syslimits"
 PROF_CAPTURE = false
 prof = require("jprof") 
 
-function __print_info()
-
+local function __print_info()
+	print(limit.sysInfoString())
+	print(love.filesystem.getSaveDirectory())
 end
 
 function love.load( args )
-	print(limit.sysInfoString())
-	print(love.filesystem.getSaveDirectory())
- --	local major, minor, revision, codename = love.getVersion( )
---	local str = string.format("Version %d.%d.%d - %s", major, minor, revision, codename)
---	print(str)
+	__print_info()
 
 	Renderer.load()
 
@@ -63,21 +60,18 @@ function love.update(dt)
 	end
 
 	prof.pop("update")
-	--prof.pop("frame")
-	--prof.enabled(false)
 end
 
 function love.draw()
-	--prof.pop("frame")
-	--prof.enabled(false)
 	prof.push("draw")
+
 	GAMESTATE:draw()
 
 	if Console.isOpen() then Console.draw() end
 	Renderer.drawFPS()
+
 	prof.pop("draw")
 	prof.pop("frame")
-	--prof.enabled(false)
 end
 
 function love.resize( w,h )

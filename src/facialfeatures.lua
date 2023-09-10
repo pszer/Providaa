@@ -5,6 +5,8 @@ require "props.facialfeaturesprops"
 
 --[[
 --
+-- Do SET_GAMESTATE(EYETESTMODE) for an eye compositing demo.
+--
 -- Eyes are stored as in a single texture in the following 2xN grid
 --
 -- eyes.dds

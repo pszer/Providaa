@@ -239,13 +239,17 @@ end
 
 function ModelInstance:drawOutlined(shader)
 	local shader = shader or love.graphics.getShader()
-
-	if self.props.model_i_contour_flag and gfxSetting("enable_contour") then
-		self:drawContour(shader)
-	end
 	local model = self:getModel()
 	local mesh = model:getMesh()
+
+	prof.push("contour_draw")
+	if self.props.model_i_contour_flag and gfxSetting("enable_contour") then
+		self:drawContour(shader, mesh)
+	end
+	prof.pop("contour_draw")
+	prof.push("after_contour_draw")
 	mesh:drawModel(shader)
+	prof.pop("after_contour_draw")
 	--[[
 	local model = self:getModel()
 	local mesh = model:getMesh().mesh
@@ -266,24 +270,30 @@ function ModelInstance:drawOutlined(shader)
 	shadersend(shader,"draw_to_outline_buffer", 0.0)--]]
 end
 
-function ModelInstance:drawContour(shader)
-	local model = self:getModel()
-	local mesh = model:getMesh().mesh
+function ModelInstance:drawContour(shader, mesh)
+	local mesh = mesh or model:getMesh()
 	local colour = self.props.model_i_outline_colour
+	local offset = 0.25
 
-	--Renderer.setupCanvasForContour()
-	love.graphics.setDepthMode( "less", true  )
+	--love.graphics.setDepthMode( "lequal", true  )
 	love.graphics.setMeshCullMode("back")
-	love.graphics.setShader(Renderer.contour_shader)
 
-	self:sendToShader()
-	shadersend(love.graphics.getShader(), "solid_colour", colour)
-	model.props.model_mesh:drawModel(shader)
+	--shadersend(shader, "u_contour_outline_offset", offset)
+	--shadersend(shader, "u_draw_as_contour", true)
+	--shadersend(shader, "u_contour_colour", colour)
+	shader:send("u_contour_outline_offset", offset)
+	shader:send("u_draw_as_contour", true)
+	shader:send("u_contour_colour", colour)
+	--shadersend(shader, "u_contour_colour", colour)
 
-	--Renderer.setupCanvasFor3D()
-	love.graphics.setDepthMode( "less", true  )
+	mesh:drawModel(shader)
+
+	--shadersend(shader, "u_draw_as_contour", false)
+	--shadersend(shader, "u_contour_outline_offset", 0.0)
+	shader:send("u_contour_outline_offset", 0.0)
+	shader:send("u_draw_as_contour", false)
+
 	love.graphics.setMeshCullMode("front")
-	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
 end
 
 function ModelInstance:drawInstances(shader) 

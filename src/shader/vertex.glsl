@@ -48,6 +48,8 @@ attribute vec2 TextureOffset;
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
+uniform float u_contour_outline_offset;
+
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
 		return
@@ -88,7 +90,6 @@ mat4 get_model_matrix() {
 
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
-	//mat4 modelview_u = u_rot * u_view * skin_u;
 	mat4 skinview_u = u_view * skin_u;
 
 	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
@@ -99,6 +100,9 @@ vec4 position(mat4 transform, vec4 vertex) {
 	// create a fake curved horizon effect
 	if (curve_flag) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
+
+	vec4 surface_offset = vec4(frag_normal * u_contour_outline_offset, 0.0);
+	view_v += surface_offset;
 
 	view_v = u_rot * view_v;
 
@@ -146,6 +150,9 @@ uniform vec4 dir_light_col;
 
 uniform float draw_to_outline_buffer;
 uniform vec4 outline_colour;
+
+uniform bool u_draw_as_contour;
+uniform vec4 u_contour_colour;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -300,11 +307,15 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 // love_Canvases[0] is HDR color
 // love_Canvases[1] is outline buffer
 void effect( ) {
-	float dist = frag_position.z*frag_position.z + frag_position.x*frag_position.x + frag_position.y*frag_position.y;
-	dist = sqrt(dist);
+	// when drawing the model in contour line phase, we only need a solid
+	// colour and can skip all the other fragment calculations
+	if (u_draw_as_contour) {
+		love_Canvases[0] = u_contour_colour;
+		return;
+	}
 
-	//vec3 diff = 
-	//float frag_light_dist = 
+	float dist = (frag_position.z*frag_position.z) + (frag_position.x*frag_position.x) + (frag_position.y*frag_position.y);
+	dist = sqrt(dist);
 
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);

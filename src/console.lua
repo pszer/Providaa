@@ -8,6 +8,9 @@ Console = {
 	text = "",
 	text_draw = nil,
 
+	history = {},
+	history_scroll = nil,
+
 	open_flag = false
 }
 Console.__index = self

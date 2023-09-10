@@ -1,5 +1,8 @@
 #pragma language glsl3
 
+/* redundant code, this file can be removed.
+   the contour line pass has been integrated into the main vertex.glsl shader */
+
 #ifdef VERTEX
 
 uniform mat4 u_view;
