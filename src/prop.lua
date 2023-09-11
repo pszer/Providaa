@@ -11,6 +11,14 @@ Props = {}
 Props.__index = Prop
 Props.__type  = "proptableprototype"
 
+--
+-- IMPORTANT: the purpose of property tables is for pseudo-OOP, input validity, default values and
+-- organisation. There's overhead in creating new instances and a little bit of overhead
+-- in reading/writing to them; they're unsuitable for performance-critical code e.g. you wouldn't
+-- use them to define vector/matrix classes. Any place where property tables are used with a very
+-- short lifespan is a place to look for a better solution.
+--
+
 -- creates a prototype property table that can
 -- be reused several times
 -- takes in a table of arguments, with each
@@ -35,6 +43,7 @@ Props.__type  = "proptableprototype"
 --
 function Props:prototype(arg)
 	local p = {}
+	--p[0] = 0
 
 	for _,row in pairs(arg) do
 		-- the property will be stored in p as
@@ -45,11 +54,22 @@ function Props:prototype(arg)
 			}
 		setmetatable(property, PropsPrototypeRowMeta)
 		p[row[1]] = property
+
+
+		-- we store a numerically indexed map of all the property names
+		--p[0] = p[0] + 1
+		--p[p[0]] = row[1]
 	end
 
 	setmetatable(p, Props)
 
 	return p
+end
+
+-- takes an existing property table and clones it, adding in new rows
+-- from the given argument
+function Props:extend(arg)
+	
 end
 
 -- this metatable allows for accessing the info for a row
@@ -63,26 +83,9 @@ PropsPrototypeRowMeta.__index = function (row, k)
 	return rawget(row, rawget(PropsPrototypeRowMeta, k))
 end
 
--- once a prototype is created, it can be called like a function
--- to give an instance of a prototype table
--- initial values of properties can be given through the optional init argument
--- i.e init = {"prop1" = 0, "prop2" = 1} will assign 0 and 1 to properties prop0 and prop1
---
--- all instances of a property table have ["__proto"] that points to their prototype
--- if that information is required
---
--- an instance of a property table can be read and written to like a regular table but
--- it has the type checking and validity checking of the prototype table in place
-Props.__call = function (proto, init)
-	local props = { __proptabledata = {} }
-	local enforce_read_only = false -- we ignore readonly when creating a property table, ugly doin this way but works
-
-	props.__proto = proto
-	props.__type = "proptable"
-	props.__newindex = -- this is huge, perhaps clean up
-	                   -- also each property table potentially creates an instance of these metamethods.
-					   -- sharing them would use less memory unless LuaJIT does magic i'm not aware of
-	function (p, key, val)
+__props_inst_mt = {
+	__newindex = function (p, key, val)
+		local proto = rawget(p, "__proto")
 		local row = proto[key]
 		if row == nil then
 			error("property [" .. tostring(key) .. "] does not exist")
@@ -107,15 +110,16 @@ Props.__call = function (proto, init)
 			       .. " (" .. tostring(val) .. ")")
 		end
 
-		if row.type == "link" and vvaltype ~= "link" then
-			(rawget(p.__proptabledata, key)[2]) (validvalue)
-		end
+		--if row.type == "link" and vvaltype ~= "link" then
+		--	(rawget(p, key)[2]) (validvalue)
+		--end
 
-		rawset(p.__proptabledata, key, validvalue)
-	end
+		rawset(p, key, validvalue)
+	end,
 
-	props.__index = function (p, key)
-		local v = rawget(p.__proptabledata, key)
+	__index = function (p, key)
+		local v = rawget(p, key)
+		local proto = rawget(p, "__proto")
 		if v ~= nil then
 			--if provtype(v) == "function" and p.__proto[key].callonly then
 			--if type(v) == "function" and p.__proto[key].callonly then
@@ -127,7 +131,7 @@ Props.__call = function (proto, init)
 			--end
 			return v
 		else
-			local prot = p.__proto[key]
+			local prot = proto[key]
 			if prot then
 				return prot.default
 			else
@@ -135,40 +139,59 @@ Props.__call = function (proto, init)
 				return nil
 			end
 		end
-	end
+	end,
 
-	props.__call = function (props, t)
+	__call = function (props, t)
 		for k,v in pairs(t) do
 			props[k]=v
 		end
-	end
+	end,
 
-	props.__pairs = function (p)
-		return pairs(p.__proptabledata)
-	end
+	-- removed, anyplace where this would be used is bad practice
+	--props.__pairs = function (p)
+	--	return pairs(p.__proptabledata)
+	--end,
 
-	props.__tostring = function (p)
+	__tostring = function (p)
 		local result = ""
-		for k,v in pairs(p.__proptabledata) do
+		for k,v in pairs(p) do
 			result = result .. tostring(k) .. " = " .. tostring(v) .. "\n"
 		end
 		return result
 	end
+}
 
-	function props.rawget(key)
-		return rawget(p.__proptabledata, key)
+-- once a prototype is created, it can be called like a function
+-- to give an instance of a prototype table
+-- initial values of properties can be given through the optional init argument
+-- i.e init = {"prop1" = 0, "prop2" = 1} will assign 0 and 1 to properties prop0 and prop1
+--
+-- all instances of a property table have ["__proto"] that points to their prototype
+-- if that information is required
+--
+-- an instance of a property table can be read and written to like a regular table but
+-- it has the type checking and validity checking of the prototype table in place
+Props.__call = function (proto, init)
+	local props = { }
+	local enforce_read_only = false -- we ignore readonly when creating a property table
+
+	props.__proto = proto
+	props.__type = "proptable"
+
+	--[[function props.rawget(key)
+		return rawget(p, key)
 	end
 
 	function props.rawset(key, value)
-		return rawset(p.__proptabledata, key, value)
-	end
+		return rawset(p, key, value)
+	end--]]
 
-	setmetatable(props, props)
+	setmetatable(props, __props_inst_mt)
 
 	for key,row in pairs(proto) do
 		props[key] = (init and init[key]) or proto[key].default
 	end
 
-	enforce_read_only = true
+	--enforce_read_only = true
 	return props
 end

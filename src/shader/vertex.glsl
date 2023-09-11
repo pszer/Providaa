@@ -92,7 +92,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
 	mat4 skinview_u = u_view * skin_u;
 
-	frag_normal = get_normal_matrix(skin_u) * VertexNormal;
+	frag_normal = normalize(get_normal_matrix(skin_u) * VertexNormal);
 
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = skinview_u * vertex;

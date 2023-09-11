@@ -35,7 +35,7 @@
 require 'table'
 
 require "timer"
-require "keybinds"
+require "cfg.keybinds"
 
 -- lower priority number = higher priority
 --
@@ -47,17 +47,20 @@ require "keybinds"
 --
 CONTROL_LOCK = {
 --              priority | status
-	CONSOLE     = {0,        0},
+	CONSOLE      = {0,        0},
 
-	TOPMENU     = {5,        0},
-	MENU4       = {6,        0},
-	MENU3       = {7,        0},
-	MENU1       = {8,        0},
-	MENU1       = {9,        0},
+	MENU5        = {5,        0},
+	MENU4        = {6,        0},
+	MENU3        = {7,        0},
+	MENU2        = {8,        0},
+	MENU1        = {9,        0},
 
-	INGAMETEXT  = {100,      0},
-	INGAME      = {101,      0}
+	GAMEPROMPT = {100,      0},
+	GAME       = {101,      1}
 }
+
+-- shorter alias
+CTRL = CONTROL_LOCK
 
 -- if additional control locks are needed only add them through this
 -- ensures priorities dont clash and correct metatables are set
@@ -156,7 +159,7 @@ function KEY_RELEASE(key, scancode)
 	end	
 end
 
-function UpdateKeys()
+function updateKeys()
 	for k,v in pairs(CONTROL_KEYS_DOWN) do
 		if v[1] == "down" then
 			v[1] = "held"
@@ -166,18 +169,18 @@ function UpdateKeys()
 	end
 end
 
--- the Love2D input callback functions
-function love.keypressed(key, scancode, isrepeat)
+-- the Love2D input callback functions, they are called in main.lua
+function __keypressed(key, scancode, isrepeat)
 	KEY_PRESS(key,scancode,isrepeat)
 end
-function love.mousepressed(x, y, button, istouch, presses)
+function __mousepressed(x, y, button, istouch, presses)
 	local m = "mouse" .. tostring(button)
 	KEY_PRESS(m, m, false)
 end
-function love.keyreleased(key, scancode)
+function __keyreleased(key, scancode)
 	KEY_RELEASE(key,scancode,isrepeat)
 end
-function love.mousereleased(x, y, button, istouch, presses)
+function __mousereleased(x, y, button, istouch, presses)
 	local m = "mouse" .. tostring(button)
 	KEY_RELEASE(m, m, false)
 end
@@ -188,9 +191,10 @@ end
 -- first value is either nil,"down","held" or "up"
 -- second value is time held in ticks or nil
 -- third value is time held in seconds or nil
-function QueryScancode(scancode, lock)
+function queryScancode(scancode, level)
+	local level = level or CTRL.GAME
 	-- block query if disabled lock
-	if not lock() then
+	if not level() then
 		return nil,nil,nil
 	end
 
@@ -200,12 +204,24 @@ function QueryScancode(scancode, lock)
 	end
 end
 
-function QueryKeybind(keybind, lock)
-	local scancode = KEYBINDS[keybind]
-	if scancode then
-		return QueryScancode(scancode, lock)
-	else
+function queryKeybind(setting, level)
+	local level = level or CTRL.GAME
+	local scancode1, scancode2 = keySetting( setting )
+	if scancode1 or scancode2 then
+		return queryScancode(scancode1, level)
+	else 
 		return nil,nil,nil
 	end
 end
 
+function scancodeIsDown(scancode, level)
+	local level = level or CTRL.GAME
+	local status = queryScancode(scancode, level)
+	return status == "down" or status == "held"
+end
+
+function keybindIsDown(setting, level)
+	local level = level or CTRL.GAME
+	local status = queryScancode(setting, level)
+	return status == "down" or status == "held"
+end

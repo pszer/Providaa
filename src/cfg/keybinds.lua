@@ -1,5 +1,4 @@
 --[[ keybinds are stored here
---   its the keybindings file :)))))
 --]]
 --
 
@@ -22,19 +21,25 @@ VALID_SCANCODES = {
 "mouse1","mouse2","mouse3","mouse4","mouse5"
 }
 
+for i,v in ipairs(VALID_SCANCODES) do
+	VALID_SCANCODES[v] = true
+end
+
 function IS_VALID_SCANCODE(sc)
-	for _,v in pairs(VALID_SCANCODES) do
-		if v == sc then return true end
-	end
+	if VALID_SCANCODES[sc] then return true end
 	return false
 end
 
-KEYBINDS = {
-	MV_LEFT  = "left",
-	MV_RIGHT = "right",
-	MV_DOWN  = "down",
-	MV_UP    = "up",
-	MV_JUMP  = "z"
+-- each key_setting can have two keybinds
+KEY_SETTINGS = {
+	
+	["move_left"]  = { "left"  , "a" , default = "left"  },
+	["move_right"] = { "right" , "d" , default = "right" },
+	["move_up"]    = { "up"    , "w" , default = "up"    },
+	["move_down"]  = { "down"  , "s" , default = "down"  },
+	["action"]     = { "z"     , "space" , default = "z" },
+	["back"]       = { "x"     , "lctrl" , default = "x" }
+
 }
 
 function SET_KEYBIND(bind, scancode)
@@ -43,4 +48,56 @@ function SET_KEYBIND(bind, scancode)
 	else
 		KEYBINDS[bind] = scancode
 	end
+end
+
+function keySetting( setting )
+	local s = KEY_SETTINGS[setting]
+	local s1,s2 = s[1],s[2]
+
+	if not (s1 or s2) then
+		return s[s.default], nil
+	end
+
+	if s1 then
+		return s1,s2 end
+	return s2, nil
+end
+
+function keyChangeSetting( setting , new_scancode , slot )
+	local slot = slot or 1
+	if slot ~= 1 and slot ~= 2 then slot = 1 end
+
+	local is_valid = IS_VALID_SCANCODE(new_scancode)
+	if not is_valid then
+		print(string.format("keyChangeSetting: \"%s\" is an invalid scancode", new_scancode))
+		return
+	end
+
+	local s = KEY_SETTINGS[setting]
+	if not s then
+		print(string.format("keyChangeSetting: no setting \"%s\" exists", setting))
+		return
+	end
+
+	-- overwrite settings for other keys with same scancode
+	for i,set in pairs(KEY_SETTINGS) do
+		local overwrite = false
+		if set[1] == new_scancode then set[1] = nil overwrite = true end
+		if set[2] == new_scancode then set[2] = nil overwrite = true end
+		if overwrite then
+			print(string.format("keyChangeSetting: changing keybind \"%s\" to \"%s\", setting \"%s\" already bound to \"%s\", over-writing",
+				setting, new_scancode, i, new_scancode))
+		end
+	end
+
+	s[slot] = new_scancode
+end
+
+function keyRevertDefault( setting )
+	local s = KEY_SETTINGS[setting]
+	if not s then
+		print(string.format("keyRevertDefault: no setting \"%s\" exists", setting))
+	end
+
+	s[1] = s.default
 end

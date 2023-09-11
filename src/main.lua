@@ -23,7 +23,7 @@ function love.load( args )
 	Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one()
-	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(PROV) end
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
 	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(EYETESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
@@ -59,6 +59,8 @@ function love.update(dt)
 		DT_COUNTER = DT_COUNTER + time_slept
 	end
 
+	updateKeys()
+
 	prof.pop("update")
 end
 
@@ -83,8 +85,10 @@ function love.quit()
 	prof.write("prof.mpack")
 end
 
-function love.keypressed(key)
+function love.keypressed(key, scancode, isrepeat)
 	SPLASH_SCREEN:skip()
+
+	__keypressed(key, scancode, isrepeat)
 
 	if Console.isOpen() then
 		Console.keypressed(key)
@@ -93,6 +97,18 @@ function love.keypressed(key)
 	if key == "f8" then
 		Console.open()
 	end
+end
+
+function love.keyreleased(key, scancode)
+	__keyreleased(key, scancode)
+end
+
+function love.mousepressed(x, y, button, istouch, presses)
+	__mousepressed(x, y, button, istouch, presses)
+end
+
+function love.mousereleased(x, y, button, istouch, presses)
+	__mousereleased(x, y, button, istouch, presses)
 end
 
 function love.textinput(t)

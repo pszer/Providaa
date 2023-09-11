@@ -16,6 +16,7 @@ function Model:new(props)
 	local this = {
 		props = ModelPropPrototype(props),
 
+		-- internally used
 		baseframe = {},
 		inversebaseframe = {},
 		frames = {},
@@ -24,6 +25,7 @@ function Model:new(props)
 		dir_matrix = nil,
 		static_model_matrix = nil,
 		static_normal_matrix = nil,
+		bounds_corrected = false -- has the bounding box been corrected by the direction fixing matrix?
 
 		--bone_matrices = {}
 	}
@@ -337,6 +339,37 @@ end
 function Model:getDirectionFixingMatrix()
 	if not self.dir_matrix then self:generateDirectionFixingMatrix() end
 	return self.dir_matrix
+end
+
+-- corrects the models bounding box by the model direction fixing matrix
+function Model:correctBoundingBox()
+	if self.bounds_corrected then return end
+
+	local bounds = self.props.model_bounding_box
+	local b_min = bounds.min
+	local b_max = bounds.max
+	local mat4 = cpml.mat4
+	local dir_mat = self:getDirectionFixingMatrix()
+
+	-- give the coordinates a 0 w component so they can be multiplied by a mat4
+	b_min[4] = 0
+	b_max[4] = 0
+
+	-- multiply bounds by the direction fixing matrix
+	mat4.mul_vec4(b_min, dir_mat, b_min)
+	mat4.mul_vec4(b_max, dir_mat, b_max)
+
+	local function swap(a,b,i)
+		local temp = a[i]
+		a[i] = b[i]
+		b[i] = temp
+	end
+	-- after transformation, we need to determine the new min/max for x,y,z
+	if b_min[1] > b_max[1] then swap(b_min,b_max,1) end
+	if b_min[2] > b_max[2] then swap(b_min,b_max,2) end
+	if b_min[3] > b_max[3] then swap(b_min,b_max,3) end
+
+	self.bounds_corrected = true
 end
 
 function Model:getSkeleton()

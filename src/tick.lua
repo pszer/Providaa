@@ -39,10 +39,8 @@ function tickRate()
 	return tick_rate
 end
 
--- READ TODO
 --
---
--- Add a functioniality that helps in tick limiting functions
+-- Helper function in tick limiting code
 -- e.g. only calc new lightspace matrices every tick instead of every frame
 --
 function periodicUpdate(delay)

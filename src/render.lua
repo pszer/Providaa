@@ -414,3 +414,5 @@ function Renderer.drawFPS()
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.pop()
 end
+
+return Renderer

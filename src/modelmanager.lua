@@ -54,6 +54,11 @@ function Models.openFilename(fname, texture_fname, load_anims)
 		print("Models.openFilename(): model " .. fname .. " does not exist")
 	end
 
+	local bounds = nil
+	if objs.bounds then
+		bounds = objs.bounds.base
+	end
+
 	local texture = Textures.loadTexture(texture_fname)
 
 	local mesh = Mesh.newFromMesh(objs.mesh, texture)
@@ -71,10 +76,11 @@ function Models.openFilename(fname, texture_fname, load_anims)
 		["model_name"] = fname,
 		["model_texture_fname"] = texture_fname,
 		["model_vertex_winding"] = winding,
+		["model_bounding_box"] = bounds,
 		["model_mesh"] = mesh,
 		["model_skeleton"] = skeleton,
 		["model_animations"] = anims,
-		["model_animated"] = has_anims
+		["model_animated"] = has_anims,
 	}
 
 	if load_anims and objs.has_anims then
@@ -83,6 +89,7 @@ function Models.openFilename(fname, texture_fname, load_anims)
 	end
 
 	model:generateDirectionFixingMatrix()
+	model:correctBoundingBox()
 
 	return model
 end

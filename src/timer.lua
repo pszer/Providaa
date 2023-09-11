@@ -1,21 +1,19 @@
 require 'math'
+require "tick"
 
 -- tick globals
-TICKTIME = 1/60.0
-TICKACC = 0.0
+--TICKTIME = 1/60.0
+--TICKACC = 0.0
 
-TICK = 0
+--TICK = 0
 
-function GetTick()
-	return TICK
-end
-function GetSecond()
-	return love.timer.getTime()
-end
+--function GetTick()
+--	return TICK
+--end
 
-function IncrementTick()
-	TICK = TICK + 1
-end
+--function IncrementTick()
+--	TICK = TICK + 1
+--end
 
 --[[
 --timer utility classes
@@ -54,7 +52,7 @@ function Timer:Time()
 	end
 end
 
--- pauses counting ticks until resumed
+-- pauses timing until resumed
 -- if already paused do nothing
 function Timer:Pause()
 	if self.pausetick == -1 then
@@ -62,7 +60,7 @@ function Timer:Pause()
 	end
 end
 
--- resumes counting ticks if paused
+-- resumes back to timing if paused
 function Timer:Resume()
 	if self.pausetick ~= -1 then
 		local dif = self.timefunc() - self.pausetick
@@ -74,14 +72,15 @@ end
 -- common timers
 --
 -- uses ingame tick for timing
+-- getTickSmooth()
 TimerTick = Timer:new()
 TimerTick.__index = TimerTick
-function TimerTick:new() return Timer:new(GetTick) end
+function TimerTick:new() return Timer:new(getTickSmooth) end
 
 -- uses real time seconds
 TimerReal = Timer:new()
 TimerReal.__index = TimerReal
-function TimerReal:new() return Timer:new(GetSecond) end
+function TimerReal:new() return Timer:new(love.timer.getTime) end
 
 -- counts down X amount of time from creation, Done() returns true after X time passes
 CountdownTimer = Timer:new()

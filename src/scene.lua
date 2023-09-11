@@ -7,6 +7,7 @@ require "tick"
 local shadersend = require 'shadersend'
 local matrix     = require 'matrix'
 local cpml       = require 'cpml'
+local Renderer   = require 'render'
 
 Scene = {__type = "scene"}
 Scene.__index = Scene

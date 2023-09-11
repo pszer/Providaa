@@ -7,16 +7,20 @@ require "tick"
 require "scene"
 require "modelmanager"
 require "animatedface"
+require "input"
+require "event"
 
 local testmap = require "maps.test"
 
-PROV = {
+Prov = {
 	grid = {},
 	scene = Scene:new(),
-}
-PROV.__index = PROV
 
-function PROV:load()
+	events = {}
+}
+Prov.__index = Prov
+
+function Prov:load()
 	self.scene:loadMap(testmap)
 	self.scene.props.scene_lights = {
 		Light:new{
@@ -95,47 +99,46 @@ function PROV:load()
 	self.load = function() end
 end
 
-function PROV:update(dt)
+function Prov:update(dt)
 	stepTick(dt)
 	if tickChanged() then
 		self:onTickChange()
 	end
 
-	local cam = PROV.scene.props.scene_camera.props
-	if love.keyboard.isDown("w") then
+	local cam = Prov.scene.props.scene_camera.props
+
+	if keybindIsDown("w", CTRL.GAME) then
 		cam.cam_z = cam.cam_z - 100*dt
 	end
-	if love.keyboard.isDown("s") then
+	if keybindIsDown("s", CTRL.GAME) then
 		cam.cam_z = cam.cam_z + 100*dt
 	end
-	if love.keyboard.isDown("a") then
+	if keybindIsDown("a", CTRL.GAME) then
 		cam.cam_x = cam.cam_x - 100*dt
 	end
-	if love.keyboard.isDown("d") then
+	if keybindIsDown("d", CTRL.GAME) then
 		cam.cam_x = cam.cam_x + 100*dt
 	end
-	if love.keyboard.isDown("space") then
+	if keybindIsDown("space", CTRL.GAME) then
 		cam.cam_y = cam.cam_y - 50*dt
 	end
-	if love.keyboard.isDown("lctrl") then
+	if keybindIsDown("lctrl", CTRL.GAME) then
 		cam.cam_y = cam.cam_y + 50*dt
 	end
 
-	if love.keyboard.isDown("right") then
+	if keybindIsDown("right", CTRL.GAME) then
 		cam.cam_yaw = cam.cam_yaw + 1*dt
-		--cam.cam_roll = cam.cam_roll - 1*dt
 	end
 
-	if love.keyboard.isDown("left") then
+	if keybindIsDown("left", CTRL.GAME) then
 		cam.cam_yaw = cam.cam_yaw - 1*dt
-		--cam.cam_roll = cam.cam_roll + 1*dt
 	end
 
-	if love.keyboard.isDown("down") then
+	if keybindIsDown("down", CTRL.GAME) then
 		cam.cam_pitch = cam.cam_pitch - 1*dt
 	end
 
-	if love.keyboard.isDown("up") then
+	if keybindIsDown("up", CTRL.GAME) then
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end
 
@@ -152,7 +155,7 @@ function PROV:update(dt)
 	animface:pushComposite()
 end
 
-function PROV:draw()
+function Prov:draw()
 	prof.push("scene_draw")
 	self.scene:draw()
 	prof.pop("scene_draw")
@@ -162,7 +165,7 @@ function PROV:draw()
 	prof.pop("hdr_postprocess")
 end
 
-function PROV:onTickChange()
+function Prov:onTickChange()
 	local meshes = self.scene.props.scene_meshes
 	for _,mesh in ipairs(meshes) do
 		mesh:updateTexture()
