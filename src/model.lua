@@ -140,6 +140,7 @@ end
 function ModelInstance:setPosition(pos)
 	local v = self.props.model_i_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
+		print("uhh", pos[1], pos[2], pos[3])
 		self.props.model_i_position = pos
 		self.update_model = true
 	end
@@ -157,6 +158,10 @@ function ModelInstance:setScale(scale)
 		self.props.model_i_scale = scale
 		self.update_model = true
 	end
+end
+
+function ModelInstance:isStatic()
+	return self.props.model_i_static
 end
 
 function ModelInstance:getModel()

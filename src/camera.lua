@@ -13,7 +13,9 @@ function Camera:new(props)
 	local this = {
 		props = CameraPropPrototype(props),
 
-		__last_aspect = 16/9
+		__last_aspect    = 16/9,
+		__last_fov       = 75.0,
+		__last_far_plane = 2000.0
 	}
 
 	setmetatable(this,Camera)
@@ -26,20 +28,54 @@ end
 
 function Camera:pushToShader(sh)
 	local props = self.props
+	local pos = self:getPosition()
+	local rot = self:getRotation()
 
 	sh = sh or love.graphics.getShader()
 	shadersend(sh, "u_proj", "column", matrix(props.cam_perspective_matrix))
 	shadersend(sh, "u_view", "column", matrix(props.cam_view_matrix))
 	shadersend(sh, "u_rot", "column", matrix(props.cam_rot_matrix))
-	shadersend(sh, "view_pos", {props.cam_x, props.cam_y, props.cam_z})
+	shadersend(sh, "view_pos", pos)
 
  	shadersend(sh, "curve_flag", props.cam_bend_enabled)
 	shadersend(sh, "curve_coeff", props.cam_bend_coefficient)
 end
 
 function Camera:getPosition()
-	local props = self.props
-	return props.cam_x,props.cam_y,props.cam_z
+	return self.props.cam_position end
+function Camera:getRotation()
+	return self.props.cam_rotation end
+function Camera:getDirection()
+	return self.props.cam_direction end
+
+function Camera:directionMode()
+	self.props.cam_mode = "direction" end
+function Camera:rotationMode()
+	self.props.cam_mode = "rotation" end
+function Camera:getMode()
+	return self.props.cam_mode end
+function Camera:isDirectionMode()
+	return self:getMode() == "direction" end
+function Camera:isRotationMode()
+	return self:getMode() == "rotation" end
+
+function Camera:setPosition(pos)
+	self.props.cam_position = {pos[1], pos[2], pos[3]}
+end
+
+-- these functions automatically set the camera mode to direction/rotation
+function Camera:setDirection(dir)
+	-- ensure that the direction vector is never nil
+	if dir[1]==0 and dir[2]==0 and dir[3]==0 then	
+		self.props.cam_direction = { 0 , 0 , -1 }
+	else
+		self.props.cam_direction = {dir[1], dir[2], dir[3]}
+	end
+	self:directionMode()
+end
+function Camera:setRotation(rot)
+	self.props.cam_rotation = {rot[1], rot[2], rot[3]}
+	self:rotationMode()
 end
 
 -- generates and returns perspective matrix
@@ -64,21 +100,33 @@ end
 -- generates and returns view,rot matrix
 function Camera:generateViewMatrix()
 	local props = self.props
-	local v = cpml.mat4():identity()
-	local m = cpml.mat4()
+	local mat4 = cpml.mat4
+	local vec3 = cpml.vec3
+	local v = mat4():identity()
+	local m = mat4()
 
-	local position = cpml.vec3(props.cam_x, props.cam_y, props.cam_z)
+	local P = self:getPosition()
+	local position = vec3(P[1], P[2], P[3])
 
-	v:rotate(v, props.cam_pitch, cpml.vec3.unit_x)
-	v:rotate(v, props.cam_yaw, cpml.vec3.unit_y)
-	v:rotate(v, props.cam_roll, cpml.vec3.unit_z)
+	local mode = self:getMode()
+	if mode == "rotation" then
+		local R = self:getRotation()
+		v:rotate(v, R[1], vec3.unit_x)
+		v:rotate(v, R[2], vec3.unit_y)
+		v:rotate(v, R[3], vec3.unit_z)
+	else
+		local D = self:getDirection()
+		v:look_at(vec3(0,0,0),         -- eye
+		          vec3(D[1],D[2],D[3]), -- look at
+				  vec3(0,1,0))       -- up dir
+	end
 
 	m:translate(m, -position)
 
 	props.cam_view_matrix = m
 	props.cam_rot_matrix  = v
 
-	local rotview = cpml.mat4()
+	local rotview = mat4()
 	cpml.mat4.mul(rotview, v, m)
 	props.cam_rotview_matrix = rotview
 
@@ -163,10 +211,32 @@ function Camera:getDirectionVector()
 	end
 end
 
+-- a test to see if anything has changed that requires
+-- a new perspective matrix
+function Camera:checkNeedToUpdatePerspective()
+	local props = self.props
+	if (RESOLUTION_ASPECT_RATIO ~= self.__last_aspect) or
+	   (self.__last_fov ~= props.cam_fov) or
+	   (self.__last_far_plane ~= props.cam_far_plane)
+	then
+	   return true
+	end
+end
+
+function Camera:setController(func)
+	self.props.cam_function = func
+end
+
 function Camera:update()
-	if RESOLUTION_ASPECT_RATIO ~= self.__last_aspect then
+	local mode = self.props.cam_function
+	if mode then mode(self) end
+
+	if self:checkNeedToUpdatePerspective() then
 		self:generatePerspectiveMatrix()
 	end
+	-- a similar checkNeedToUpdateView test is not done because
+	-- a camera is assumed to be always moving
+	self:generateViewMatrix()
 end
 
 function Camera:map3DCoords(x,y)

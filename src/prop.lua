@@ -8,7 +8,7 @@ require "id"
 require "propvalids"
 
 Props = {}
-Props.__index = Prop
+Props.__index = Props
 Props.__type  = "proptableprototype"
 
 --
@@ -43,7 +43,6 @@ Props.__type  = "proptableprototype"
 --
 function Props:prototype(arg)
 	local p = {}
-	--p[0] = 0
 
 	for _,row in pairs(arg) do
 		-- the property will be stored in p as
@@ -54,11 +53,6 @@ function Props:prototype(arg)
 			}
 		setmetatable(property, PropsPrototypeRowMeta)
 		p[row[1]] = property
-
-
-		-- we store a numerically indexed map of all the property names
-		--p[0] = p[0] + 1
-		--p[p[0]] = row[1]
 	end
 
 	setmetatable(p, Props)
@@ -69,7 +63,24 @@ end
 -- takes an existing property table and clones it, adding in new rows
 -- from the given argument
 function Props:extend(arg)
-	
+	local p = {}
+
+	for key,row in pairs(self) do
+		p[key] = row
+	end
+
+	for _,row in pairs(arg) do
+		local property = {row[2], row[3], row[4], row[5] or row[1].." "..row[2],
+			row[6]~=nil and string.find(row[6], "readonly"),
+			row[6]~=nil and string.find(row[6], "callonly"),
+			}
+		setmetatable(property, PropsPrototypeRowMeta)
+		p[row[1]] = property
+	end
+
+	setmetatable(p, Props)
+
+	return p
 end
 
 -- this metatable allows for accessing the info for a row

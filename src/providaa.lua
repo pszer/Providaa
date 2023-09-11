@@ -8,7 +8,10 @@ require "scene"
 require "modelmanager"
 require "animatedface"
 require "input"
+require "entity"
 require "event"
+
+local camcontrol = require "cameracontrollers"
 
 local testmap = require "maps.test"
 
@@ -16,6 +19,7 @@ Prov = {
 	grid = {},
 	scene = Scene:new(),
 
+	ents = {},
 	events = {}
 }
 Prov.__index = Prov
@@ -91,9 +95,27 @@ function Prov:load()
 		animface_lefteye_dir       = {0,0,1}
 	 }
 
+	local pianko_ent = Entity:new{
+		["ent_model"] = instance,
+		["ent_position"] = {200, -100, -200},
+		["ent_states"] = {
+			EntityStatePropPrototype{
+				["state_commands"] = {"command_walk"}
+			}
+		}
+	}
+
+	self:addEntity(pianko_ent)
+
+	print("pianko", provtype(pianko_ent))
+
+	local cam = self.scene:getCamera()
+	cam:setController(
+		camcontrol:followEntityFixed(pianko_ent, {0,-50,80}, {0,0,0})
+	)
+
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, instance, crate_i , crate_inst , instance2, instance3, instance4, instance5, instance6, instance7 ,
-	instance8, instance9, instance10, instance11, instance12, instance13 }
+	self.scene:addModelInstance{ sphere, crate_i , crate_inst }
 
 	-- only load once
 	self.load = function() end
@@ -105,9 +127,9 @@ function Prov:update(dt)
 		self:onTickChange()
 	end
 
-	local cam = Prov.scene.props.scene_camera.props
+	local cam = Prov.scene.props.scene_camera
 
-	if keybindIsDown("w", CTRL.GAME) then
+	--[[if keybindIsDown("w", CTRL.GAME) then
 		cam.cam_z = cam.cam_z - 100*dt
 	end
 	if keybindIsDown("s", CTRL.GAME) then
@@ -140,9 +162,16 @@ function Prov:update(dt)
 
 	if keybindIsDown("up", CTRL.GAME) then
 		cam.cam_pitch = cam.cam_pitch + 1*dt
-	end
+	end]]
 
-	instance:setPosition{cam.cam_x+80*math.sin(cam.cam_yaw),cam.cam_y+60,cam.cam_z-75*math.cos(cam.cam_yaw)}
+	self:updateEnts()
+
+	local cam_p = cam:getPosition()
+	local cam_r = cam:getRotation()
+
+	cam:directionMode()
+
+	--instance:setPosition{cam_p[1]+80*math.sin(cam_r[2]),cam_p[2]+60,cam_p[3]-75*math.cos(cam_r[2])}
 	
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
@@ -169,5 +198,43 @@ function Prov:onTickChange()
 	local meshes = self.scene.props.scene_meshes
 	for _,mesh in ipairs(meshes) do
 		mesh:updateTexture()
+	end
+end
+
+function Prov:addEntity( ent )
+	table.insert(self.ents, ent)
+	local model_i = ent.props.ent_model
+	self.scene:addModelInstance(model_i)
+end
+
+function Prov:removeEntity( ent )
+	for i,v in ipairs(self.ents) do
+		if v == ent then self:removeEntityAtIndex( i ) end
+	end
+end
+
+function Prov:removeEntityAtIndex( index )
+	local model_inst = self.ents[i].props.ent_model
+	table.remove(self.ents, index)
+	if model_i then
+		self.scene:removeModelInstance(model_inst)
+	end
+end
+
+-- deletes any entities with an ent_delete_flag
+function Prov:deleteFlaggedEntities()
+	-- traverse backwards so that the index is always
+	-- correct even after removing an entity
+	for i=#self.ents,1,-1 do
+		local ent = self.ents[i]
+		if ent:toBeDeleted() then
+			self:removeEntityAtIndex(i)
+		end
+	end
+end
+
+function Prov:updateEnts()
+	for i,ent in ipairs(self.ents) do
+		ent:update()
 	end
 end

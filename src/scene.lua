@@ -59,6 +59,24 @@ function Scene:addModelInstance(inst)
 	end
 end
 
+function Scene:removeModelInstance(inst)
+	local function r(inst, collection)
+		for i,v in ipairs(collection) do
+			if inst == v then table.remove(collection, i) return end
+		end
+	end
+	r(inst, self.scene_models)
+	if inst:isStatic() then
+		r(inst, self.static_models)
+	else
+		r(inst, self.dynamic_models)
+	end
+end
+
+function Scene:getCamera()
+	return self.props.scene_camera
+end
+
 function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local props = self.props
 
@@ -125,12 +143,15 @@ function Scene:drawStaticModels()
 	end
 end
 
+function Scene:cameraUpdate()
+	local cam = self.props.scene_camera
+	cam:update()
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
-
-	cam:update()
-	cam:generateViewMatrix()
+	self:cameraUpdate()
 	--cam:generateFrustrumCornersWorldSpace()
 
 	--Renderer.setupCanvasFor3D()
