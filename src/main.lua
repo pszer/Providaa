@@ -22,7 +22,7 @@ function love.load( args )
 	Textures.generateMissingTexture()
 	Models.loadModels()
 
-	SPLASH_SCREEN = o_ten_one()
+	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=1.2 }
 	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
 	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(EYETESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)

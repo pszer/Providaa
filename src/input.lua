@@ -214,14 +214,62 @@ function queryKeybind(setting, level)
 	end
 end
 
+-- code redundancy but who cares
+--
+function scancodeStatus(scancode, level)
+	local level = level or CTRL.GAME
+	return queryScancode(scancode, level)
+end
+
+function keybindStatus(setting, level)
+	local level = level or CTRL.GAME
+	return queryKeybind(scancode, level)
+end
+
 function scancodeIsDown(scancode, level)
+	local level = level or CTRL.GAME
+	local status = queryScancode(scancode, level)
+	return status == "down"
+end
+
+function keybindIsDown(setting, level)
+	local level = level or CTRL.GAME
+	local status = queryKeybind(setting, level)
+	return status == "down"
+end
+
+function scancodeIsHeld(scancode, level)
+	local level = level or CTRL.GAME
+	local status = queryScancode(scancode, level)
+	return status == "held"
+end
+
+function keybindIsDown(setting, level)
+	local level = level or CTRL.GAME
+	local status = queryKeybind(setting, level)
+	return status == "held"
+end
+
+function scancodeIsUp(scancode, level)
+	local level = level or CTRL.GAME
+	local status = queryScancode(scancode, level)
+	return status == "up"
+end
+
+function keybindIsUp(setting, level)
+	local level = level or CTRL.GAME
+	local status = queryKeybind(setting, level)
+	return status == "up"
+end
+
+function scancodeIsPressed(scancode, level)
 	local level = level or CTRL.GAME
 	local status = queryScancode(scancode, level)
 	return status == "down" or status == "held"
 end
 
-function keybindIsDown(setting, level)
+function keybindIsPressed(setting, level)
 	local level = level or CTRL.GAME
-	local status = queryScancode(setting, level)
+	local status = queryKeybind(setting, level)
 	return status == "down" or status == "held"
 end

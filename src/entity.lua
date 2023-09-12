@@ -1,4 +1,5 @@
 require "props.entityprops"
+require "event"
 
 Entity = {__type = "entity"}
 Entity.__index = Entity
@@ -163,4 +164,15 @@ function Entity:callCommand(command_name, ...)
 	end
 
 	command(self, unpack(args))
+end
+
+function Entity:createHook( func )
+	local hook = Hook:new(func)
+	table.insert(self.props.ent_hooks, hook)
+end
+
+function Entity:clearHooks()
+	for i,hook in ipairs(self.props.ent_hooks) do
+		hook:clear()
+	end
 end

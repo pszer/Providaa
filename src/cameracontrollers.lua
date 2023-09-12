@@ -15,7 +15,6 @@ function CamController:followEntityFixed(ent, offset_vector, centre_offset)
 
 	return function( camera )
 
-		print("ent")
 		-- failsafe in case entity gets deleted
 		if ent_deleted or ent:toBeDeleted() then
 			ent = nil

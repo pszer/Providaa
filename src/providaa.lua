@@ -10,6 +10,7 @@ require "animatedface"
 require "input"
 require "entity"
 require "event"
+require "inputhandler"
 
 local camcontrol = require "cameracontrollers"
 
@@ -20,11 +21,17 @@ Prov = {
 	scene = Scene:new(),
 
 	ents = {},
-	events = {}
+	events = {},
+
+	input_handlers = {}
 }
 Prov.__index = Prov
 
 function Prov:load()
+	self:addInputHandler("overworld",
+		InputHandler:new(CONTROL_LOCK.GAME,
+		{"move_left","move_right","move_up","move_down","action","back"}))
+
 	self.scene:loadMap(testmap)
 	self.scene.props.scene_lights = {
 		Light:new{
@@ -95,7 +102,7 @@ function Prov:load()
 		animface_lefteye_dir       = {0,0,1}
 	 }
 
-	local pianko_ent = Entity:new{
+	pianko_ent = Entity:new{
 		["ent_model"] = instance,
 		["ent_position"] = {200, -100, -200},
 		["ent_states"] = {
@@ -163,6 +170,9 @@ function Prov:update(dt)
 	if keybindIsDown("up", CTRL.GAME) then
 		cam.cam_pitch = cam.cam_pitch + 1*dt
 	end]]
+	if scancodeIsDown("space", CTRL.GAME) then
+		pianko_ent:delete()
+	end
 
 	self:updateEnts()
 
@@ -182,6 +192,8 @@ function Prov:update(dt)
 	animface.props.animface_lefteye_pose = pose
 	animface.props.animface_righteye_pose = pose
 	animface:pushComposite()
+
+	self:deleteFlaggedEntities()
 end
 
 function Prov:draw()
@@ -214,9 +226,12 @@ function Prov:removeEntity( ent )
 end
 
 function Prov:removeEntityAtIndex( index )
-	local model_inst = self.ents[i].props.ent_model
+	local ent = self.ents[index]
+	ent:clearHooks()
+
+	local model_inst = self.ents[index].props.ent_model
 	table.remove(self.ents, index)
-	if model_i then
+	if model_inst then
 		self.scene:removeModelInstance(model_inst)
 	end
 end
@@ -237,4 +252,13 @@ function Prov:updateEnts()
 	for i,ent in ipairs(self.ents) do
 		ent:update()
 	end
+end
+
+function Prov:addInputHandler(id, input_handler)
+	self.input_handlers[id] = input_handler
+end
+
+function Prov:removeInputHandler(id)
+	self.input_handlers[id]:clearAllHooks()
+	self.input_handlers[id] = nil
 end

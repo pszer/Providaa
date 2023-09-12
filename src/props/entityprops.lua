@@ -22,7 +22,9 @@ EntityPropPrototype = Props:prototype{
 	{"ent_current_states", "table", nil, PropDefaultTable{},              "entities current states"},
 	{"ent_states", "table", nil,         PropDefaultTable{},  "entities possible states, see EntState"},
 
-	{"ent_delete_flag", "boolean", false, nil,        "set to true to signal entity deletion"}
+	{"ent_delete_flag", "boolean", false, nil,        "set to true to signal entity deletion"},
+
+	{"ent_hooks", "table", nil, PropDefaultTable{},   "all hooks used by the entity should be stored here"}
 
 }
 

@@ -65,17 +65,23 @@ function Scene:removeModelInstance(inst)
 			if inst == v then table.remove(collection, i) return end
 		end
 	end
-	r(inst, self.scene_models)
+	r(inst, self:getModelInstances())
 	if inst:isStatic() then
-		r(inst, self.static_models)
+		r(inst, self:getStaticModelInstances())
 	else
-		r(inst, self.dynamic_models)
+		r(inst, self:getDynamicModelInstances())
 	end
 end
 
 function Scene:getCamera()
-	return self.props.scene_camera
-end
+	return self.props.scene_camera end
+
+function Scene:getModelInstances()
+	return self.props.scene_models end
+function Scene:getStaticModelInstances()
+	return self.static_models end
+function Scene:getDynamicModelInstances()
+	return self.dynamic_models end
 
 function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local props = self.props

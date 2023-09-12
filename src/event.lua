@@ -23,12 +23,13 @@ function Event:unlock()
 function Event:isLocked()
 	return self.lock end
 
-function Event:raise(payload)
+function Event:raise(...)
 	if self.lock then return end
+	local args = {...}
 
 	local h = self.hooks
 	for i=1,h[0] do
-		h[i].call(payload)
+		h[i].call(unpack(args))
 	end
 end
 
@@ -86,3 +87,5 @@ function Hook:disconnect()
 		self.current_link:removeHook(self)
 	end
 end
+-- alias
+Hook.clear = Hook.disconnect
