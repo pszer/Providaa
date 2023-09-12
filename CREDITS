@@ -6,10 +6,6 @@ Cirno's Perfect Math Library
 src/cpml/
 https://github.com/excessive/cpml
 
-Quadtree Implementation
-src/quadtree/
-https://love2d.org/forums/viewtopic.php?t=83296
-
 splashes
 src/o-ten-one/
 https://github.com/love2d-community/splashes

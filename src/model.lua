@@ -140,7 +140,6 @@ end
 function ModelInstance:setPosition(pos)
 	local v = self.props.model_i_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
-		print("uhh", pos[1], pos[2], pos[3])
 		self.props.model_i_position = pos
 		self.update_model = true
 	end
@@ -282,21 +281,14 @@ function ModelInstance:drawContour(shader, mesh)
 	local colour = self.props.model_i_outline_colour
 	local offset = 0.25
 
-	--love.graphics.setDepthMode( "lequal", true  )
 	love.graphics.setMeshCullMode("back")
 
-	--shadersend(shader, "u_contour_outline_offset", offset)
-	--shadersend(shader, "u_draw_as_contour", true)
-	--shadersend(shader, "u_contour_colour", colour)
 	shader:send("u_contour_outline_offset", offset)
 	shader:send("u_draw_as_contour", true)
 	shader:send("u_contour_colour", colour)
-	--shadersend(shader, "u_contour_colour", colour)
 
 	mesh:drawModel(shader)
 
-	--shadersend(shader, "u_draw_as_contour", false)
-	--shadersend(shader, "u_contour_outline_offset", 0.0)
 	shader:send("u_contour_outline_offset", 0.0)
 	shader:send("u_draw_as_contour", false)
 
@@ -315,11 +307,6 @@ function ModelInstance:drawInstances(shader)
 	shadersend(shader, "instance_draw_call", true)
 	love.graphics.drawInstanced(model_mesh, self.props.model_i_instances_count)
 	shadersend(shader, "instance_draw_call", false)
-
-	--model_mesh:detachAttribute("InstanceColumn1", attr_mesh)
-	--model_mesh:detachAttribute("InstanceColumn2", attr_mesh)
-	--model_mesh:detachAttribute("InstanceColumn3", attr_mesh)
-	--model_mesh:detachAttribute("InstanceColumn4", attr_mesh)
 end
 
 function ModelInstance:getInstancesAttributeMesh()

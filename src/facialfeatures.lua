@@ -2,6 +2,7 @@ require "texturemanager"
 require "render"
 
 require "props.facialfeaturesprops"
+local eye_attributes = require 'cfg/eyes'
 
 --[[
 --
@@ -61,6 +62,17 @@ function EyesData:new(props)
 	this:generateComponentTextures()
 
 	return this
+end
+
+function EyesData:fromCfg(eyes_name)
+	local atts = eye_attributes[eyes_name]
+
+	if not atts then
+		error(string.format("EyesData:fromCfg: [\"%s\"] not found in cfg/eyes.lua", eyes_name))
+	end
+
+	local fname = atts.eyes_filename
+	return self:openFilename(fname, atts)
 end
 
 function EyesData:openFilename(fname, props)
@@ -216,7 +228,7 @@ function EyesData:composite(pose, which_eye, eye_look_v, eye_radius)
 	local highlight = self:getHightlight(pose)
 	local base      = self:getBase(pose)
 	local sclera    = self:getSclera(pose)
-	local look_v    = eye_look_v or {0,0,1}
+	local look_v    = {eye_look_v[1], eye_look_v[2], eye_look_v[3]}
 	local eye_r     = eye_radius or self.props.eyes_radius
 	local dim       = self:getDimensions()
 	local max_look  = self.props.eyes_look_max

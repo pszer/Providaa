@@ -44,7 +44,6 @@ function AnimFace:composite()
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.draw(righteye, righteye_pos[1], righteye_pos[2])
 
-
 	local lefteye_pos = props.animface_lefteye_position
 	local lefteye = eyedata:composite(props.animface_lefteye_pose,
 	                                   "left", props.animface_lefteye_dir)

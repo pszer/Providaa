@@ -14,7 +14,7 @@ varying vec2 texscale;
 varying vec2 texoffset;
 
 //uniform int POINT_LIGHT_COUNT;
-uniform float disable_shadows;
+uniform float u_shadow_imult;
 uniform mat4 u_dir_lightspace;
 uniform mat4 u_dir_static_lightspace;
 //uniform mat4 u_point_lightspaces[MAX_POINT_LIGHTS];
@@ -111,8 +111,8 @@ vec4 position(mat4 transform, vec4 vertex) {
 	frag_w_position = model_v.xyz;
 
 	// calculate fragment position in lightspaces
-	dir_frag_light_pos = (u_dir_lightspace * model_v) * (1.0-disable_shadows);
-	dir_static_frag_light_pos = (u_dir_static_lightspace * model_v) * (1.0-disable_shadows);
+	dir_frag_light_pos = (u_dir_lightspace * model_v) ;
+	dir_static_frag_light_pos = (u_dir_static_lightspace * model_v) ;
 
 	// apply texture offset/scaling
 	texscale = TextureScale;
@@ -279,7 +279,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	vec3 specular = specular_highlight( normal , light_dir_n, col);
 
 	float shadow = 0.0;
-	if (disable_shadows == 0.0) {
+	if (u_shadow_imult < 1.0) {
 		const float transition_end = DIR_LIGHT_TRANSITION_DISTANCE;
 		const float transition_start = DIR_LIGHT_TRANSITION_DISTANCE - 20;
 		const float difference = transition_end - transition_start;
@@ -301,7 +301,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 		shadow = close_shadow * (1.0 - interp) + static_shadow * interp;
 	}
 
-	return (1.0-shadow)*(diffuse + specular);
+	return (1.0 - shadow * (1.0-u_shadow_imult))*(diffuse + specular);
 }
 
 // love_Canvases[0] is HDR color

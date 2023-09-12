@@ -10,7 +10,8 @@ AnimFacePropPrototype = Props:prototype{
 
 	{"animface_decor_reference", nil, nil, nil, "reference to the ModelDecor this animated face will be applied to" },
 
-	{"animface_eyesdata", nil, nil, nil,        "eye's to use for this face."},
+	{"animface_eyesdata_name", "string", "", nil, "name of eye's in cfg/eyes to use for this face."},
+	{"animface_eyesdata", nil, nil, nil,          "eye's to use for this face."},
 
 	{"animface_texture", nil, nil, nil,         "texture to blit face elements onto for the final composition."},
 	{"animface_texture_dim", "table", nil, PropDefaultTable{256,256}, "dimensions of animface_texture"},

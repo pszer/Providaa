@@ -9,6 +9,7 @@ EyesDataPropPrototype = Props:prototype{
 	-- prop      prop     prop default    prop input     prop      read
 	-- name      type        value        validation     info      only
 
+	{"eyes_filename", "string", "", nil, "name of texture to use as eyes_source"},
 	{"eyes_source", nil, nil, nil, "source image containing the eye's components and poses" },
 
 	{"eyes_dimensions", "table", nil, PropDefaultTable{0,0}, "the width and height in pixels for each eye component"},
@@ -25,10 +26,6 @@ EyesDataPropPrototype = Props:prototype{
 														  the iris and highlight entries are optional overrides for the source
 														  image's iris and highlight]]},
 
-	-- maybe i could implement this in the future but ellipses are horrible
-	--{"eyes_look_max", "table", nil, PropDefaultTable{8,8}, "the maximum distance in pixels the iris can be translated in the +x and +y direction"},
-	--{"eyes_look_min", "table", nil, PropDefaultTable{8,8}, "the maximum distance in pixels the iris can be translated in the -x and -y direction"},
-	
 	{"eyes_look_max", "number", 8, nil, "the maximum distance in pixels the iris can be translated"},
 
 	{"eyes_pose_map", "table", nil, PropDefaultTable{}, "map's eye pose name to index in eyes_poses"},

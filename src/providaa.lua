@@ -6,11 +6,13 @@ require "map"
 require "tick"
 require "scene"
 require "modelmanager"
-require "animatedface"
 require "input"
 require "entity"
 require "event"
 require "inputhandler"
+require "provhooks"
+require "facedecor"
+require "gameinterface"
 
 local camcontrol = require "cameracontrollers"
 
@@ -36,30 +38,20 @@ function Prov:load()
 	self.scene.props.scene_lights = {
 		Light:new{
 			["light_pos"] = {0,0,0,0},
-			--["light_dir"] = {0.5,1.0,-0.5},
-			["light_dir"] = {-1.0,1.5,-1.0},
+			["light_dir"] = {-0.8,1.7,-1.5},
 			["light_col"] = {255/255, 235/255, 224/255, 10}
 		}
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 14
 
-	pianko = Models.queryModel("pianko.iqm")
-	piankoface = Models.queryModel("piankoface.iqm")
+	pianko = Models.queryModel("pianko/pianko.iqm")
+	piankoface = Models.queryModel("pianko/piankoface.iqm")
 	sphere = Models.queryModel("Sphere.iqm")
 	crate = Models.queryModel("shittycrate.iqm")
-
-	instance = ModelInstance:newInstance(pianko)
-
-	instance.props.model_i_outline_flag = true
-	instance.props.model_i_contour_flag = true
 
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 
 	insts = {}
-
-	--for i=1,1000 do
-	--	table.insert(insts, ModelInfo.new({0,-i,-i*6},{0,0,0},1))
-	--end
 
 	table.insert(insts, ModelInfo.new({300,-60,-256},{0,0,0},1))
 	table.insert(insts, ModelInfo.new({256,-300,-700},{0,1,1},1))
@@ -69,56 +61,64 @@ function Prov:load()
 		insts
 	)
 
-	face_decor = ModelDecor:new{
-		decor_name = "face",
-		decor_reference = piankoface,
-		decor_parent_bone = "Head",
-		decor_position = {0,0,0.015},
-	}
-	instance:attachDecoration(face_decor)
+	instance = ModelInstance:newInstance(pianko)
 
-	testeyes = EyesData:openFilename("models/pianko/eyes.png",
-	 {
-	  eyes_dimensions = {32,32},
-	  eyes_radius = 12,
-	  eyes_poses = {
-	   {name="neutral"},
-	   {name="close_phase1"},
-	   {name="close_phase2"},
-	   {name="close_phase3"}
-	  }
-	 }
-	 )
+	instance.props.model_i_outline_flag = true
+	instance.props.model_i_contour_flag = true
 
-	 animface = AnimFace:new{
-		animface_decor_reference = face_decor,
-		animface_eyesdata = testeyes,
-		animface_texture_dim = {256,256},
-		animface_righteye_position = {46,49},
-		animface_lefteye_position  = {178,49},
-		animface_righteye_pose     = "neutral",
-		animface_lefteye_pose      = "neutral",
-		animface_righteye_dir      = {0,0,1},
-		animface_lefteye_dir       = {0,0,1}
-	 }
+	decor,animface = faceFromCfg("pianko_face")
+	instance:attachDecoration(decor)
 
 	pianko_ent = Entity:new{
 		["ent_model"] = instance,
-		["ent_position"] = {200, -100, -200},
+		["ent_position"] = {200, -24, -200},
 		["ent_states"] = {
+			["state_walking"] =
 			EntityStatePropPrototype{
-				["state_commands"] = {"command_walk"}
+				["state_commands"] = {
+					["entity_walk_towards"] = function(ent, dir) print(unpack(dir)) end
+				},
+
+				["state_enter"] = function(ent) print("enter") end
 			}
+		},
+		["ent_hooks_info"] = {
+			{type="control", handler="overworld", keybind="move_up", event="press",
+			 hook_func = function(ent)
+			 	return function(ticktime, realtime)
+					ent:callCommand("entity_walk_towards", { 0 , 0 , -1 })
+				end
+			 end},
+
+			{type="control", handler="overworld", keybind="move_down", event="press",
+			 hook_func = function(ent)
+			 	return function(ticktime, realtime)
+					ent:callCommand("entity_walk_towards", { 0 , 0 , 1 })
+				end
+			 end},
+
+			{type="control", handler="overworld", keybind="move_left", event="press",
+			 hook_func = function(ent)
+			 	return function(ticktime, realtime)
+					ent:callCommand("entity_walk_towards", { -1 , 0 , 0 })
+				end
+			 end},
+
+			{type="control", handler="overworld", keybind="move_right", event="press",
+			 hook_func = function(ent)
+			 	return function(ticktime, realtime)
+					ent:callCommand("entity_walk_towards", { 1 , 0 , 0 })
+				end
+			 end}
 		}
 	}
 
+	pianko_ent:enableStateByName("state_walking")
 	self:addEntity(pianko_ent)
-
-	print("pianko", provtype(pianko_ent))
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(pianko_ent, {0,-50,80}, {0,0,0})
+		camcontrol:followEntityFixed(pianko_ent, {0,-35,70}, {0,-15,0})
 	)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
@@ -134,55 +134,21 @@ function Prov:update(dt)
 		self:onTickChange()
 	end
 
-	local cam = Prov.scene.props.scene_camera
+	local c = math.cos(getTick()*1/60)
+	c = c*c*c*c*c
+	local s = math.sin(getTick()*1.5/60)
+	s = s*s*s*s*s
+	animface.props.animface_righteye_dir = {3*c,3*s,12}
+	animface.props.animface_lefteye_dir  = {3*c,3*s,12}
 
-	--[[if keybindIsDown("w", CTRL.GAME) then
-		cam.cam_z = cam.cam_z - 100*dt
-	end
-	if keybindIsDown("s", CTRL.GAME) then
-		cam.cam_z = cam.cam_z + 100*dt
-	end
-	if keybindIsDown("a", CTRL.GAME) then
-		cam.cam_x = cam.cam_x - 100*dt
-	end
-	if keybindIsDown("d", CTRL.GAME) then
-		cam.cam_x = cam.cam_x + 100*dt
-	end
-	if keybindIsDown("space", CTRL.GAME) then
-		cam.cam_y = cam.cam_y - 50*dt
-	end
-	if keybindIsDown("lctrl", CTRL.GAME) then
-		cam.cam_y = cam.cam_y + 50*dt
-	end
-
-	if keybindIsDown("right", CTRL.GAME) then
-		cam.cam_yaw = cam.cam_yaw + 1*dt
-	end
-
-	if keybindIsDown("left", CTRL.GAME) then
-		cam.cam_yaw = cam.cam_yaw - 1*dt
-	end
-
-	if keybindIsDown("down", CTRL.GAME) then
-		cam.cam_pitch = cam.cam_pitch - 1*dt
-	end
-
-	if keybindIsDown("up", CTRL.GAME) then
-		cam.cam_pitch = cam.cam_pitch + 1*dt
-	end]]
 	if scancodeIsDown("space", CTRL.GAME) then
 		pianko_ent:delete()
 	end
 
+	self:pollInputHandlers()
 	self:updateEnts()
 
-	local cam_p = cam:getPosition()
-	local cam_r = cam:getRotation()
-
-	cam:directionMode()
-
-	--instance:setPosition{cam_p[1]+80*math.sin(cam_r[2]),cam_p[2]+60,cam_p[3]-75*math.cos(cam_r[2])}
-	
+	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
@@ -213,10 +179,29 @@ function Prov:onTickChange()
 	end
 end
 
+function Prov:makeUniqueEntityIdentifier(name)
+	local new_id_candidate = name
+	local number_suffix = 2
+	while true do
+		local already_existing_ent = self.ents[new_id_candidate]
+		if already_existing_ent then
+			new_id_candidate = name .. tostring(number_suffix)
+			number_suffix = number_suffix + 1
+		else
+			return new_id_candidate
+		end
+	end
+end
+
 function Prov:addEntity( ent )
+	local id = self:makeUniqueEntityIdentifier( ent.props.ent_identifier )
+
 	table.insert(self.ents, ent)
+	self.ents[id] = ent
+
 	local model_i = ent.props.ent_model
-	self.scene:addModelInstance(model_i)
+	self:establishEntityHooks( ent )
+	self.scene:addModelInstance( model_i )
 end
 
 function Prov:removeEntity( ent )
@@ -228,6 +213,9 @@ end
 function Prov:removeEntityAtIndex( index )
 	local ent = self.ents[index]
 	ent:clearHooks()
+
+	local ent_id = ent.props.ent_identifier
+	self.ents[ent_id] = nil
 
 	local model_inst = self.ents[index].props.ent_model
 	table.remove(self.ents, index)
@@ -254,6 +242,10 @@ function Prov:updateEnts()
 	end
 end
 
+function Prov:getInputHandler(id)
+	return self.input_handlers[id]
+end
+
 function Prov:addInputHandler(id, input_handler)
 	self.input_handlers[id] = input_handler
 end
@@ -261,4 +253,31 @@ end
 function Prov:removeInputHandler(id)
 	self.input_handlers[id]:clearAllHooks()
 	self.input_handlers[id] = nil
+end
+
+function Prov:pollInputHandlers()
+	for i,handler in pairs(self.input_handlers) do
+		handler:poll()
+	end
+end
+
+function Prov:establishEntityHooks(ent)
+	local info_table = ent:getHooksInfo()
+	local constructors = {
+		["control"] = __provhooks_controlHook
+	}
+
+	for i,info in ipairs(info_table) do
+		local hook_type = info.type
+		local create_hook = constructors[hook_type]
+
+		if not create_hook then
+			error(string.format("Prov:establishEntityHooks(): unexpected hook requested, type=\"%s\"", tostring(hook_type)))
+		end
+		local hook = create_hook(self, ent, info)
+
+		if hook then
+			ent:addHook(hook)
+		end
+	end
 end

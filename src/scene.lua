@@ -75,7 +75,7 @@ end
 
 function Scene:getCamera()
 	return self.props.scene_camera end
-
+	
 function Scene:getModelInstances()
 	return self.props.scene_models end
 function Scene:getStaticModelInstances()
@@ -158,7 +158,6 @@ function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
 	self:cameraUpdate()
-	--cam:generateFrustrumCornersWorldSpace()
 
 	--Renderer.setupCanvasFor3D()
 	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
@@ -170,21 +169,13 @@ function Scene:draw(cam)
 
 	prof.push("bullshit")
 	for i,v in ipairs(self.dynamic_models) do
-		v:fillOutBoneMatrices("Walk", getTickSmooth())
+		v:fillOutBoneMatrices("Reference Pose", getTickSmooth())
 	end
 	prof.pop("bullshit")
 
-	--self.props.scene_lights[1].props.light_dir[3] = -math.cos(getTick()/45)*2
-	--self.props.scene_lights[1].props.light_dir[1] = -math.cos(getTick()/45)*3
 	prof.push("shadowpass")
 	self:shadowPass( cam )
 	prof.pop("shadowpass")
-
-	--prof.push("contourpass")
-	--Renderer.setupCanvasForContour()
-	--love.graphics.setShader(Renderer.contour_shader)
-	--self.props.scene_camera:pushToShader()
-	--prof.pop("contourpass")
 
 	prof.push("shaderpushes")
 	Renderer.setupCanvasFor3D()

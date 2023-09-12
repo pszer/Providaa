@@ -8,6 +8,9 @@ EntityPropPrototype = Props:prototype{
 
 	-- prop      prop     prop default    prop input     prop      read
 	-- name      type        value        validation     info      only
+	--
+	{"ent_identifier", "string", "entity", nil, [[the entity's unique name and identifier, may be altered by Prov:addEntity to ensure
+	                                              it is unique, do NOT alter during runtime]]},
 
 	{"ent_position", "table", nil, PropDefaultTable{0,0,0}  , "entity position" }, -- done
 	{"ent_rotation", "table", nil, PropDefaultTable{0,0,0}  , "entity rotation" }, -- done
@@ -24,7 +27,17 @@ EntityPropPrototype = Props:prototype{
 
 	{"ent_delete_flag", "boolean", false, nil,        "set to true to signal entity deletion"},
 
-	{"ent_hooks", "table", nil, PropDefaultTable{},   "all hooks used by the entity should be stored here"}
+	{"ent_hooks", "table", nil, PropDefaultTable{},      "all hooks used by the entity should be stored here"},
+	{"ent_hooks_info", "table", nil, PropDefaultTable{}, [[describes the hooks used by this entity each entry is a table with parameters,
+	                                                       examples:
+	                                                      {type="control", handler="environment", keybind="move_up", event="press", hook_func = (function(ent) ...) }
+
+														  about the func parameter: this is not the function that is hooked up to the event, it should
+														  be a function that constructs a new function, it's this constructed function that is set
+														  as a hook
+
+														  when the entity is loaded by Prov:addEntity, it handles linking these hooks to their
+														  appropiate events]]}
 
 }
 

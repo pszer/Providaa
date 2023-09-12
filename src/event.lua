@@ -77,7 +77,7 @@ function Hook:new(func)
 	return this
 end
 
--- there should never be a reason to call this function
+-- there should never be a reason to call this function (i think?)
 function Hook:hookToEvent(event)
 	event:addHook(self)
 end

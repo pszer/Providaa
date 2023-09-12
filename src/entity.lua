@@ -122,6 +122,13 @@ function Entity:enableState(state)
 	end
 end
 
+function Entity:enableStateByName(name)
+	local state = self:getStateByName(name)
+	if state then
+		self:enableState(state)
+	end
+end
+
 function Entity:disableState(state)
 	if state then
 		local enabled, index = self:isStateEnabled(state)
@@ -137,6 +144,13 @@ function Entity:disableState(state)
 		end
 	else
 		print(string.format("Entity:changeState: tried to exit non-existant state"))
+	end
+end
+
+function Entity:disableStateByName(name)
+	local state = self:getStateByName(name)
+	if state then
+		self:disableState(state)
 	end
 end
 
@@ -157,7 +171,7 @@ end
 
 function Entity:callCommand(command_name, ...)
 	local args = {...}
-	local command = self:getCommand()
+	local command = self:getCommand(command_name)
 
 	if not command then
 		return
@@ -166,13 +180,22 @@ function Entity:callCommand(command_name, ...)
 	command(self, unpack(args))
 end
 
-function Entity:createHook( func )
-	local hook = Hook:new(func)
+-- takes in established hooks from Prov:establishEntityHooks()
+function Entity:addHook( hook )
 	table.insert(self.props.ent_hooks, hook)
 end
+
+--function Entity:createHook( func )
+--	local hook = Hook:new(func)
+--	table.insert(self.props.ent_hooks, hook)
+--end
 
 function Entity:clearHooks()
 	for i,hook in ipairs(self.props.ent_hooks) do
 		hook:clear()
 	end
+end
+
+function Entity:getHooksInfo()
+	return self.props.ent_hooks_info
 end

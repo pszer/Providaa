@@ -1,10 +1,10 @@
 local MODEL_ATTRIBUTES = {
-	["pianko.iqm"] = {
+	["pianko/pianko.iqm"] = {
 		["model_texture_fname"]  = "models/pianko/pianko.png",
 		["model_vertex_winding"] = "ccw"
 	},
 
-	["piankoface.iqm"] = {
+	["pianko/piankoface.iqm"] = {
 		["model_texture_fname"]  = "models/pianko/FaceMeshTest.png",
 		["model_vertex_winding"] = "ccw"
 	},

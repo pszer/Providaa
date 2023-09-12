@@ -83,8 +83,13 @@ function ModelDecor:draw(parent, shader)
 	shadersend(shader, "u_normal_model", "column", matrix(norm_u))
 	shadersend(shader, "u_skinning", 0) -- bone matrix is preapplied by getGlobalModelMatrix, so disable skinning
 
+	local shadow_mult = 1.0 - self.props.decor_shadow_mult
+	shadersend(shader, "u_shadow_imult", shadow_mult)
+
 	local mesh = self:getModel():getMesh()
 	mesh:drawModel(shader)
+
+	shadersend(shader, "u_shadow_imult", 0.0)
 end
 
 function ModelDecor:name()

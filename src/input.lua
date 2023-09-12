@@ -169,6 +169,11 @@ function updateKeys()
 	end
 end
 
+-- prematurely stop a key input
+function silenceKey(scancode)
+	CONTROL_KEYS_DOWN[scancode] = nil
+end
+
 -- the Love2D input callback functions, they are called in main.lua
 function __keypressed(key, scancode, isrepeat)
 	KEY_PRESS(key,scancode,isrepeat)
@@ -208,7 +213,28 @@ function queryKeybind(setting, level)
 	local level = level or CTRL.GAME
 	local scancode1, scancode2 = keySetting( setting )
 	if scancode1 or scancode2 then
-		return queryScancode(scancode1, level)
+		local status1, ticktime1, realtime1 = queryScancode(scancode1, level)
+		local status2, ticktime2, realtime2 = queryScancode(scancode2, level)
+
+		if status1 and not status2 then
+			return status1, ticktime1, realtime1
+		elseif status2 and not status1 then
+			return status2, ticktime2, realtime2
+		elseif status1 and status2 then
+
+			-- if both keys for a keybind are pressed, we prioritise the one thats been held the longest
+			-- and silence the newest one
+			if ticktime1 < ticktime2 then
+				silenceKey(scancode2)
+				return status1, ticktime1, realtime1
+			else
+				silenceKey(scancode1)
+				return status2, ticktime2, realtime2
+			end
+
+		else
+			return nil, nil, nil
+		end
 	else 
 		return nil,nil,nil
 	end

@@ -42,6 +42,10 @@ function InputHandler:new( level , keybinds )
 	return this
 end
 
+function InputHandler:hookToKeybind(hook, keybind)
+
+end
+
 -- goes over all of its keybinds and checks their status, raising the appropiate events
 function InputHandler:poll()
 	for keybind,events in pairs(self) do
@@ -72,5 +76,12 @@ function InputHandler:clearAllHooks()
 		events.held:clearAllHooks()
 		events.up:clearAllHooks()
 		events.press:clearAllHooks()
+	end
+end
+
+function InputHandler:getEvent(keybind, state)
+	local events = self[keybind]
+	if events then
+		return events[state]
 	end
 end

@@ -22,13 +22,12 @@ function love.load( args )
 	Textures.generateMissingTexture()
 	Models.loadModels()
 
-	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=1.2 }
+	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
 	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
 	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(EYETESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
 
-local DT_COUNTER=0
 local FRAMES=0
 local TIMER_START=0
 function love.update(dt)
@@ -38,14 +37,11 @@ function love.update(dt)
 
 	GAMESTATE:update(dt)
 
-	DT_COUNTER = DT_COUNTER + dt
 	FRAMES=FRAMES+1
-	--if (DT_COUNTER > 1.0) then
 	if (love.timer.getTime() - TIMER_START > 1.0) then
 		TIMER_START = love.timer.getTime()
 		FPS = FRAMES
 		FRAMES=0
-		DT_COUNTER = 0
 	end
 
 	if FPS_LIMIT > 0 then
@@ -56,7 +52,6 @@ function love.update(dt)
 			love.timer.sleep(diff)
 		end
 		local time_slept = love.timer.getTime() - start_time
-		DT_COUNTER = DT_COUNTER + time_slept
 	end
 
 	updateKeys()

@@ -82,7 +82,7 @@ function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 		count = count + list[i].mesh:getVertexCount()
 	end
 
-	print("mergeMesh", length,"meshes",count,"verts")
+	--print("mergeMesh", length,"meshes",count,"verts")
 
 	local mesh = Mesh:new(texture, count, "triangles", "dynamic")
 	local attr_mesh = nil
