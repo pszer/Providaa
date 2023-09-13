@@ -76,7 +76,7 @@ function Prov:load()
 			["state_walking"] =
 			EntityStatePropPrototype{
 				["state_commands"] = {
-					["entity_walk_towards"] = function(ent, dir) print(unpack(dir)) end
+					["entity_walk_towards"] = function(ent, dir) end
 				},
 
 				["state_enter"] = function(ent) print("enter") end

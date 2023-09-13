@@ -41,3 +41,19 @@ function testPointInBoundingBox(point, rect_pos, rect_size)
 	       between(ry1, point[2], ry2) and
 	       between(rz1, point[3], rz2)
 end
+
+-- tests if 2d point (u,v) is inside a rectangle with minimum point (x1,y1)
+-- and maximum (x2,y2)
+function testPointInRect(u,v, x1,y1,x2,y2)
+	local function between(a,b,c) return a<b and b<c end
+	return between(x1, u, x2) and
+	       between(y1, v, y2)
+end
+
+function testRectInRect(ax1,ay1,ax2,ay2 , bx1,by1,bx2,by2)
+	return not (
+		ax2 < bx1 or
+		bx2 < ax1 or
+		ay2 < by1 or
+		ay2 < by1)
+end

@@ -8,7 +8,7 @@ ModelDecorPropPrototype = Props:prototype{
 	{"decor_model_name", "string", "", nil, "filename for this model decor's model"},
 
 	{"decor_position", "table", nil, PropDefaultTable{0,0,0}, "model accessory's local position"},
-	{"decor_rotation", "table", nil, PropDefaultTable{0,0,0}, "model accessory's local rotation"},
+	{"decor_rotation", "table", nil, PropDefaultTable{0,0,0, "dir"}, "model accessory's local rotation"},
 	{"decor_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model accessory's local scale"},
 
 	{"decor_shadow_mult", "number", 0.5, nil, "1.0 is full shadows, 0.0 is no shadows, numbers inbetween lessen shadows"},

@@ -7,6 +7,8 @@ Entity.__index = Entity
 function Entity:new(props)
 	local this = {
 		props = EntityPropPrototype(props),
+
+		ent_moved = true
 	}
 
 	setmetatable(this,Entity)
@@ -14,8 +16,11 @@ function Entity:new(props)
 	return this
 end
 
+-- this function should not be treated as a virtual function to overwrite
+-- let it do what its gotta do
 function Entity:update()
 	self:updateModelPosition()
+	self.ent_moved = false
 end
 
 function Entity:updateModelPosition()
@@ -41,6 +46,28 @@ function Entity:getRotation()
 	return self.props.ent_rotation end
 function Entity:getScale()
 	return self.props.ent_scale end
+
+function Entity:setPosition(pos)
+	local v = self.props.ent_position
+	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
+		self.props.model_i_position = pos
+		self.ent_moved = true
+	end
+end
+function Entity:setRotation(rot)
+	local r = self.props.ent_rotation
+	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] or rot[4] ~= r[4] then
+		self.props.model_i_rotation = rot
+		--self.ent_moved = true
+	end
+end
+function Entity:setScale(scale)
+	local s = self.props.ent_scale
+	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
+		self.props.model_i_scale = scale
+		--self.model_moved = true
+	end
+end
 
 -- returns x,y,z, dx,dy,dz
 function Entity:getWorldHitbox()

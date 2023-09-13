@@ -51,7 +51,7 @@ function ModelInstance:new(props)
 
 		bone_matrices = {},
 
-		update_model = true,
+		model_moved = true,
 		update_bones = periodicUpdate(1)
 	}
 
@@ -84,7 +84,7 @@ end
 
 function ModelInstance:modelMatrix()
 	local is_static = self.props.model_i_static
-	if (is_static and self.static_model_matrix) or not self.update_model then
+	if (is_static and self.static_model_matrix) or not self.model_moved then
 		return self.static_model_matrix, self.static_normal_matrix
 	end
 
@@ -132,7 +132,7 @@ function ModelInstance:modelMatrix()
 	self.static_model_matrix = m
 	self.static_normal_matrix = norm_m
 
-	self.update_model = false
+	self.model_moved = false
 
 	return m, norm_m
 end
@@ -141,21 +141,21 @@ function ModelInstance:setPosition(pos)
 	local v = self.props.model_i_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
 		self.props.model_i_position = pos
-		self.update_model = true
+		self.model_moved = true
 	end
 end
 function ModelInstance:setRotation(rot)
 	local r = self.props.model_i_rotation
 	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] then
 		self.props.model_i_rotation = rot
-		self.update_model = true
+		self.model_moved = true
 	end
 end
 function ModelInstance:setScale(scale)
 	local s = self.props.model_i_scale
 	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
 		self.props.model_i_scale = scale
-		self.update_model = true
+		self.model_moved = true
 	end
 end
 
