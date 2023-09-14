@@ -13,9 +13,11 @@ EntityPropPrototype = Props:prototype{
 	                                              it is unique, do NOT alter during runtime]]},
 
 	{"ent_position", "table", nil, PropDefaultTable{0,0,0}  , "entity position" }, -- done
-	{"ent_rotation", "table", nil, PropDefaultTable{0,0,0, "rotation"}  , "entity rotation" }, -- done
+	{"ent_rotation", "table", nil, PropDefaultTable{0,0,0, "rot"}  , "entity rotation" }, -- done
 	{"ent_scale", "table", nil, PropDefaultTable{1,1,1}, "entity scale" }, -- done
 
+	{"ent_hitbox_inherit" , "boolean", true, nil, [[if true, the entity uses the same hitbox as the bounding box for it's model
+	                                                adequate for most situations.]]}, -- implement plzz
 	{"ent_hitbox_position", "table", nil, PropDefaultTable{-12,-24,-12}, "entity's hitbox position, local to ent_position"},
 	{"ent_hitbox_size", "table", nil, PropDefaultTable{24,24,24}, "entity's hitbox size, local to ent_position"},
 

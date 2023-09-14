@@ -8,6 +8,7 @@ require "props.modelprops"
 require "modelinstancing"
 require "modelaccessory"
 require "texturemanager"
+require "rotation"
 
 Model = {__type = "model"}
 Model.__index = Model
@@ -52,7 +53,12 @@ function ModelInstance:new(props)
 		bone_matrices = {},
 
 		model_moved = true,
-		update_bones = periodicUpdate(1)
+		update_bones = periodicUpdate(1),
+
+		-- a flag that signals that this model has moved, so anything
+		-- that uses its bounding box needs to be recalculated i.e.
+		-- the space partitioning used for view culling
+		recalculate_bounds_flag = false
 	}
 
 	setmetatable(this,ModelInstance)
@@ -82,24 +88,15 @@ function ModelInstance:newInstances(model, instances)
 	return ModelInstance:new(props)
 end
 
+function ModelInstance:usesModelInstancing()
+	return self.props.model_i_draw_instances
+end
+
 function ModelInstance:modelMatrix()
 	local is_static = self.props.model_i_static
 	if (is_static and self.static_model_matrix) or not self.model_moved then
 		return self.static_model_matrix, self.static_normal_matrix
 	end
-
-	--
-	--
-	--
-	--
-	--
-	--
-	--TODO
-	--only recalculate model matrix if there is a change in location
-	--
-	--
-	--
-	--
 
 	prof.push("model_matrix")
 	local props = self.props
@@ -111,9 +108,10 @@ function ModelInstance:modelMatrix()
 	prof.push("calc")
 	m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
 
-	m:rotate(m, rot[1], cpml.vec3.unit_x)
-	m:rotate(m, rot[2], cpml.vec3.unit_y)
-	m:rotate(m, rot[3], cpml.vec3.unit_z)
+	rotateMatrix(m, rot)
+	--m:rotate(m, rot[1], cpml.vec3.unit_x)
+	--m:rotate(m, rot[2], cpml.vec3.unit_y)
+	--m:rotate(m, rot[3], cpml.vec3.unit_z)
 
 	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
 
@@ -133,8 +131,90 @@ function ModelInstance:modelMatrix()
 	self.static_normal_matrix = norm_m
 
 	self.model_moved = false
+	self.recalculate_bounds_flag = true
 
+	self:calculateBoundingBox()
 	return m, norm_m
+end
+
+function ModelInstance:areBoundsChanged()
+	return self.recalculate_bounds_flag
+end
+
+function ModelInstance:informNewBoundsAreHandled()
+	self.recalculate_bounds_flag = false
+end
+
+function ModelInstance:getModelReferenceBoundingBox()
+	return self.props.model_i_reference.props.model_bounding_box
+end
+
+function ModelInstance:getUnfixedModelReferenceBoundingBox()
+	return self.props.model_i_reference.props.model_bounding_box_unfixed
+end
+
+function ModelInstance:calculateBoundingBox()
+	local bbox = self:getUnfixedModelReferenceBoundingBox()
+	local min = bbox.min
+	local max = bbox.max
+
+	local model_mat = self.static_model_matrix
+
+	-- all 8 vertices of the bounding box
+	local p = {}
+	p[1] = {min[1], min[2], min[3], 1}
+	p[2] = {max[1], min[2], min[3], 1}
+	p[3] = {min[1], max[2], min[3], 1}
+	p[4] = {max[1], max[2], min[3], 1}
+	p[5] = {min[1], min[2], max[3], 1}
+	p[6] = {max[1], min[2], max[3], 1}
+	p[7] = {min[1], max[2], max[3], 1}
+	p[8] = {max[1], max[2], max[3], 1}
+
+	local mat_vec4_mul = cpml.mat4.mul_vec4
+	-- transform all 8 vertices by the model matrix
+	for i=1,8 do
+		local vec = p[i]
+		mat_vec4_mul(vec, model_mat, vec)
+
+		-- perform w perspective division
+		local w = vec[4]
+		vec[1] = vec[1] / w
+		vec[2] = vec[2] / w
+		vec[3] = vec[3] / w
+		--vec[4] = 1 
+	end
+
+	-- we find out the new min/max x,y,z components of all the
+	-- transformed vertices to get the min/max for our new
+	-- bounding box
+	local new_min = { 1/0,  1/0,  1/0}
+	local new_max = {-1/0, -1/0, -1/0}
+
+	for i=1,8 do
+		local vec = p[i]
+		if vec[1] < new_min[1] then new_min[1] = vec[1] end
+		if vec[2] < new_min[2] then new_min[2] = vec[2] end
+		if vec[3] < new_min[3] then new_min[3] = vec[3] end
+
+		if vec[1] > new_max[1] then new_max[1] = vec[1] end
+		if vec[2] > new_max[2] then new_max[2] = vec[2] end
+		if vec[3] > new_max[3] then new_max[3] = vec[3] end
+	end
+
+	local self_bbox = self.props.model_i_bounding_box
+	self_bbox.min = new_min
+	self_bbox.max = new_max
+end
+
+-- returns the bounding box
+-- returns two tables for the position and size for the box
+function ModelInstance:getBoundingBoxPosSize()
+	local bbox = self.props.model_i_bounding_box
+	local min = bbox.min
+	local max = bbox.max
+	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
+	return min, size
 end
 
 function ModelInstance:setPosition(pos)
@@ -146,7 +226,7 @@ function ModelInstance:setPosition(pos)
 end
 function ModelInstance:setRotation(rot)
 	local r = self.props.model_i_rotation
-	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] then
+	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] or rot[4] ~= rot[4] then
 		self.props.model_i_rotation = rot
 		self.model_moved = true
 	end
@@ -362,6 +442,15 @@ function Model:correctBoundingBox()
 	if b_min[3] > b_max[3] then swap(b_min,b_max,3) end
 
 	self.bounds_corrected = true
+end
+
+-- returns the bounding box
+-- returns two tables for the position and size for the box
+function Model:getBoundingBoxPosSize()
+	local bbox = self.model_bounding_box
+	local pos = bbox.min
+	local max = bbox.max
+	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
 end
 
 function Model:getSkeleton()

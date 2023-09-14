@@ -13,6 +13,7 @@ require "inputhandler"
 require "provhooks"
 require "facedecor"
 require "gameinterface"
+require "partition"
 
 local camcontrol = require "cameracontrollers"
 
@@ -25,7 +26,11 @@ Prov = {
 	ents = {},
 	events = {},
 
-	input_handlers = {}
+	model_bins = nil,
+
+	input_handlers = {},
+
+	LIMIT_TO_TICK_RATE = true
 }
 Prov.__index = Prov
 
@@ -122,14 +127,13 @@ function Prov:load()
 	)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i , crate_inst }
+	self.scene:addModelInstance{ sphere, crate_i }
 
 	-- only load once
 	self.load = function() end
 end
 
 function Prov:update(dt)
-	stepTick(dt)
 	if tickChanged() then
 		self:onTickChange()
 	end
@@ -147,6 +151,13 @@ function Prov:update(dt)
 
 	self:pollInputHandlers()
 	self:updateEnts()
+
+	self.scene:update()
+
+	--local pos = pianko_ent:getPosition()
+	--local rot = pianko_ent:getRotation()
+	--pianko_ent:setPosition{pos[1], pos[2], pos[3]-2}
+	--pianko_ent:setRotation{rot[1], rot[2]+0.05, rot[3], "rot"}
 
 	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",

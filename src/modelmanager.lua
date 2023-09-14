@@ -55,8 +55,10 @@ function Models.openFilename(fname, texture_fname, load_anims)
 	end
 
 	local bounds = nil
+	local bounds_copy = nil
 	if objs.bounds then
 		bounds = objs.bounds.base
+		bounds_copy = { ["min"]={unpack(bounds.min)}, ["max"]={unpack(bounds.max)} }
 	end
 
 	local texture = Textures.loadTexture(texture_fname)
@@ -77,6 +79,7 @@ function Models.openFilename(fname, texture_fname, load_anims)
 		["model_texture_fname"] = texture_fname,
 		["model_vertex_winding"] = winding,
 		["model_bounding_box"] = bounds,
+		["model_bounding_box_unfixed"] = bounds_copy,
 		["model_mesh"] = mesh,
 		["model_skeleton"] = skeleton,
 		["model_animations"] = anims,

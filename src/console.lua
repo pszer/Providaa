@@ -2,6 +2,8 @@
 --
 --
 
+require "input"
+
 local utf8 = require("utf8")
 
 Console = {
@@ -19,6 +21,13 @@ function Console.open()
 	love.keyboard.setKeyRepeat(true)
 	Console.text_draw = love.graphics.newText(love.graphics.getFont(), Console.text)
 	Console.open_flag = true
+
+	CONTROL_LOCK.CONSOLE.open()
+end
+
+function Console.close()
+	Console.open_flag = false
+	CONTROL_LOCK.CONSOLE.close()
 end
 
 function Console.keypressed(key)
@@ -36,9 +45,9 @@ function Console.keypressed(key)
 		local status = pcall(loadstring,code)
 
 		Console.text = ""
-		Console.open_flag = false
+		Console.close()
 	elseif key == "escape" or key == "f8" then
-		Console.open_flag = false
+		Console.close()
     end
 end
 

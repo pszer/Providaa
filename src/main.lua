@@ -30,31 +30,46 @@ end
 
 local FRAMES=0
 local TIMER_START=0
-function love.update(dt)
-	--prof.enabled(not PROFILE_DRAW)
-	prof.push("frame")
-	prof.push("update")
-
-	GAMESTATE:update(dt)
-
+function __updateFramesCounter()
 	FRAMES=FRAMES+1
 	if (love.timer.getTime() - TIMER_START > 1.0) then
 		TIMER_START = love.timer.getTime()
 		FPS = FRAMES
 		FRAMES=0
 	end
+end
 
-	if FPS_LIMIT > 0 then
-		local diff = (1/FPS_LIMIT) - dt
+function __limitFPS( limit , dt )
+	local limit = limit or 0
+	if limit > 0 then
+		local diff = (1/limit) - dt
 
 		local start_time = love.timer.getTime()
 		if diff > 0.0 then
 			love.timer.sleep(diff)
+			print("slept")
+		else
+			print("not slept")
 		end
 		local time_slept = love.timer.getTime() - start_time
+
+		print("fps should be", 1/(dt+time_slept))
+	end
+end
+
+function love.update(dt)
+	prof.push("frame")
+	prof.push("update")
+
+	stepTick(dt)
+
+	if (GAMESTATE.LIMIT_TO_TICK_RATE and tickChanged()) or not GAMESTATE.LIMIT_TO_TICK_RATE then
+		GAMESTATE:update(dt)
+		updateKeys()
 	end
 
-	updateKeys()
+	--__limitFPS(300, dt)
+	__updateFramesCounter()
 
 	prof.pop("update")
 end

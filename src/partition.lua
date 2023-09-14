@@ -77,10 +77,13 @@ end--]]
 GridPartition = {}
 GridPartition.__index = GridPartition
 
-function GridPartition:new(w,h, countx, county)
+function GridPartition:new(x,y,w,h, countx, county)
 	local this = {
 		bins = {},
+		outside = {},
 		objs = {},
+		x = x,
+		y = y,
 		width = w,
 		height = h,
 		countx = countx,
@@ -88,7 +91,23 @@ function GridPartition:new(w,h, countx, county)
 		stepx = w/countx,
 		stepy = h/county,
 
-		index = function(x,y) return x + y*countx+1 end
+		index = function(x,y) return x + y*countx+1 end,
+		out_of_range = function(x,y) local i =x + y*countx+1 return i<0 or i>countx*county end,
+		get_bin = function(self,x,y)
+			local i = x + y*countx+1
+			if i < 1 or i > countx*county then
+				return self.outside
+			else
+				return self.bins[i]
+			end --get_bin
+		end,
+		get_bin_by_index = function(self,i)
+			if i<1 or i>countx*county then
+				return self.outside
+			else
+				return self.bins[i]
+			end
+		end
 	}
 
 	for i=1,countx*county do
@@ -108,19 +127,37 @@ function GridPartition:insert(obj, x,y,w,h)
 	local bins = self.bins
 	local tableinsert = table.insert
 
-	local startxi = max(0, floor(x/self.stepx))
-	local startyi = max(0, floor(y/self.stepy))
-	local endxi = min(self.countx-1, floor((x+w)/self.stepx))
-	local endyi = min(self.county-1, floor((y+h)/self.stepy))
-
 	self.objs[obj] = {}
 	local obj_cache = self.objs[obj]
 
+	local gridx = self.x
+	local gridy = self.y
+
+	local startxi = floor((x-gridx)/self.stepx)
+	local startyi = floor((y-gridy)/self.stepy)
+	local endxi = floor((x+w-gridx)/self.stepx)
+	local endyi = floor((y+h-gridy)/self.stepy)
+
+	-- we test if the object needs to be put inside the outside bin
+	if startxi < 0 or endxi >= self.countx or
+	   startyi < 0 or endyi >= self.county
+	then
+		table.insert(self.outside, obj)
+		table.insert(obj_cache, 0) -- 0 is treated as an index for the outside bin
+	end
+
+	-- we clamp the indices to be inside the range of the bins
+	startxi = max(0, startxi)
+	startyi = max(0, startyi)
+	endxi = min(self.countx-1, endxi)
+	endyi = min(self.county-1, endyi)
+
 	for i = startxi,endxi do
 		for j = startyi,endyi do
-			print("at",i,j)
 			local bin_i = index(i,j)
-			tableinsert(bins[bin_i], obj)
+			local bin = self.bins[bin_i]
+
+			tableinsert(bin, obj)
 			tableinsert(obj_cache, bin_i)
 		end
 	end
@@ -131,9 +168,11 @@ function GridPartition:remove(obj)
 	if not bin_indices then return end
 
 	local tableremove = table.remove
+	local get_bin_by_index = self.get_bin_by_index
 
 	for _,index in ipairs(bin_indices) do
-		local bin = self.bins[index]
+		--local bin = self.bins[index]
+		local bin = self.get_bin_by_index(self, index)
 
 		for i,v in ipairs(bin) do
 			if v == obj then
@@ -146,19 +185,46 @@ function GridPartition:remove(obj)
 	self.objs[obj] = nil
 end
 
+-- returns two tables
+--
+-- first table is all the objects inside the rectangle
+--
+-- second table is for all the objects outside of the partion space
+-- if the given rectangle goes outside of it, these objects are not guaranteed
+-- to be inside the rectangle, subsequent testing might be needed
 function GridPartition:getInsideRectangle(x,y,w,h)
 	local floor = math.floor
 	local max = math.max
 	local min = math.min
 
-	local startxi = max(0, floor(x/self.stepx))
-	local startyi = max(0, floor(y/self.stepy))
-	local endxi = min(self.countx-1, floor((x+w)/self.stepx))
-	local endyi = min(self.county-1, floor((y+h)/self.stepy))
+
+	local gridx = self.x
+	local gridy = self.y
+
+	local startxi = floor((x-gridx)/self.stepx)
+	local startyi = floor((y-gridy)/self.stepy)
+	local endxi = floor((x+w-gridx)/self.stepx)
+	local endyi = floor((y+h-gridy)/self.stepy)
+
+	local outside_set = {}
+
+	-- we test if the rectangle goes outside of range
+	if startxi < 0 or endxi >= self.countx or
+	   startyi < 0 or endyi >= self.county
+	then
+		outside_set = self.outside
+	end
+
+	-- we clamp the indices to be inside the range of the bins
+	startxi = max(0, startxi)
+	startyi = max(0, startyi)
+	endxi = min(self.countx-1, endxi)
+	endyi = min(self.county-1, endyi)
 
 	local index = self.index
-
+	local bins = self.bins
 	local tableinsert = table.insert
+
 	local function add_to_set(set, x)
 		for i,v in ipairs(set) do
 			if x == v then return end
@@ -166,8 +232,6 @@ function GridPartition:getInsideRectangle(x,y,w,h)
 		tableinsert(set, x)
 	end
 	local set = {}
-
-	local bins = self.bins
 
 	for i = startxi,endxi do
 		for j = startyi,endyi do
@@ -178,5 +242,24 @@ function GridPartition:getInsideRectangle(x,y,w,h)
 		end
 	end
 
-	return set
+	return set, outside_set
 end
+
+local testgrid = GridPartition:new(0,0,256, 256, 8, 8)
+testgrid:insert("zomgers", -64, -64, 128, 128)
+local set, out = testgrid:getInsideRectangle(-10,-10,32,32)
+print("set")
+for i,v in ipairs(set) do
+	print(v) end
+print("out")
+for i,v in ipairs(out) do
+	print(v) end
+testgrid:remove("zomgers")
+
+local set, out = testgrid:getInsideRectangle(-10,-10,32,32)
+print("set")
+for i,v in ipairs(set) do
+	print(v) end
+print("out")
+for i,v in ipairs(out) do
+	print(v) end

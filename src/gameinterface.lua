@@ -10,7 +10,6 @@
 require "table"
 require 'tile'
 require 'boundingbox'
-require 'quadtree'
 
 GameData = {}
 GameData.__index = {}

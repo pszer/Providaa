@@ -40,13 +40,12 @@ function ModelDecor:getLocalModelMatrix()
 
 		m:scale(m,  cpml.vec3(unpack(props.decor_scale)))
 
-		m:rotate(m, rot[1], cpml.vec3.unit_x)
-		m:rotate(m, rot[2], cpml.vec3.unit_y)
-		m:rotate(m, rot[3], cpml.vec3.unit_z)
+		rotateMatrix(m, rot)
+		--m:rotate(m, rot[1], cpml.vec3.unit_x)
+		--:rotate(m, rot[2], cpml.vec3.unit_y)
+		--m:rotate(m, rot[3], cpml.vec3.unit_z)
 
 		m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
-
-		--m = m * self:getModel():getDirectionFixingMatrix() 
 
 		self.local_model_u = m
 		self.recalc_model = false

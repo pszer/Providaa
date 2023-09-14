@@ -50,10 +50,21 @@ function testPointInRect(u,v, x1,y1,x2,y2)
 	       between(y1, v, y2)
 end
 
-function testRectInRect(ax1,ay1,ax2,ay2 , bx1,by1,bx2,by2)
+-- tests if two 2D rectangles intersect
+-- rectangles are given in min,max format
+function testRectInRectMinMax(ax1,ay1,ax2,ay2 , bx1,by1,bx2,by2)
 	return not (
 		ax2 < bx1 or
 		bx2 < ax1 or
 		ay2 < by1 or
 		ay2 < by1)
+end
+
+-- tests if two 2D rectangles intersect
+-- rectangles are given in pos,size format
+function testRectInRectPosSize(x1, y1, w1, h1, x2, y2, w2, h2)
+	return testRectInRectMinMax(
+	  x1, y1, x1+w1, y1+h1,
+	  x2, y2, x2+w2, y2+h2
+	)
 end

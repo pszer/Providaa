@@ -12,14 +12,16 @@ ModelPropPrototype = Props:prototype{
 	{"model_name"         , "string", "", nil, "model's name" },
 	{"model_texture_fname", "string", "", nil, "model's texture filename"},
 
-	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position", "readonly"},
-	{"model_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation"},
-	{"model_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},
+	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position", "readonly"}, -- unused
+	{"model_rotation", "table", nil, PropDefaultTable{0,0,0,"rot"}, "model's world rotation"},       -- unused
+	{"model_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},                      -- unused
 
 	{"model_up_vector" , "table", { 0 , -1 ,  0 }, nil, "model`s upward pointing vector",  "readonly"},
 	{"model_dir_vector", "table", { 0 ,  0 , -1 }, nil,  "model`s forward pointing vector", "readonly"},
 	{"model_vertex_winding", "string", "ccw", PropIsOneOf{"ccw","cw"},  "vertex winding for this model`s mesh", "readonly"},
 
+	{"model_bounding_box_unfixed", "table", nil, PropDefaultTable{min={0,0,0},max={0,0,0}}, [[model's bounding box, given by two min/max vectors,
+	                                                                                          uncorrected by this models getDirectionFixingMatrix() ]]},
 	{"model_bounding_box", "table", nil, PropDefaultTable{min={0,0,0},max={0,0,0}}, "model's bounding box, given by two min/max vectors"},
 
 	{"model_mesh", nil, nil, nil, "model's mesh object"},
@@ -37,13 +39,17 @@ ModelInstancePropPrototype = Props:prototype{
 	{"model_i_reference", nil, nil, nil, "the model this instance is referencing" },
 
 	{"model_i_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position, don't change directly use setPosition"},
-	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0}, "model's world rotation, don't change directly use setRotation"},
+	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0,"rot"}, "model's world rotation, don't change directly use setRotation"},
 	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale, don't change directly use setScale"},
 
 	{"model_i_outline_flag", "boolean", false, nil,                     "whether to draw an outline around this model"},
 	{"model_i_outline_colour", "table", nil, PropDefaultTable{0,0,0,1}, "model's outline colour"},
 	{"model_i_outline_scale", "number", 1.03, nil,                      "model's outline scale factor"},
 	{"model_i_contour_flag", "boolean", false},
+
+	{"model_i_bounding_box", "table", nil, PropDefaultTable{min={0,0,0},max={0,0,0}}, [[model's bounding box, given by two min/max vectors,
+	                                                                                  calculated by transforming the bounding box from model_i_reference
+																					  this this model instances model matrix]]},
 
 	{"model_i_static"    , "boolean", false, nil, "is model instance static?"},
 

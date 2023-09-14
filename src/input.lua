@@ -25,10 +25,10 @@
 -- CONTROL_LOCK.lockname() returns if lockname is enabled
 --
 -- these functions change a locks status
--- CONTROL_LOCK.lockname.Close()
--- CONTROL_LOCK.lockname.Open()
--- CONTROL_LOCK.lockname.ForceOpen()
--- CONTROL_LOCK.lockname.Elevate()
+-- CONTROL_LOCK.lockname.close()
+-- CONTROL_LOCK.lockname.open()
+-- CONTROL_LOCK.lockname.forceOpen()
+-- CONTROL_LOCK.lockname.elevate()
 --
 --]]
 
@@ -78,10 +78,10 @@ end
 
 -- metatable for each control lock in CONTROL_LOCK
 CONTROL_LOCK_METATABLE = {
-	Close      = function(lock) lock[2] = 0 end,
-	Open       = function(lock) lock[2] = 1 end,
-	ForceOpen  = function(lock) lock[2] = 2 end,
-	Elevate    = function(lock) lock[2] = 3 end
+	close      = function(lock) lock[2] = 0 end,
+	open       = function(lock) lock[2] = 1 end,
+	forceOpen  = function(lock) lock[2] = 2 end,
+	elevate    = function(lock) lock[2] = 3 end
 }
 CONTROL_LOCK_METATABLE.__index = function (lock,t)
 	return function() CONTROL_LOCK_METATABLE[t](lock) end

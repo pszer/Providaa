@@ -3,6 +3,7 @@ require 'math'
 require "props.sceneprops"
 require "light"
 require "tick"
+require "boundingbox"
 
 local shadersend = require 'shadersend'
 local matrix     = require 'matrix'
@@ -36,6 +37,7 @@ function Scene:loadMap(map)
 	props.scene_height = map.height
 
 	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)
+	self:fitNewModelPartitionSpace()
 end
 
 -- argument can be a model instance or a table of model instances
@@ -134,9 +136,9 @@ function Scene:drawGridMapForShadowMapping()
 	props.scene_generic_mesh:drawGeneric()
 end
 
-function Scene:drawModels(update_anims, draw_outlines)
+function Scene:drawModels(update_anims, draw_outlines, model_subset)
 	prof.push("draw_models")
-	local models = self.props.scene_models
+	local models = model_subset or self.props.scene_models
 	for i,v in ipairs(models) do
 		v:draw(nil, update_anims, draw_outlines)
 	end
@@ -154,10 +156,15 @@ function Scene:cameraUpdate()
 	cam:update()
 end
 
+function Scene:update()
+	self:cameraUpdate()
+	self:updateModelPartitionSpace()
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
-	self:cameraUpdate()
+	--self:cameraUpdate()
 
 	--Renderer.setupCanvasFor3D()
 	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
@@ -190,7 +197,8 @@ function Scene:draw(cam)
 	self:drawGridMap()
 	prof.pop("drawgrid")
 	prof.push("drawmodels")
-	self:drawModels(false, true)
+	local models = self:getModelsInViewFrustrum()
+	self:drawModels(false, true, models)
 	prof.pop("drawmodels")
 
 	Renderer.dropCanvas()
@@ -329,4 +337,73 @@ function Scene:drawSkybox(cam)
 	--Renderer.dropCanvas()
 
 	return true
+end
+
+function Scene:fitNewModelPartitionSpace()
+	local scenew, sceneh = self.props.scene_width, self.props.scene_height
+	local w = (scenew+2) * TILE_SIZE
+	local h = (sceneh+2) * TILE_SIZE
+	local x = -TILE_SIZE
+	local y = -(sceneh)*TILE_SIZE - TILE_SIZE
+ 
+	print(x,y,w,h)
+
+	self.model_bins = GridPartition:new(x,y,w,h, 16, 16)
+end
+
+function Scene:updateModelPartitionSpace()
+	local models = self:getModelInstances()
+	local bins = self.model_bins
+	for _,model in ipairs(models) do
+		if not model:usesModelInstancing() and model:areBoundsChanged() then
+			--print("whOOp", model.props.model_i_reference.props.model_name)
+			bins:remove(model)
+			local pos, size = model:getBoundingBoxPosSize()
+			--print(pos[1], pos[2], pos[3],"size", size[1], size[2], size[3])
+			bins:insert(model, pos[1], pos[3], size[1], size[3])
+			model:informNewBoundsAreHandled()
+		end
+	end
+end
+
+function Scene:getModelsInViewFrustrum()
+	local cam = self.props.scene_camera
+
+	local min = { 1/0,  1/0,  1/0}
+	local max = {-1/0, -1/0, -1/0}
+
+	local frustrum_corners = cam:generateFrustrumCornersWorldSpace()
+
+	for i=1,8 do
+		local vec = frustrum_corners[i]
+		if vec[1] < min[1] then min[1] = vec[1] end
+		if vec[2] < min[2] then min[2] = vec[2] end
+		if vec[3] < min[3] then min[3] = vec[3] end
+
+		if vec[1] > max[1] then max[1] = vec[1] end
+		if vec[2] > max[2] then max[2] = vec[2] end
+		if vec[3] > max[3] then max[3] = vec[3] end
+	end
+
+	local x,y,w,h = min[1], min[3], max[1]-min[1], max[3]-min[3]
+
+	local models, outside_models = self.model_bins:getInsideRectangle(x,y,w,h)
+	for _,m in ipairs(outside_models) do
+		local pos,size = m:getBoundingBoxPosSize()
+		local is_inside = testRectInRectPosSize(x,y,w,h,
+		  pos[1], pos[3], size[1], size[3])
+
+		if is_inside then
+			table.insert(models, m)
+		end
+	end
+
+	-- for now, we just render ALL instancing-using models
+	for _,m in ipairs(self.props.scene_models) do
+		if m:usesModelInstancing() then
+			table.insert(models, m)
+		end
+	end
+
+	return models
 end
