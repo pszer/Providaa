@@ -302,15 +302,13 @@ function Scene:pushShadowMaps(shader)
 	--shadersend(shader, "shadow_maps", unpack(shadow_maps))
 	--shadersend(shader, "LIGHT_COUNT", light_count)
 	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
-	if not self.pushed_static_lights then
+	--if not self.pushed_static_lights then
 		shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
 		shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
-	end
+	--end
 	shadersend(shader, "dir_shadow_map", dir_shadow_map)
-	if not self.pushed_static_lights then
-	end
-		shadersend(shader, "dir_light_dir", dir_light_dir)
-		shadersend(shader, "dir_light_col", dir_light_col)
+	shadersend(shader, "dir_light_dir", dir_light_dir)
+	shadersend(shader, "dir_light_col", dir_light_col)
 
 	self.pushed_static_lights = true
 end
