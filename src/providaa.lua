@@ -193,9 +193,9 @@ function Prov:update(dt)
 	animface.props.animface_righteye_dir = {3*c,3*s,12}
 	animface.props.animface_lefteye_dir  = {3*c,3*s,12}
 
-	if scancodeIsDown("space", CTRL.GAME) then
-		pianko_ent:delete()
-	end
+	--if scancodeIsDown("space", CTRL.GAME) then
+	--	pianko_ent:delete()
+	--end
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
