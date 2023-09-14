@@ -26,7 +26,7 @@ Prov = {
 	ents = {},
 	events = {},
 
-	model_bins = nil,
+	ent_bins = nil,
 
 	input_handlers = {},
 
@@ -123,11 +123,13 @@ function Prov:load()
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(pianko_ent, {0,-35,70}, {0,-15,0})
+		camcontrol:followEntityFixed(pianko_ent, {0,-5,90}, {0.5,0.55,0.5})
 	)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
 	self.scene:addModelInstance{ sphere, crate_i }
+
+	self:fitNewEntityPartitionSpace()
 
 	-- only load once
 	self.load = function() end
@@ -149,15 +151,21 @@ function Prov:update(dt)
 		pianko_ent:delete()
 	end
 
+	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
+	prof.pop("pollinputhandlers")
+	prof.push("update_ents")
 	self:updateEnts()
+	prof.pop("update_ents")
 
+	prof.push("scene_update")
 	self.scene:update()
+	prof.pop("scene_update")
 
-	--local pos = pianko_ent:getPosition()
-	--local rot = pianko_ent:getRotation()
-	--pianko_ent:setPosition{pos[1], pos[2], pos[3]-2}
-	--pianko_ent:setRotation{rot[1], rot[2]+0.05, rot[3], "rot"}
+	local pos = pianko_ent:getPosition()
+	local rot = pianko_ent:getRotation()
+	pianko_ent:setPosition{pos[1], pos[2], pos[3]-20*dt}
+	pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
 
 	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
@@ -165,10 +173,15 @@ function Prov:update(dt)
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral"
 	 }
+	prof.push("push_composite")
 	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
 	animface.props.animface_lefteye_pose = pose
 	animface.props.animface_righteye_pose = pose
-	animface:pushComposite()
+	prof.pop("push_composite")
+
+	prof.push("update_ent_partition_space")
+	self:updateEntityPartitionSpace()
+	prof.pop("update_ent_partition_space")
 
 	self:deleteFlaggedEntities()
 end
@@ -216,6 +229,8 @@ function Prov:addEntity( ent )
 end
 
 function Prov:removeEntity( ent )
+	self.ent_bins:remove(ent)
+
 	for i,v in ipairs(self.ents) do
 		if v == ent then self:removeEntityAtIndex( i ) end
 	end
@@ -247,9 +262,13 @@ function Prov:deleteFlaggedEntities()
 	end
 end
 
+function Prov:getEntities()
+	return self.ents
+end
+
 function Prov:updateEnts()
 	for i,ent in ipairs(self.ents) do
-		ent:update()
+		ent:internalUpdate()
 	end
 end
 
@@ -269,6 +288,30 @@ end
 function Prov:pollInputHandlers()
 	for i,handler in pairs(self.input_handlers) do
 		handler:poll()
+	end
+end
+
+function Prov:fitNewEntityPartitionSpace()
+	local scene = self.scene
+	local scenew, sceneh = scene.props.scene_width, scene.props.scene_height
+	local w = (scenew+2) * TILE_SIZE
+	local h = (sceneh+2) * TILE_SIZE
+	local x = -TILE_SIZE
+	local y = -(sceneh)*TILE_SIZE - TILE_SIZE
+
+	self.ent_bins = GridPartition:new(x,y,w,h, 16, 16)
+end
+
+function Prov:updateEntityPartitionSpace()
+	local ents = self:getEntities()
+	local bins = self.ent_bins
+	for _,ent in ipairs(ents) do
+		if ent:areBoundsChanged() then
+			bins:remove(ent)
+			local pos, size = ent:getWorldHitboxPosSize()
+			bins:insert(ent, pos[1], pos[3], size[1], size[3])
+			ent:informNewBoundsAreHandled()
+		end
 	end
 end
 

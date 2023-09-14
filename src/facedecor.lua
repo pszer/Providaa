@@ -42,6 +42,7 @@ function faceFromCfg(name)
 	face_props.animface_decor_reference = decor
 
 	local animface = AnimFace:new(face_props)
+	decor.props.decor_animated_face = animface
 
 	return decor, animface
 end

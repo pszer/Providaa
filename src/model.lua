@@ -43,6 +43,14 @@ end
 ModelInstance = {__type = "modelinstance"}
 ModelInstance.__index = ModelInstance
 
+--[[
+--
+--
+-- ModelInstance
+--
+--
+--]]
+
 function ModelInstance:new(props)
 	local this = {
 		props = ModelInstancePropPrototype(props),
@@ -53,7 +61,7 @@ function ModelInstance:new(props)
 		bone_matrices = {},
 
 		model_moved = true,
-		update_bones = periodicUpdate(1),
+		--update_bones = periodicUpdate(1),
 
 		-- a flag that signals that this model has moved, so anything
 		-- that uses its bounding box needs to be recalculated i.e.
@@ -252,19 +260,19 @@ function ModelInstance:queryModelMatrix()
 end
 
 function ModelInstance:fillOutBoneMatrices(animation, frame)
-	if not self.update_bones() then return end
+	--if not self.update_bones() then return end
 
 	local model = self:getModel()
 	if model.props.model_animated then
 		prof.push("get_bone_matrices")
-		local bone_matrices = model:getBoneMatrices(animation, frame)
+		self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
 		prof.pop("get_bone_matrices")
 
-		for i,v in ipairs(bone_matrices) do
-			bone_matrices[i] = matrix(v)
+		for i,v in ipairs(self.bone_matrices) do
+			self.bone_matrices[i] = matrix(v)
 		end
 
-		self.bone_matrices = bone_matrices
+		--self.bone_matrices = bone_matrices
 	end
 end
 
@@ -293,7 +301,7 @@ function ModelInstance:sendToShader(shader, reuse_model_matrix)
 	self:sendBoneMatrices(shader)
 end
 
-function ModelInstance:draw(shader, update_animation, draw_outline)
+function ModelInstance:draw(shader, update_animation, is_main_pass)
 	local shader = shader or love.graphics.getShader()
 
 	if update_animation then
@@ -312,12 +320,16 @@ function ModelInstance:draw(shader, update_animation, draw_outline)
 	prof.push("model_drawwww")
 	if props.model_i_draw_instances then
 		self:drawInstances(shader)
-	elseif draw_outline and props.model_i_outline_flag then
-		self:drawOutlined(shader)
+	elseif is_main_pass then
+		if props.model_i_outline_flag then
+			self:drawOutlined(shader)
+		else
+			modelprops.model_mesh:drawModel(shader)
+		end
 		self:drawDecorations(shader)
 	else
 		modelprops.model_mesh:drawModel(shader)
-		self:drawDecorations(shader)
+		--self:drawDecorations(shader)
 	end
 	prof.pop("model_drawwww")
 	love.graphics.setFrontFaceWinding("ccw")
@@ -336,24 +348,6 @@ function ModelInstance:drawOutlined(shader)
 	prof.push("after_contour_draw")
 	mesh:drawModel(shader)
 	prof.pop("after_contour_draw")
-	--[[
-	local model = self:getModel()
-	local mesh = model:getMesh().mesh
-	local colour = self.props.model_i_outline_colour
-
-	-- scaled up model matrix for drawing the outline
-	shadersend(shader,"texture_animated", false)
-	shadersend(shader,"draw_to_outline_buffer", 1.0)
-	shadersend(shader,"outline_colour", colour)
-
-	-- draw model to screen, setting every pixel rendered stencil to one
-	local stencil_function = function()
-		love.graphics.setColorMask( true, true, true, true )
-		love.graphics.draw(mesh)
-	end
-	love.graphics.stencil(stencil_function, "replace", 1)
-
-	shadersend(shader,"draw_to_outline_buffer", 0.0)--]]
 end
 
 function ModelInstance:drawContour(shader, mesh)
@@ -401,6 +395,54 @@ function ModelInstance:drawDecorations(shader)
 	end
 end
 
+function ModelInstance:queryBoneMatrix(bone)
+	local index = self:getModel():getBoneIndex(bone)
+	if index then
+		return self.bone_matrices[index]
+	else
+		return nil
+	end
+end
+
+function ModelInstance:decorations()
+	return self.props.model_i_decorations
+end
+
+function ModelInstance:attachDecoration(decor)
+	local name = decor:name()
+	local decor_table = self.props.model_i_decorations
+	table.insert(decor_table, decor)
+	decor_table[name] = decor
+end
+
+-- name argument can either be the decor_name of the decoration
+-- or an index in the decor_table
+function ModelInstance:detachDecoration(name)
+	local decor_table = self.props.model_i_decorations
+	if name == "string" then
+		decor_table[name] = nil
+		for i,decor in ipairs(decor_table) do
+			if decor:name() == name then
+				table.remove(decor_table, i)
+				return
+			end
+		end
+	else -- if the argument name is a number index
+		decor_name = decor_table[name]:name()
+		decor_table[decor_name] = nil
+		table.remove(decor_table, name)
+	end
+end
+
+
+--[[
+--
+--
+-- Model
+--
+--
+--]]
+
 function Model:generateDirectionFixingMatrix()
 	local up_v = cpml.vec3(self.props.model_up_vector)
 	local dir_v = cpml.vec3(self.props.model_dir_vector)
@@ -446,12 +488,12 @@ end
 
 -- returns the bounding box
 -- returns two tables for the position and size for the box
-function Model:getBoundingBoxPosSize()
-	local bbox = self.model_bounding_box
-	local pos = bbox.min
-	local max = bbox.max
-	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
-end
+--function Model:getBoundingBoxPosSize()
+--	local bbox = self.model_bounding_box
+--	local pos = bbox.min
+--	local max = bbox.max
+--	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
+--end
 
 function Model:getSkeleton()
 	return self.props.model_skeleton
@@ -531,7 +573,7 @@ function Model:generateAnimationFrames()
 end
 
 -- if animation is nil, then default reference pose is used
-function Model:getBoneMatrices(animation, frame)
+function Model:getBoneMatrices(animation, frame, outframe)
 	if not self.props.model_animated then return end
 
 	local skeleton = self:getSkeleton()
@@ -540,18 +582,20 @@ function Model:getBoneMatrices(animation, frame)
 	local mat4new = mat4.new
 	local mat4mul = mat4.mul
 
+	--local outframe = outframe or {}
+
 	local anim_data = nil
 	if animation then
 		anim_data = self.props.model_animations[animation]
 	end
 	if not anim_data then
-		local outframe = self.outframes
+		--local outframe = self.outframes
 		if animation then
 		print("getBoneMatrices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
 		end
 
+		local mat = mat4new(1.0)
 		for i,v in ipairs(skeleton) do
-			local mat = mat4new(1.0)
 			outframe[i] = mat
 		end
 		return outframe
@@ -573,7 +617,7 @@ function Model:getBoneMatrices(animation, frame)
 	local frame1 = self.frames[frame1_id]
 	local frame2 = self.frames[frame2_id]
 
-	local outframe = self.outframes
+	--local outframe = self.outframes
 	for i,pose1 in ipairs(frame1) do
 		pose2 = frame2[i]
 
@@ -601,43 +645,4 @@ end
 function Model:getBoneIndex(bone)
 	local joint_map = self.props.model_animations.joint_map
 	return joint_map[bone]
-end
-
-function ModelInstance:queryBoneMatrix(bone)
-	local index = self:getModel():getBoneIndex(bone)
-	if index then
-		return self.bone_matrices[index]
-	else
-		return nil
-	end
-end
-
-function ModelInstance:decorations()
-	return self.props.model_i_decorations
-end
-
-function ModelInstance:attachDecoration(decor)
-	local name = decor:name()
-	local decor_table = self.props.model_i_decorations
-	table.insert(decor_table, decor)
-	decor_table[name] = decor
-end
-
--- name argument can either be the decor_name of the decoration
--- or an index in the decor_table
-function ModelInstance:detachDecoration(name)
-	local decor_table = self.props.model_i_decorations
-	if name == "string" then
-		decor_table[name] = nil
-		for i,decor in ipairs(decor_table) do
-			if decor:name() == name then
-				table.remove(decor_table, i)
-				return
-			end
-		end
-	else -- if the argument name is a number index
-		decor_name = decor_table[name]:name()
-		decor_table[decor_name] = nil
-		table.remove(decor_table, name)
-	end
 end

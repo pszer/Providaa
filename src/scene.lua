@@ -19,7 +19,9 @@ function Scene:new(props)
 
 		shadow_last_update = 0,
 		static_models = {},
-		dynamic_models = {}
+		dynamic_models = {},
+
+		pushed_static_lights = false
 	}
 
 	setmetatable(this,Scene)
@@ -62,6 +64,8 @@ function Scene:addModelInstance(inst)
 end
 
 function Scene:removeModelInstance(inst)
+	self.model_bins:remove(inst)
+
 	local function r(inst, collection)
 		for i,v in ipairs(collection) do
 			if inst == v then table.remove(collection, i) return end
@@ -111,15 +115,13 @@ function Scene:generateGenericMesh(map, scene_meshes)
 	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("nil.png"), meshes)
 end
 
-function Scene:pushFog()
-	local sh = love.graphics.getShader()
+function Scene:pushFog(sh)
 	sh:send("fog_start", self.props.scene_fog_start)
 	sh:send("fog_end", self.props.scene_fog_end)
 	sh:send("fog_colour", self.props.scene_fog_colour)
 end
 
-function Scene:pushAmbience()
-	local sh = love.graphics.getShader()
+function Scene:pushAmbience(sh)
 	sh:send("ambient_col", self.props.scene_ambient_col)
 end
 
@@ -128,7 +130,6 @@ function Scene:drawGridMap()
 	for i,v in ipairs(meshes) do
 		v:drawAsEnvironment()
 	end
-	--props.scene_generic_mesh:drawGeneric()
 end
 
 function Scene:drawGridMapForShadowMapping()
@@ -158,7 +159,9 @@ end
 
 function Scene:update()
 	self:cameraUpdate()
+	prof.push("update_model_partition_space")
 	self:updateModelPartitionSpace()
+	prof.pop("update_model_partition_space")
 end
 
 function Scene:draw(cam)
@@ -176,7 +179,7 @@ function Scene:draw(cam)
 
 	prof.push("bullshit")
 	for i,v in ipairs(self.dynamic_models) do
-		v:fillOutBoneMatrices("Reference Pose", getTickSmooth())
+		v:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
 	prof.pop("bullshit")
 
@@ -185,12 +188,11 @@ function Scene:draw(cam)
 	prof.pop("shadowpass")
 
 	prof.push("shaderpushes")
-	Renderer.setupCanvasFor3D()
-	self:pushShadowMaps()
-
-	self:pushFog()
-	self:pushAmbience()
-	self.props.scene_camera:pushToShader()
+	local sh = Renderer.setupCanvasFor3D()
+	self:pushShadowMaps(sh)
+	self:pushFog(sh)
+	self:pushAmbience(sh)
+	self.props.scene_camera:pushToShader(sh)
 	prof.pop("shaderpushes")
 
 	prof.push("drawgrid")
@@ -300,11 +302,17 @@ function Scene:pushShadowMaps(shader)
 	--shadersend(shader, "shadow_maps", unpack(shadow_maps))
 	--shadersend(shader, "LIGHT_COUNT", light_count)
 	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
-	shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
+	if not self.pushed_static_lights then
+		shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
+		shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
+	end
 	shadersend(shader, "dir_shadow_map", dir_shadow_map)
-	shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
-	shadersend(shader, "dir_light_dir", dir_light_dir)
-	shadersend(shader, "dir_light_col", dir_light_col)
+	if not self.pushed_static_lights then
+	end
+		shadersend(shader, "dir_light_dir", dir_light_dir)
+		shadersend(shader, "dir_light_col", dir_light_col)
+
+	self.pushed_static_lights = true
 end
 
 -- returns true if skybox drawn
@@ -345,8 +353,6 @@ function Scene:fitNewModelPartitionSpace()
 	local h = (sceneh+2) * TILE_SIZE
 	local x = -TILE_SIZE
 	local y = -(sceneh)*TILE_SIZE - TILE_SIZE
- 
-	print(x,y,w,h)
 
 	self.model_bins = GridPartition:new(x,y,w,h, 16, 16)
 end

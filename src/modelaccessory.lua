@@ -76,6 +76,15 @@ end
 
 function ModelDecor:draw(parent, shader)
 	local shader = shader or love.graphics.getShader()
+
+	local face = self.props.decor_animated_face
+	if face then
+		local canvas = love.graphics.getCanvas()
+		face:pushComposite()
+		love.graphics.setShader(shader)
+		love.graphics.setCanvas(canvas)
+	end
+
 	local model_u, norm_u = self:getGlobalModelMatrix(parent)
 
 	shadersend(shader, "u_model", "column", matrix(model_u))

@@ -340,6 +340,7 @@ function Renderer.setupCanvasFor3D()
 	love.graphics.setMeshCullMode("front")
 
 	love.graphics.setShader(Renderer.vertex_shader, Renderer.vertex_shader)
+	return Renderer.vertex_shader
 end
 
 function Renderer.setupCanvasForContour()

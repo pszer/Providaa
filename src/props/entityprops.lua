@@ -16,6 +16,11 @@ EntityPropPrototype = Props:prototype{
 	{"ent_rotation", "table", nil, PropDefaultTable{0,0,0, "rot"}  , "entity rotation" }, -- done
 	{"ent_scale", "table", nil, PropDefaultTable{1,1,1}, "entity scale" }, -- done
 
+	{"ent_velocity", "table", nil, PropDefaultTable{0,0,0} , [[entity velocity, there's no actual physics, only the x,z components are typically used
+	                                                           to walk across the ground.]]},
+
+	{"ent_static", "boolean", false, nil, "if true the entity's velocity is ignored"},
+
 	{"ent_hitbox_inherit" , "boolean", true, nil, [[if true, the entity uses the same hitbox as the bounding box for it's model
 	                                                adequate for most situations.]]}, -- implement plzz
 	{"ent_hitbox_position", "table", nil, PropDefaultTable{-12,-24,-12}, "entity's hitbox position, local to ent_position"},

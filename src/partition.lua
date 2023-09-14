@@ -244,22 +244,3 @@ function GridPartition:getInsideRectangle(x,y,w,h)
 
 	return set, outside_set
 end
-
-local testgrid = GridPartition:new(0,0,256, 256, 8, 8)
-testgrid:insert("zomgers", -64, -64, 128, 128)
-local set, out = testgrid:getInsideRectangle(-10,-10,32,32)
-print("set")
-for i,v in ipairs(set) do
-	print(v) end
-print("out")
-for i,v in ipairs(out) do
-	print(v) end
-testgrid:remove("zomgers")
-
-local set, out = testgrid:getInsideRectangle(-10,-10,32,32)
-print("set")
-for i,v in ipairs(set) do
-	print(v) end
-print("out")
-for i,v in ipairs(out) do
-	print(v) end

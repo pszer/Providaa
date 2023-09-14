@@ -130,10 +130,10 @@ end
 function EyesData:allocateCanvases()
 	local props = self.props
 	local dim = props.eyes_dimensions
-	props.eyes_left_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba16f"})
-	props.eyes_right_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba16f"})
-	self.buffer = love.graphics.newCanvas(dim[1],dim[2],{format="rgba16f"})
-	self.buffer2 = love.graphics.newCanvas(dim[1],dim[2],{format="rgba16f"})
+	props.eyes_left_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
+	props.eyes_right_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
+	self.buffer = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
+	self.buffer2 = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
 end
 
 -- workin with quads ever is an absolute pain in the ass
@@ -211,18 +211,18 @@ function EyesData:clearBuffers()
 		love.graphics.setCanvas(c)
 		love.graphics.clear()
 	end
-	clear(self.props.eyes_right_canvas)
-	clear(self.props.eyes_left_canvas)
+	--clear(self.props.eyes_right_canvas)
+	--clear(self.props.eyes_left_canvas)
 	clear(self.buffer)
-	clear(self.buffer2)
-	love.graphics.setCanvas()
+	--clear(self.buffer2)
+	--love.graphics.setCanvas()
 end
 
 -- pose       : string name/index for eye pose
 -- which_eye  : "left" or "right"
 -- eye_look_v : direction vector where eye is looking, (0,0,1) is neutral
 -- eye_radius : radius of eye in pixels, used to get a correct iris look translation
-function EyesData:composite(pose, which_eye, eye_look_v, eye_radius)
+function EyesData:composite(pose, which_eye, eye_look_v, eye_radius, posx, posy, dest)
 	local source    = self:sourceImage()
 	local iris      = self:getIris(pose)
 	local highlight = self:getHightlight(pose)
@@ -248,10 +248,48 @@ function EyesData:composite(pose, which_eye, eye_look_v, eye_radius)
 
 	-- TODO implement maximum eyelook locking
 
-	local canvas = nil
+	--[[local canvas = nil
 	if which_eye == "right" then
 		 canvas = self.props.eyes_right_canvas
 	else canvas = self.props.eyes_left_canvas end
+
+	local flip_flag = which_eye == "left"
+
+	local mask_sh = renderer.mask_shader
+	love.graphics.origin()
+	love.graphics.setcolor(1,1,1,1)
+
+	-- we draw the iris multiplicatively masked by sclera to self.buffer
+	love.graphics.setcanvas(self.buffer)
+	love.graphics.setshader(mask_sh)
+	mask_sh:send("multiplicative_mask", true)
+	mask_sh:send("mask", sclera)
+	mask_sh:send("uv_translate", {look_v[1], look_v[2]})
+	mask_sh:send("flip_x", flip_flag)
+	mask_sh:send("flip_y", false)
+	love.graphics.draw(iris)
+
+	-- we draw the highlight alpha masked by iris to self.buffer2
+	love.graphics.setcanvas(self.buffer2)
+	love.graphics.setshader(mask_sh)
+	mask_sh:send("multiplicative_mask", false)
+	mask_sh:send("mask", self.buffer)
+	mask_sh:send("uv_translate", {look_v[1]/10,look_v[2]/10})
+	mask_sh:send("flip_x", false)
+	mask_sh:send("flip_y", false)
+	love.graphics.draw(highlight)
+
+	love.graphics.setshader()
+	love.graphics.setcanvas(canvas)
+	if flip_flag then
+		love.graphics.draw(base, dim[1], 0, 0, -1, 1)
+	else
+		love.graphics.draw(base)
+	end
+	love.graphics.draw(self.buffer)
+	love.graphics.draw(self.buffer2)]]
+
+	-- TODO implement maximum eyelook locking
 
 	local flip_flag = which_eye == "left"
 
@@ -269,27 +307,27 @@ function EyesData:composite(pose, which_eye, eye_look_v, eye_radius)
 	mask_sh:send("flip_y", false)
 	love.graphics.draw(iris)
 
-	-- we draw the highlight alpha masked by iris to self.buffer2
-	love.graphics.setCanvas(self.buffer2)
+	-- we draw the base
+	love.graphics.setShader()
+	love.graphics.setCanvas(dest)
+	if flip_flag then
+		love.graphics.draw(base, dim[1]+posx, posy, 0, -1, 1)
+	else
+		love.graphics.draw(base, posx, posy)
+	end
+	-- we draw the iris on top
+	love.graphics.draw(self.buffer, posx, posy)
+
+	-- we draw the highlight alpha masked by the iris in self.buffer
 	love.graphics.setShader(mask_sh)
 	mask_sh:send("multiplicative_mask", false)
 	mask_sh:send("mask", self.buffer)
 	mask_sh:send("uv_translate", {look_v[1]/10,look_v[2]/10})
 	mask_sh:send("flip_x", false)
 	mask_sh:send("flip_y", false)
-	love.graphics.draw(highlight)
+	love.graphics.draw(highlight, posx, posy)
 
-	love.graphics.setShader()
-	love.graphics.setCanvas(canvas)
-	if flip_flag then
-		love.graphics.draw(base, dim[1], 0, 0, -1, 1)
-	else
-		love.graphics.draw(base)
-	end
-	love.graphics.draw(self.buffer)
-	love.graphics.draw(self.buffer2)
-
-	love.graphics.setCanvas()
-	love.graphics.setShader()
-	return canvas
+	--love.graphics.setCanvas()
+	--love.graphics.setShader()
+	--return canvas
 end

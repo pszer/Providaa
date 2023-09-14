@@ -8,7 +8,8 @@ function Entity:new(props)
 	local this = {
 		props = EntityPropPrototype(props),
 
-		ent_moved = true
+		ent_moved = true,
+		recalculate_bounds_flag = true
 	}
 
 	setmetatable(this,Entity)
@@ -16,11 +17,18 @@ function Entity:new(props)
 	return this
 end
 
--- this function should not be treated as a virtual function to overwrite
--- let it do what its gotta do
-function Entity:update()
+-- this function should not be treated as a virtual function to overwrite, thats the job of Entity:update
+-- let this do what its gotta do
+function Entity:internalUpdate()
 	self:updateModelPosition()
+	if self.props.ent_hitbox_inherit then
+		self:copyHitboxFromModel()
+	end
 	self.ent_moved = false
+end
+
+function Entity:update()
+
 end
 
 function Entity:updateModelPosition()
@@ -52,42 +60,90 @@ function Entity:setPosition(pos)
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
 		self.props.ent_position = pos
 		self.ent_moved = true
+		self.recalculate_bounds_flag = true
 	end
 end
 function Entity:setRotation(rot)
 	local r = self.props.ent_rotation
 	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] or rot[4] ~= r[4] then
 		self.props.ent_rotation = rot
-		--self.ent_moved = true
+		self.ent_moved = true
+		self.recalculate_bounds_flag = true
 	end
 end
 function Entity:setScale(scale)
 	local s = self.props.ent_scale
 	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
 		self.props.ent_scale = scale
-		--self.model_moved = true
+		self.model_moved = true
+		self.recalculate_bounds_flag = true
 	end
 end
 
--- returns x,y,z, dx,dy,dz
-function Entity:getWorldHitbox()
+function Entity:translatePosition(vec)
+	
+end
+
+function Entity:copyHitboxFromModel()
+	local model = self.props.ent_model
+	if model then
+		local pos, size = model:getBoundingBoxPosSize()
+
+		self.props.ent_hitbox_size = size
+
+		-- an entity's hitbox has it's position stored locally to ent_position
+		-- this transforms the world co-ordinates to local space
+		local ent_pos = self:getPosition()
+		local local_pos = {
+			pos[1] - ent_pos[1],
+			pos[2] - ent_pos[2],
+			pos[3] - ent_pos[3] }
+
+		self.props.ent_hitbox_position = local_pos
+	end
+end
+
+function Entity:areBoundsChanged()
+	return self.recalculate_bounds_flag
+end
+function Entity:informNewBoundsAreHandled()
+	self.recalculate_bounds_flag = false
+end
+
+-- returns {x,y,z}, {dx,dy,dz}
+function Entity:getWorldHitboxPosSize()
 	local pos = self:getPosition()
 	local hitbox_pos = self.props.ent_hitbox_position
 	local hitbox_size = self.props.ent_hitbox_size
 
-	return pos[1] + hitbox_pos[1],
-	       pos[2] + hitbox_pos[2],
-	       pos[3] + hitbox_pos[3],
-		   hitbox_size[1],
-		   hitbox_size[2],
-		   hitbox_size[3]
+	return { pos[1] + hitbox_pos[1],
+	         pos[2] + hitbox_pos[2],
+	         pos[3] + hitbox_pos[3] },
+		   { hitbox_size[1],
+		     hitbox_size[2],
+		     hitbox_size[3] }
 end
 
+-- returns {x,y,z}
 function Entity:getWorldHitboxCentre()
-	local x,y,z,dx,dy,dz = self:getWorldHitbox()
-	return x+dx*0.5,
-	       y+dy*0.5,
-	       z+dz*0.5
+	return self:getHitboxPointByRelativeCoord{0.5,0.5,0.5}
+end
+
+-- returns a point inside the entities hitbox, queried by an
+-- argument coord with range 0.0 < coord.xyz < 1.0
+-- coord = {0,0,0} would give the minimum point of the hitbox
+-- coord = {1,1,1} would give the maximum point of the hitbox
+-- coord = {0.5,0.5,0.5} would give the middle of the hitbox
+-- etc.
+--
+function Entity:getHitboxPointByRelativeCoord(coord)
+	local pos,size = self:getWorldHitboxPosSize()
+
+	return {
+		pos[1] + size[1]*coord[1],
+		pos[2] + size[2]*coord[2],
+		pos[3] + size[3]*coord[3]
+	}
 end
 
 function Entity:currentState()

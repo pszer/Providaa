@@ -13,6 +13,8 @@ ModelDecorPropPrototype = Props:prototype{
 
 	{"decor_shadow_mult", "number", 0.5, nil, "1.0 is full shadows, 0.0 is no shadows, numbers inbetween lessen shadows"},
 
+	{"decor_animated_face", nil, nil, nil, "if this decor is meant for an animated face, put it here"},
+
 	{"decor_parent_bone", "string", "", nil, "parent bone to follow"}
 
 }

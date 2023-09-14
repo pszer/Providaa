@@ -6,9 +6,25 @@ local tick_rate_inv = 1/tick_rate
 
 FPS = 0
 FPS_LIMIT = 0
+REFRESH_RATE = 60
 
 function getTick()
 	return TICK
+end
+
+function getRefreshRate()
+	local w,h,flags = love.window.getMode()
+
+	local rate = flags.refreshrate
+	if rate > 0 then
+		print(string.format("getRefreshRate: Refresh rate is %dHz", rate))
+	else
+		rate = 60
+		print("getRefreshRate: Cannot determine refresh rate, falling back to 60Hz")
+	end
+
+	REFRESH_RATE = rate
+	return rate
 end
 
 function getTickSmooth()
