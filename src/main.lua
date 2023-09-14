@@ -41,6 +41,7 @@ function love.run()
 	if love.timer then love.timer.step() end
 
 	local dt = 0
+	local sleep_acc = 0
 
 	-- Main loop time.
 	return function()
@@ -72,8 +73,15 @@ function love.run()
 			love.graphics.present()
 		end
 
-		local diff = (1/300 - dt)
-		if love.timer and diff>0.0 then love.timer.sleep(diff) end
+		-- im fuckin around too much here
+		local diff = (1/400 - dt)
+		if diff > 0.0 then
+			sleep_acc = sleep_acc + diff
+		end
+		if love.timer and sleep_acc>0.001 then
+			love.timer.sleep(0.001)
+			sleep_acc = sleep_acc - 0.001
+		end
 		--if love.timer then love.timer.sleep(0.001) end
 	end
 end
