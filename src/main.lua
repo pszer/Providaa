@@ -72,8 +72,8 @@ function love.run()
 			love.graphics.present()
 		end
 
-		local diff = (1/400 - dt)
-		if love.timer and diff>0.0 and diff > 0.001 then love.timer.sleep(diff) end
+		local diff = (1/300 - dt)
+		if love.timer and diff>0.0 then love.timer.sleep(diff) end
 		--if love.timer then love.timer.sleep(0.001) end
 	end
 end
