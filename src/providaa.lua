@@ -67,12 +67,54 @@ function Prov:load()
 	)
 
 	instance = ModelInstance:newInstance(pianko)
+	instance2 = ModelInstance:newInstance(pianko, {model_i_position = {228, -24, -240}})
+	instance3 = ModelInstance:newInstance(pianko, {model_i_position = {150, -24, -240}})
+	instance4 = ModelInstance:newInstance(pianko, {model_i_position = {180, -24, -240}})
+	instance5 = ModelInstance:newInstance(pianko, {model_i_position = {200, -24, -240}})
+	instance6 = ModelInstance:newInstance(pianko, {model_i_position = {130, -24, -240}})
+	instance7 = ModelInstance:newInstance(pianko, {model_i_position = {240, -24, -240}})
+	instance8 = ModelInstance:newInstance(pianko, {model_i_position = {260, -24, -240}})
 
 	instance.props.model_i_outline_flag = true
 	instance.props.model_i_contour_flag = true
+	instance2.props.model_i_outline_flag = true
+	instance2.props.model_i_contour_flag = true
+	instance3.props.model_i_outline_flag = true
+	instance3.props.model_i_contour_flag = true
+	instance4.props.model_i_outline_flag = true
+	instance4.props.model_i_contour_flag = true
+	instance5.props.model_i_outline_flag = true
+	instance5.props.model_i_contour_flag = true
+	instance6.props.model_i_outline_flag = true
+	instance6.props.model_i_contour_flag = true
+	instance7.props.model_i_outline_flag = true
+	instance7.props.model_i_contour_flag = true
+	instance8.props.model_i_outline_flag = true
+	instance8.props.model_i_contour_flag = true
 
 	decor,animface = faceFromCfg("pianko_face")
 	instance:attachDecoration(decor)
+
+	decor2,animface2 = faceFromCfg("pianko_face")
+	instance2:attachDecoration(decor2)
+
+	decor3,animface3 = faceFromCfg("pianko_face")
+	instance3:attachDecoration(decor3)
+
+	decor4,animface4 = faceFromCfg("pianko_face")
+	instance4:attachDecoration(decor4)
+
+	decor5,animface5 = faceFromCfg("pianko_face")
+	instance5:attachDecoration(decor5)
+
+	decor6,animface6 = faceFromCfg("pianko_face")
+	instance6:attachDecoration(decor6)
+
+	decor7,animface7 = faceFromCfg("pianko_face")
+	instance7:attachDecoration(decor7)
+
+	decor8,animface8 = faceFromCfg("pianko_face")
+	instance8:attachDecoration(decor8)
 
 	pianko_ent = Entity:new{
 		["ent_model"] = instance,
@@ -127,9 +169,13 @@ function Prov:load()
 	)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i }
+	self.scene:addModelInstance{ sphere, crate_i, instance2 , instance3 , instance4 , instance5 , instance6, instance7, instance8 }
 
 	self:fitNewEntityPartitionSpace()
+
+	--local frame1,frame2,parents,interp = pianko:getAnimationFramesDataForThread("Walk",2.5)
+	--animthread:addToQueue(instance, frame1, frame2, parents, interp)
+	--animthread:process()
 
 	-- only load once
 	self.load = function() end
@@ -162,9 +208,18 @@ function Prov:update(dt)
 	self.scene:update()
 	prof.pop("scene_update")
 
+	if gfxSetting("multithread_animation") then
+		self.scene.animthreads:startProcess()
+		self.scene:pushModelAnimationsThreaded()
+	else
+		self.scene.animthreads:stopProcess()
+		self.scene:updateModelAnimationsUnthreaded()
+	end
+
 	local pos = pianko_ent:getPosition()
 	local rot = pianko_ent:getRotation()
-	pianko_ent:setPosition{pos[1], pos[2], pos[3]-20*dt}
+	--pianko_ent:setPosition{pos[1], pos[2], pos[3]+5*dt}	
+	pianko_ent:setPosition{pos[1], pos[2], pos[3]}	
 	--pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
 
 	-- this will all need to be done by a FaceAnimator
@@ -177,11 +232,27 @@ function Prov:update(dt)
 	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
 	animface.props.animface_lefteye_pose = pose
 	animface.props.animface_righteye_pose = pose
+	animface2.props.animface_lefteye_pose = pose
+	animface2.props.animface_righteye_pose = pose
+	animface3.props.animface_lefteye_pose = pose
+	animface3.props.animface_righteye_pose = pose
+	animface4.props.animface_lefteye_pose = pose
+	animface4.props.animface_righteye_pose = pose
+	animface5.props.animface_lefteye_pose = pose
+	animface5.props.animface_righteye_pose = pose
+	animface6.props.animface_lefteye_pose = pose
+	animface6.props.animface_righteye_pose = pose
+	animface7.props.animface_lefteye_pose = pose
+	animface7.props.animface_righteye_pose = pose
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")
 	self:updateEntityPartitionSpace()
 	prof.pop("update_ent_partition_space")
+
+	if gfxSetting("multithread_animation") then
+		self.scene:finishModelAnimationsThreaded()
+	end
 
 	self:deleteFlaggedEntities()
 end

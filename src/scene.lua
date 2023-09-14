@@ -4,6 +4,7 @@ require "props.sceneprops"
 require "light"
 require "tick"
 require "boundingbox"
+require "animthread"
 
 local shadersend = require 'shadersend'
 local matrix     = require 'matrix'
@@ -21,7 +22,9 @@ function Scene:new(props)
 		static_models = {},
 		dynamic_models = {},
 
-		pushed_static_lights = false
+		pushed_static_lights = false,
+
+		animthreads = AnimThreads:new(4)
 	}
 
 	setmetatable(this,Scene)
@@ -177,11 +180,11 @@ function Scene:draw(cam)
 	self:drawSkybox()
 	prof.pop("skybox")
 
-	prof.push("bullshit")
+	--[[prof.push("bullshit")
 	for i,v in ipairs(self.dynamic_models) do
 		v:fillOutBoneMatrices("Walk", getTickSmooth())
 	end
-	prof.pop("bullshit")
+	prof.pop("bullshit")--]]
 
 	prof.push("shadowpass")
 	self:shadowPass( cam )
@@ -343,6 +346,32 @@ function Scene:drawSkybox(cam)
 	--Renderer.dropCanvas()
 
 	return true
+end
+
+function Scene:pushModelAnimationsThreaded()
+	for i,model in ipairs(self.dynamic_models) do
+		if model:isAnimated() then
+			local model_ref = model.props.model_i_reference
+			local frame1, frame2, parents, interp = model_ref:getAnimationFramesDataForThread("Walk", getTickSmooth())
+
+			if not frame1 then
+				model:defaultPose()
+			else
+				self.animthreads:addToQueue(model, frame1, frame2, parents, interp)
+			end
+		end
+	end
+	self.animthreads:startProcess()
+end
+
+function Scene:updateModelAnimationsUnthreaded()
+	for i,v in ipairs(self.dynamic_models) do
+		v:fillOutBoneMatrices("Walk", getTickSmooth()+i)
+	end
+end
+
+function Scene:finishModelAnimationsThreaded()
+	self.animthreads:finishProcess()
 end
 
 function Scene:fitNewModelPartitionSpace()

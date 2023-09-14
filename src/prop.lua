@@ -200,7 +200,32 @@ Props.__call = function (proto, init)
 	setmetatable(props, __props_inst_mt)
 
 	for key,row in pairs(proto) do
-		props[key] = (init and init[key]) or proto[key].default
+		--local function clone(t, recur)
+		--	local result = {}
+		--	for i,v in pairs(t) do
+		--		local element = v
+		--		if type(v) == "table" then
+		--			element = recur(v, recur)
+		--		end
+		--		result[i] = element
+		--	end
+		--	return result
+		--end
+		--local function clone(t)
+		--	local result = {}
+		--	for i,v in pairs(t) do
+		--		result[i] = v
+		--	end
+		--	return result
+		--end
+		local init_value = (init and init[key])
+		if not init_value and proto[key].type == "table" and proto[key].valid then
+			local a,b = proto[key].valid(nil)
+			init_value = b
+		elseif init_value and type(init_value) == "function" and proto[key].type == "table" then
+			init_value = init_value()
+		end
+		props[key] = init_value or proto[key].default
 	end
 
 	--enforce_read_only = true

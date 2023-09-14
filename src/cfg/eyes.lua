@@ -1,3 +1,5 @@
+local clone = require 'clone'
+
 EYES_ATTRIBUTES = {
 
 	["pianko_eyes"] = {

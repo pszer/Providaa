@@ -5,7 +5,7 @@ require "console"
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
 
-PROF_CAPTURE = false
+PROF_CAPTURE = true
 prof = require("jprof") 
 
 local function __print_info()
@@ -13,9 +13,14 @@ local function __print_info()
 	print(string.format("Save directory: %s", love.filesystem.getSaveDirectory()))
 end
 
+local cpml = require 'cpml'
+
 function love.load( args )
 	__print_info()
 	getRefreshRate()
+
+	local testchannel = love.thread.newChannel()
+	testchannel:push(cpml.mat4.new(1))
 
 	Renderer.load()
 

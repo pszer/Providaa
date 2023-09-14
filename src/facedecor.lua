@@ -30,6 +30,8 @@ function faceFromCfg(name)
 			decor.props.decor_model_name, name))
 	end
 
+	print(decor.props.decor_position)
+
 	decor.props.decor_reference = decor_model
 
 	local eyes_data = EyesData:fromCfg(face_props.animface_eyesdata_name)
@@ -38,10 +40,12 @@ function faceFromCfg(name)
 			face_props.animface_eyesdata_name, name))
 	end
 
-	face_props.animface_eyesdata = eyes_data
-	face_props.animface_decor_reference = decor
+	--face_props.animface_eyesdata = eyes_data
+	--face_props.animface_decor_reference = decor
 
 	local animface = AnimFace:new(face_props)
+	animface.props.animface_eyesdata = eyes_data
+	animface.props.animface_decor_reference = decor
 	decor.props.decor_animated_face = animface
 
 	return decor, animface

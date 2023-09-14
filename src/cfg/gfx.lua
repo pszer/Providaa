@@ -5,6 +5,8 @@ GFX_SETTINGS = {
 	["static_shadow_map_size"] = { "high" ,
 		default = "medium" , low = 1024 , medium = 1024+2   , high = 1024*4 , ultra = 1024*8 },
 	["enable_contour"] = { "enable" ,
+		default = "enable" , enable = true, disable = false },
+	["multithread_animation"] = { "disable", -- borked, keep disabled. 
 		default = "enable" , enable = true, disable = false }
 
 }

@@ -42,7 +42,7 @@ function Console.keypressed(key)
 	elseif key == "return" then
 		local code = "do "..Console.text.." end"
 		print("console invoked: " .. code)
-		local status = pcall(loadstring,code)
+		local status = pcall(function() loadstring(code)() end)
 
 		Console.text = ""
 		Console.close()

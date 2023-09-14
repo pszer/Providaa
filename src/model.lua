@@ -434,6 +434,17 @@ function ModelInstance:detachDecoration(name)
 	end
 end
 
+function ModelInstance:isAnimated()
+	if self.props.model_i_static then return false end
+	return self.props.model_i_reference:isAnimated()
+end
+
+function ModelInstance:defaultPose()
+	if not self:isAnimated() then return end
+	local outframe = self.props.model_i_reference:getDefaultPose()
+	self.bone_matrices = outframe
+end
+
 
 --[[
 --
@@ -494,6 +505,11 @@ end
 --	local max = bbox.max
 --	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
 --end
+--
+function Model:isAnimated()
+	if not self.props.model_animated then return false end
+	return true
+end
 
 function Model:getSkeleton()
 	return self.props.model_skeleton
@@ -594,11 +610,7 @@ function Model:getBoneMatrices(animation, frame, outframe)
 		print("getBoneMatrices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
 		end
 
-		local mat = mat4new(1.0)
-		for i,v in ipairs(skeleton) do
-			outframe[i] = mat
-		end
-		return outframe
+		return self:getDefaultPose(outframe)
 	end
 
 	local anim_first  = anim_data.first
@@ -640,6 +652,80 @@ function Model:getBoneMatrices(animation, frame, outframe)
 	end
 
 	return outframe
+end
+
+function Model:getDefaultPose(outframe)
+	local skeleton = self:getSkeleton()
+	local mat = cpml.mat4.new(1.0)
+	for i,v in ipairs(skeleton) do
+		outframe[i] = mat
+	end
+	return outframe
+end
+
+function Model:animationExists(animation)
+	if not animation then return false end
+	if not self.props.model_animated then return false end
+	anim_data = self.props.model_animations[animation]
+	return anim_data ~= nil
+end
+
+-- this is for use in multi-threaded animation calculation
+-- basically the same as get getBoneMatrices, but we just return frame1, frame2, parents and the interp value so
+-- all the later steps can be multi-threaded :]
+-- returns nil,nil,nil,nil if model is not animated/default animation is used
+function Model:getAnimationFramesDataForThread(animation, frame)
+	if not self.props.model_animated then return nil, nil end
+
+	local skeleton = self:getSkeleton()
+
+	local mat4 = cpml.mat4
+	local mat4new = mat4.new
+	local mat4mul = mat4.mul
+
+	--local outframe = outframe or {}
+
+	local anim_data = nil
+	if animation then
+		anim_data = self.props.model_animations[animation]
+	end
+	if not anim_data then
+		--local outframe = self.outframes
+		if animation then
+		print("getBoneMatrices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+		end
+
+		local mat = mat4new(1.0)
+		for i,v in ipairs(skeleton) do
+			outframe[i] = mat
+		end
+		return outframe
+	end
+
+	local anim_first  = anim_data.first
+	local anim_last   = anim_data.last
+	local anim_length = anim_last - anim_first
+	local anim_rate   = anim_data.framerate
+
+	local frame_fitted = frame * anim_rate / tickRate()
+	local frame_floor  = math.floor(frame_fitted)
+	local frame_interp = frame_fitted - frame_floor
+	local frame_interp_i = 1.0 - frame_interp 
+
+	local frame1_id = anim_first + (frame_floor-1) % anim_length
+	local frame2_id = anim_first + (frame_floor) % anim_length
+
+	local frame1 = self.frames[frame1_id]
+	local frame2 = self.frames[frame2_id]
+
+	local parents = {}
+
+	local s = #frame1
+	for i=1,s do
+		parents[i] = skeleton[i].parent
+	end
+
+	return frame1,frame2,parents,frame_interp
 end
 
 function Model:getBoneIndex(bone)

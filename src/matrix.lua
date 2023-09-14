@@ -1,5 +1,5 @@
 local matrix = {}
-return function (m)
+--[[return function (m)
   if type(m) == "table" then return m end
 
   for i=1, 16 do
@@ -7,4 +7,5 @@ return function (m)
   end
 
   return matrix
-end
+end]]
+return function (m) return m end

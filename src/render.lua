@@ -408,8 +408,10 @@ function Renderer.drawFPS()
 		love.graphics.setColor(1,0,0,1)
 	elseif (FPS < 120) then
 		love.graphics.setColor(1,1,0,1)
-	else
+	elseif (FPS < 460) then
 		love.graphics.setColor(0,1,0,1)
+	else
+		love.graphics.setColor(0,1,1,1)
 	end
 	love.graphics.draw(Renderer.fps_draw_obj, sw-w-3,3)
 	love.graphics.setColor(1,1,1,1)
