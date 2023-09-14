@@ -390,9 +390,11 @@ end
 function ModelInstance:drawDecorations(shader)
 	local shader = shader or love.graphics.getShader()
 
+	prof.push("draw_decorations")
 	for i,decor in ipairs(self:decorations()) do
 		decor:draw(self, shader)
 	end
+	prof.pop("draw_decorations")
 end
 
 function ModelInstance:queryBoneMatrix(bone)

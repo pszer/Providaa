@@ -190,6 +190,8 @@ function Scene:draw(cam)
 	self:shadowPass( cam )
 	prof.pop("shadowpass")
 
+	self:updateModelAnimatedFaces()
+
 	prof.push("shaderpushes")
 	local sh = Renderer.setupCanvasFor3D()
 	self:pushShadowMaps(sh)
@@ -362,6 +364,15 @@ function Scene:pushModelAnimationsThreaded()
 		end
 	end
 	self.animthreads:startProcess()
+end
+
+function Scene:updateModelAnimatedFaces()
+	for i,model in ipairs(self.dynamic_models) do
+		local decors = model.props.model_i_decorations
+		for i,decor in ipairs(decors) do
+			decor:compositeFace()
+		end
+	end
 end
 
 function Scene:updateModelAnimationsUnthreaded()

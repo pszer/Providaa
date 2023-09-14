@@ -63,9 +63,9 @@ function ModelDecor:getGlobalModelMatrix(parent)
 	local bone_matrix  = parent:queryBoneMatrix(props.decor_parent_bone)
 	local model_u = model_matrix * bone_matrix * local_model_u
 
-	local norm_m = cpml.mat4.new()
-	norm_m = norm_m:invert(model_u)
-	norm_m = norm_m:transpose(model_u)
+	local norm_m = cpml.mat4.new(1)
+	--norm_m = norm_m:invert(model_u)
+	--norm_m = norm_m:transpose(model_u)
 
 	return model_u, norm_m
 end
@@ -74,18 +74,32 @@ function ModelDecor:getModel()
 	return self.props.decor_reference
 end
 
+function ModelDecor:compositeFace()
+	local face = self.props.decor_animated_face
+	if face then
+		face:composite()
+	end
+end
+
 function ModelDecor:draw(parent, shader)
 	local shader = shader or love.graphics.getShader()
 
 	local face = self.props.decor_animated_face
+	prof.push("face_pass")
 	if face then
-		local canvas = love.graphics.getCanvas()
-		face:pushComposite()
-		love.graphics.setShader(shader)
-		love.graphics.setCanvas(canvas)
+		--local canvas = love.graphics.getCanvas()
+		prof.push("pushcomposite")
+		--face:pushComposite()
+		face:pushTexture()
+		prof.pop("pushcomposite")
+		--love.graphics.setShader(shader)
+		--love.graphics.setCanvas(canvas)
 	end
+	prof.pop("face_pass")
 
+	prof.push("get_global_model_matrix")
 	local model_u, norm_u = self:getGlobalModelMatrix(parent)
+	prof.pop("get_global_model_matrix")
 
 	shadersend(shader, "u_model", "column", matrix(model_u))
 	shadersend(shader, "u_normal_model", "column", matrix(norm_u))

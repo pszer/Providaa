@@ -30,6 +30,11 @@ function AnimFace:composite()
 	local props = self.props
 	local texture = self:getTexture()
 
+	if not self.first_composite and not self.frame_rate() then
+		return texture
+	end	
+	self.first_composite = false
+
 	--prof.push("setup_clearbuffers")
 	love.graphics.setShader()
 
@@ -56,18 +61,17 @@ function AnimFace:composite()
 									   lefteye_pos[1], lefteye_pos[2], texture)
 	prof.pop("eyes_composite")
 
-	love.graphics.setCanvas()
+	--love.graphics.setCanvas()
 	return texture
 end
 
 function AnimFace:pushComposite()
-	if not self.first_composite and not self.frame_rate() then
-		local texture = self:getTexture()
-		self.props.animface_decor_reference:getModel():getMesh().mesh:setTexture(texture)
-		return
-	end
-
 	self.first_composite = false
 	local texture = self:composite()
+	self.props.animface_decor_reference:getModel():getMesh().mesh:setTexture(texture)
+end
+
+function AnimFace:pushTexture()
+	local texture = self:getTexture()
 	self.props.animface_decor_reference:getModel():getMesh().mesh:setTexture(texture)
 end
