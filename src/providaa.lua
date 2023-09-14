@@ -165,7 +165,7 @@ function Prov:update(dt)
 	local pos = pianko_ent:getPosition()
 	local rot = pianko_ent:getRotation()
 	pianko_ent:setPosition{pos[1], pos[2], pos[3]-20*dt}
-	pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
+	--pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
 
 	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
