@@ -23,6 +23,8 @@ function Scene:new(props)
 		dynamic_models = {},
 
 		pushed_static_lights = false,
+		
+		force_redraw_static_shadow = false,
 
 		animthreads = AnimThreads:new(4)
 	}
@@ -149,8 +151,19 @@ function Scene:drawModels(update_anims, draw_outlines, model_subset)
 	prof.pop("draw_models")
 end
 
-function Scene:drawStaticModels()
+function Scene:drawStaticModels(model_subset)
+	if model_subset then		
+		for i,v in ipairs(model_subset) do
+			if v:isStatic() then
+				print("static")
+				v:draw(nil, nil, nil)
+			end
+		end
+		return
+	end
+
 	for i,v in ipairs(self.static_models) do
+		print("static")
 		v:draw(nil, nil, nil)
 	end
 end
@@ -163,6 +176,7 @@ end
 function Scene:update()
 	prof.push("update_model_partition_space")
 	self:updateModelPartitionSpace()
+	self:cameraUpdate()
 	prof.pop("update_model_partition_space")
 end
 
@@ -172,11 +186,18 @@ function Scene:updateModelMatrices()
 	end
 end
 
+function Scene:updateLights( cam )
+	for i,v in ipairs(self.props.scene_lights) do
+		v:generateLightSpaceMatrixFromCamera(cam)
+	end
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
-	self:cameraUpdate()
-	--self:cameraUpdate()
+	prof.push("scene_update")
+	self:update()
+	prof.pop("scene_update")
 
 	--Renderer.setupCanvasFor3D()
 	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
@@ -187,6 +208,7 @@ function Scene:draw(cam)
 	prof.pop("skybox")
 
 	prof.push("shadowpass")
+	self:updateLights( cam )
 	self:shadowPass( cam )
 	prof.pop("shadowpass")
 
@@ -212,9 +234,6 @@ function Scene:draw(cam)
 end
 
 function Scene:shadowPass( cam )
-	prof.push("lightspace_mat_gen")
-	self.props.scene_lights[1]:generateLightSpaceMatrixFromCamera(cam)
-	prof.pop("lightspace_mat_gen")
 
 	local shader = Renderer.shadow_shader
 	love.graphics.setDepthMode( "less", true )
@@ -226,14 +245,13 @@ function Scene:shadowPass( cam )
 	prof.push("dyn_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
 		if light:isDirectional() then
-			light:clearDepthMap(true)
+			light:clearDepthMap(false)
 			Renderer.setupCanvasForShadowMapping(light, "dynamic", true)
 
 			local light_matrix = light:getLightSpaceMatrix()
 			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
 			local dims_min, dims_max = light:getLightSpaceMatrixGlobalDimensionsMinMax()
-
 			local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
 			--love.graphics.setMeshCullMode("front")
@@ -254,19 +272,28 @@ function Scene:shadowPass( cam )
 	-- static shadow mapping
 	prof.push("static_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
-		if light:isDirectional() and light.props.light_static_depthmap_redraw_flag then
+		local isdir = light:isDirectional()
+		if (isdir and light.props.light_static_depthmap_redraw_flag) or
+		   (isdir and self.force_redraw_static_shadow)
+		then
 			light.props.light_static_depthmap_redraw_flag = false
-			light:clearStaticDepthMap(true)
+			light:clearStaticDepthMap(false)
 			Renderer.setupCanvasForShadowMapping(light, "static", "true")
 
 			local light_matrix = light:getStaticLightSpaceMatrix()
 			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
+			local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
+			local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
+
 			love.graphics.setMeshCullMode("front")
-			self:drawStaticModels()
+			self:drawStaticModels(in_view)
+			--self:drawStaticModels()
 
 			love.graphics.setMeshCullMode("front")
 			self:drawGridMapForShadowMapping()
+
+			self.force_redraw_static_shadow = false
 		end
 	end
 	--Renderer.dropCanvas()

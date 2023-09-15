@@ -66,62 +66,6 @@ function Prov:load()
 		insts
 	)
 
-	--[[instance = ModelInstance:newInstance(pianko)
-
-	instance.props.model_i_outline_flag = true
-	instance.props.model_i_contour_flag = true
-
-	decor,animface = faceFromCfg("pianko_face")
-	instance:attachDecoration(decor)
-
-	pianko_ent = Entity:new{
-		["ent_identifier"] = "player",
-		["ent_model"] = instance,
-		["ent_position"] = {200, -24, -200},
-		["ent_states"] = {
-			["state_walking"] =
-			EntityStatePropPrototype{
-				["state_commands"] = {
-					["entity_walk_towards"] = function(ent, state, dir) print(unpack(dir)) end
-				},
-
-				["state_enter"] = function(ent) print("enter") end
-			}
-		},
-		["ent_hooks_info"] = {
-			{type="control", handler="overworld", keybind="move_up", event="press",
-			 hook_func = function(ent)
-			 	return function(ticktime, realtime)
-					ent:callCommand("entity_walk_towards", { 0 , 0 , -1 })
-				end
-			 end},
-
-			{type="control", handler="overworld", keybind="move_down", event="press",
-			 hook_func = function(ent)
-			 	return function(ticktime, realtime)
-					ent:callCommand("entity_walk_towards", { 0 , 0 , 1 })
-				end
-			 end},
-
-			{type="control", handler="overworld", keybind="move_left", event="press",
-			 hook_func = function(ent)
-			 	return function(ticktime, realtime)
-					ent:callCommand("entity_walk_towards", { -1 , 0 , 0 })
-				end
-			 end},
-
-			{type="control", handler="overworld", keybind="move_right", event="press",
-			 hook_func = function(ent)
-			 	return function(ticktime, realtime)
-					ent:callCommand("entity_walk_towards", { 1 , 0 , 0 })
-				end
-			 end}
-		}
-	}
-
-	--pianko_ent:enableStateByName("state_walking")
-	--self:addEntity(pianko_ent)]]
-
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
 	self.scene:addModelInstance{ sphere, crate_i }
 
@@ -173,10 +117,6 @@ function Prov:update(dt)
 	prof.pop("update_ents")
 
 	self.scene:updateModelMatrices()
-
-	prof.push("scene_update")
-	self.scene:update()
-	prof.pop("scene_update")
 
 	if gfxSetting("multithread_animation") then
 		self.scene.animthreads:startProcess()

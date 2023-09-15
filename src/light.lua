@@ -128,7 +128,6 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		self.props.light_lightspace_matrix = mat
 		self.props.light_lightspace_matrix_dimensions = dim
 		self.props.light_lightspace_matrix_global_dimensions = g_dim
-		print(unpack(g_dim))
 
 		-- for static shadowmapping we allocate a larger lightspace matrix
 		-- and then render the shadowmap once, only drawing static objects in the scene.

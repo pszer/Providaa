@@ -295,7 +295,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 		}
 		if (interp <= 1.0) {
 			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,
-			  static_map, normal, light_dir_n, 0.0035);
+			  static_map, normal, light_dir_n, 0.0025);
 		}
 
 		shadow = close_shadow * (1.0 - interp) + static_shadow * interp;
