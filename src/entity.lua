@@ -305,6 +305,7 @@ function Entity:stateFromPrototype(GameData, prototype)
 end
 
 local walkingproto = require "ent.states.state_walking"
+local playerproto  = require "ent.player"
 
 local state = Entity:stateFromPrototype(GameData, walkingproto)
 
