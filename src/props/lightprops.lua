@@ -16,11 +16,15 @@ LightPropPrototype = Props:prototype{
 
 	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
 	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
+	{"light_cubemap",  nil, nil, nil,          "light's depthbuffer for shaddow mapping (point lights)"},
 
 	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
+	{"light_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},
+	{"light_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},
 
 	{"light_static_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light`s (for static shadowmapping)."},
 	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
+	{"light_static_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
 	{"light_static_depthmap_redraw_flag", "boolean", false, nil, [[set to true whenever a new static lightspace matrix is generated.
 	                                                               set it to false after rendering a new static shadowmap!]]},
 

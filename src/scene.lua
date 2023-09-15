@@ -225,21 +225,28 @@ function Scene:shadowPass( cam )
 	-- dynamic shadow mapping
 	prof.push("dyn_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
-		light:clearDepthMap(true)
-		Renderer.setupCanvasForShadowMapping(light, "dynamic", true)
+		if light:isDirectional() then
+			light:clearDepthMap(true)
+			Renderer.setupCanvasForShadowMapping(light, "dynamic", true)
 
-		local light_matrix = light:getLightSpaceMatrix()
-		shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
+			local light_matrix = light:getLightSpaceMatrix()
+			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
 
-		--love.graphics.setMeshCullMode("front")
-		prof.push("dyn_models")
-		self:drawModels(false, false)
-		prof.pop("dyn_models")
+			local dims_min, dims_max = light:getLightSpaceMatrixGlobalDimensionsMinMax()
 
-		--love.graphics.setMeshCullMode("front")
-		prof.push("dyn_grid")
-		self:drawGridMapForShadowMapping()
-		prof.pop("dyn_grid")
+			local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
+
+			--love.graphics.setMeshCullMode("front")
+			prof.push("dyn_models")
+			self:drawModels(false, false, in_view)
+			--self:drawModels(false, false)
+			prof.pop("dyn_models")
+
+			--love.graphics.setMeshCullMode("front")
+			prof.push("dyn_grid")
+			self:drawGridMapForShadowMapping()
+			prof.pop("dyn_grid")
+		end
 
 	end
 	prof.pop("dyn_shadow_map")
@@ -247,7 +254,7 @@ function Scene:shadowPass( cam )
 	-- static shadow mapping
 	prof.push("static_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
-		if light.props.light_static_depthmap_redraw_flag then
+		if light:isDirectional() and light.props.light_static_depthmap_redraw_flag then
 			light.props.light_static_depthmap_redraw_flag = false
 			light:clearStaticDepthMap(true)
 			Renderer.setupCanvasForShadowMapping(light, "static", "true")
@@ -410,23 +417,28 @@ function Scene:updateModelPartitionSpace()
 	end
 end
 
-function Scene:getModelsInViewFrustrum()
+function Scene:getModelsInViewFrustrum(min, max)
 	local cam = self.props.scene_camera
 
-	local min = { 1/0,  1/0,  1/0}
-	local max = {-1/0, -1/0, -1/0}
+	local min,max = min,max
+	if min == nil or max == nil then
 
-	local frustrum_corners = cam:generateFrustrumCornersWorldSpace()
+		min = { 1/0,  1/0,  1/0}
+		max = {-1/0, -1/0, -1/0}
 
-	for i=1,8 do
-		local vec = frustrum_corners[i]
-		if vec[1] < min[1] then min[1] = vec[1] end
-		if vec[2] < min[2] then min[2] = vec[2] end
-		if vec[3] < min[3] then min[3] = vec[3] end
+		local frustrum_corners = cam:generateFrustrumCornersWorldSpace()
 
-		if vec[1] > max[1] then max[1] = vec[1] end
-		if vec[2] > max[2] then max[2] = vec[2] end
-		if vec[3] > max[3] then max[3] = vec[3] end
+		for i=1,8 do
+			local vec = frustrum_corners[i]
+			if vec[1] < min[1] then min[1] = vec[1] end
+			if vec[2] < min[2] then min[2] = vec[2] end
+			if vec[3] < min[3] then min[3] = vec[3] end
+
+			if vec[1] > max[1] then max[1] = vec[1] end
+			if vec[2] > max[2] then max[2] = vec[2] end
+			if vec[3] > max[3] then max[3] = vec[3] end
+		end
+
 	end
 
 	local x,y,w,h = min[1], min[3], max[1]-min[1], max[3]-min[3]

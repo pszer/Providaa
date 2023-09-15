@@ -43,18 +43,25 @@ function Light:getLightType()
 	elseif w == 1 then return "point"
 	else return nil end
 end
+function Light:isDirectional()
+	return self.props.light_pos[4] == 0 end
+function Light:isPoint()
+	return self.props.light_pos[4] == 1 end
 
 function Light:allocateDepthMap(size, staticsize)
 	local size = size or gfxSetting("shadow_map_size")
 	local w,h = limit.clampTextureSize(size)
-	self.props.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
-	self.props.light_depthmap:setDepthSampleMode("greater")
 
-	if self:getLightType() == "directional" then
+	if self:isDirectional() then
+		self.props.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
+		self.props.light_depthmap:setDepthSampleMode("greater")
+
 		local staticsize = staticsize or gfxSetting("static_shadow_map_size")
 		local w2, h2 = limit.clampTextureSize(staticsize)
 		self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
 		self.props.light_static_depthmap:setDepthSampleMode("greater")
+	elseif self:isPoint() then
+		self.props.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
 	end
 end
 
@@ -105,15 +112,23 @@ function Light:generateLightSpaceMatrix()
 	return props.light_lightspace_matrix
 end
 
+function Light:generatePointLightSpaceMatrix()
+
+end
+
 function Light:generateLightSpaceMatrixFromCamera( cam )
+	if not self:isDirectional() then return end
 	if not self:checkIfUpdateMatrix() then return end
 
 	if self:getLightType() == "directional" then
 		-- use perspective matrix with far plane very close to camera for dynamic shadowmapping
 		local proj = cam:calculatePerspectiveMatrix(nil, 350)
-		local mat = self:calculateLightSpaceMatrixFromFrustrum(
+		local mat, dim, g_dim = self:calculateLightSpaceMatrixFromFrustrum(
 			cam:generateFrustrumCornersWorldSpace(proj))
 		self.props.light_lightspace_matrix = mat
+		self.props.light_lightspace_matrix_dimensions = dim
+		self.props.light_lightspace_matrix_global_dimensions = g_dim
+		print(unpack(g_dim))
 
 		-- for static shadowmapping we allocate a larger lightspace matrix
 		-- and then render the shadowmap once, only drawing static objects in the scene.
@@ -124,17 +139,19 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		local corners, centre = cam:generateFrustrumCornersWorldSpace(proj)
 		
 		if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
-			local static_mat, static_map_dim = self:calculateLightSpaceMatrixFromFrustrum(
+			local static_mat, static_map_dim, static_global_dim = self:calculateLightSpaceMatrixFromFrustrum(
 				corners, centre, 700)
 
 			self.props.light_static_lightspace_matrix = static_mat
 			self.props.light_static_lightspace_matrix_dimensions = static_map_dim
+			self.props.light_static_lightspace_matrix_global_dimensions = static_global_dim
 			self.props.light_static_depthmap_redraw_flag = true
 		end
 	end
 end
 
 function Light:testNeedForNewStaticLightmapMatrix(corners, dimensions)
+	if not self:isDirectional() then return false end
 	if self.props.light_static_lightspace_matrix == nil then return true end
 
 	local view_mat = dimensions.view_matrix
@@ -160,7 +177,10 @@ function Light:testNeedForNewStaticLightmapMatrix(corners, dimensions)
 	return false
 end
 
+-- returns matrix, local_dimensions, global_dimensions
 function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum_centre , padding_size )
+	if not self:isDirectional() then return nil, nil end
+
 	local padding_size = padding_size or 0
 	local props = self.props
 
@@ -181,8 +201,23 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 	local min_z =  1/0
 	local max_z = -1/0
 
+	local g_min_x =  1/0
+	local g_max_x = -1/0
+	local g_min_y =  1/0
+	local g_max_y = -1/0
+	local g_min_z =  1/0
+	local g_max_z = -1/0
+
 	for i=1,8 do
 		local corner = frustrum_corners[i]
+
+		g_min_x = math.min(g_min_x , corner[1] - padding_size )
+		g_max_x = math.max(g_max_x , corner[1] + padding_size )
+		g_min_y = math.min(g_min_y , corner[2] - padding_size )
+		g_max_y = math.max(g_max_y , corner[2] + padding_size )
+		g_min_z = math.min(g_min_z , corner[3] - padding_size )
+		g_max_z = math.max(g_max_z , corner[3] + padding_size )
+
 		--print(unpack(corner))
 		local trf = {}
 		trf = cpml.mat4.mul_vec4(trf, light_view, corner)
@@ -222,24 +257,62 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 		max_z ,
 		["view_matrix"] = light_view
 	}
+	local global_dimensions = {
+		g_min_x, g_max_x, g_min_y, g_max_y, g_min_z, g_max_z }
 
 	--props.light_lightspace_matrix = light_proj * light_view
-	return light_proj * light_view, dimensions
+	return light_proj * light_view, dimensions, global_dimensions
 end
 
 function Light:getDepthMap()
 	return self.props.light_depthmap end
 function Light:getStaticDepthMap()
 	return self.props.light_static_depthmap end
+function Light:getCubeMap()
+	return self.props.light_cubemap end
 
 function Light:getLightSpaceMatrix()
 	return self.props.light_lightspace_matrix end
 function Light:getStaticLightSpaceMatrix()
 	return self.props.light_static_lightspace_matrix end
 
+function Light:getLightSpaceMatrixDimensionsMinMax()
+	local dim = self.props.light_lightspace_matrix_dimensions
+	local min = {dim[1],dim[3],dim[5]}
+	local max = {dim[2],dim[4],dim[6]}
+	return min , max
+end
+
+function Light:getLightSpaceMatrixGlobalDimensionsMinMax()
+	local dim = self.props.light_lightspace_matrix_global_dimensions
+	local min = {dim[1],dim[3],dim[5]}
+	local max = {dim[2],dim[4],dim[6]}
+	return min , max
+end
+
+function Light:getStaticLightSpaceMatrixDimensionsMinMax()
+	local dim = self.props.light_static_lightspace_matrix_dimensions
+	local min = {dim[1],dim[3],dim[5]}
+	local max = {dim[2],dim[4],dim[6]}
+	return min , max
+end
+
+function Light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
+	local dim = self.props.light_static_lightspace_matrix_global_dimensions
+	local min = {dim[1],dim[3],dim[5]}
+	local max = {dim[2],dim[4],dim[6]}
+	return min , max
+end
+
 function Light:clearDepthMap(opt)
-	love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
-	love.graphics.clear(0,0,0,0)
+	if self.props.light_depthmap then
+		love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+		love.graphics.clear(0,0,0,0)
+	end
+	if self.props.light_cubemap then
+		love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+		love.graphics.clear(0,0,0,0)
+	end
 	if not opt then love.graphics.setCanvas() end
 end
 function Light:clearStaticDepthMap(opt)
