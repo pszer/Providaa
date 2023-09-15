@@ -161,15 +161,21 @@ function Scene:cameraUpdate()
 end
 
 function Scene:update()
-	self:cameraUpdate()
 	prof.push("update_model_partition_space")
 	self:updateModelPartitionSpace()
 	prof.pop("update_model_partition_space")
 end
 
+function Scene:updateModelMatrices()
+	for i,v in ipairs(self.props.scene_models) do
+		v:modelMatrix()
+	end
+end
+
 function Scene:draw(cam)
 	cam = cam or self.props.scene_camera
 
+	self:cameraUpdate()
 	--self:cameraUpdate()
 
 	--Renderer.setupCanvasFor3D()
@@ -179,12 +185,6 @@ function Scene:draw(cam)
 	prof.push("skybox")
 	self:drawSkybox()
 	prof.pop("skybox")
-
-	--[[prof.push("bullshit")
-	for i,v in ipairs(self.dynamic_models) do
-		v:fillOutBoneMatrices("Walk", getTickSmooth())
-	end
-	prof.pop("bullshit")--]]
 
 	prof.push("shadowpass")
 	self:shadowPass( cam )

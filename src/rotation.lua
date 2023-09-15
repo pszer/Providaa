@@ -40,6 +40,10 @@ function nonNilDirection(vec)
 end
 
 local cpml = require 'cpml'
+local __tempvec3 = cpml.vec3.new()
+local __tempvec3nil = cpml.vec3.new(0,0,0)
+local __tempvec3up = cpml.vec3.new(0,1,0)
+local __mat4temp = cpml.mat4.new()
 function rotateMatrix(mat, rot)
 	if rot[4] == "rot" then
 		mat:rotate(mat, rot[1], cpml.vec3.unit_x)
@@ -49,13 +53,17 @@ function rotateMatrix(mat, rot)
 	else
 		local rot = nonNilDirection(rot)
 
-		local vec3 = cpml.vec3.new
-		local look = cpml.mat4.new(1)
+		__tempvec3.x = rot[1]
+		__tempvec3.y = -rot[2]
+		__tempvec3.z = rot[3]
+
+		--local vec3 = cpml.vec3.new
+		--local look = cpml.mat4.new(1)
 		local look = cpml.mat4.look_at(
-			look,
-			vec3(0,0,0),
-			vec3(rot[1],rot[2],rot[3]),
-			vec3(0,1,0)
+			__mat4temp,
+			__tempvec3nil,
+			__tempvec3,
+			__tempvec3up
 		)
 
 		cpml.mat4.mul(mat, look, mat)

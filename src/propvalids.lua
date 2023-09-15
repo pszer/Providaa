@@ -76,9 +76,18 @@ end
 --   this valid function will give a new table instance if the property is set to nil
 --]]
 function PropDefaultTable(table)
-	return function(x)
+	--[[return function(x)
 		if not x then
 			local t = {unpack(table)}
+			return true, t
+		else
+			return true, x
+		end
+	end]]
+	return function(x)
+		if not x then
+			local t = {}
+			for i,v in pairs(table) do t[i]=v end
 			return true, t
 		else
 			return true, x

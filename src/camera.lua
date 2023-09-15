@@ -20,6 +20,10 @@ function Camera:new(props)
 
 	setmetatable(this,Camera)
 
+	this.props.cam_view_matrix = cpml.mat4.new()
+	this.props.cam_rot_matrix = cpml.mat4.new()
+	this.props.cam_perspective_matrix = cpml.mat4.new()
+
 	this:generatePerspectiveMatrix()
 	this:generateViewMatrix()
 
@@ -98,15 +102,31 @@ function Camera:calculatePerspectiveMatrix(aspect_ratio, far_plane)
 end
 
 -- generates and returns view,rot matrix
+local __tempvec3 = cpml.vec3.new()
+local __tempvec3nil = cpml.vec3.new(0,0,0)
+local __tempvec3up = cpml.vec3.new(0,1,0)
 function Camera:generateViewMatrix()
 	local props = self.props
 	local mat4 = cpml.mat4
 	local vec3 = cpml.vec3
-	local v = mat4():identity()
-	local m = mat4()
+	--local v = mat4():identity()
+	--local m = mat4()
+	local m = props.cam_view_matrix
+	local v = props.cam_rot_matrix
+	
+	local id =
+	{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+	for i=1,16 do
+		m[i] = id[i]
+		v[i] = id[i]
+	end
 
 	local P = self:getPosition()
-	local position = vec3(P[1], P[2], P[3])
+	--local position = vec3(P[1], P[2], P[3])
+	__tempvec3.x = -P[1]
+	__tempvec3.y = -P[2]
+	__tempvec3.z = -P[3]
+	m:translate(m, __tempvec3)
 
 	local mode = self:getMode()
 	if mode == "rotation" then
@@ -116,33 +136,39 @@ function Camera:generateViewMatrix()
 		v:rotate(v, R[3], vec3.unit_z)
 	else
 		local D = self:getDirection()
-		v:look_at(vec3(0,0,0),         -- eye
-		          vec3(D[1],D[2],D[3]), -- look at
-				  vec3(0,1,0))       -- up dir
+		__tempvec3.x = D[1]
+		__tempvec3.y = D[2]
+		__tempvec3.z = D[3]
+		v:look_at(__tempvec3nil,         -- eye
+		          __tempvec3, -- look at
+				  __tempvec3up)       -- up dir
 	end
-
-	m:translate(m, -position)
 
 	props.cam_view_matrix = m
 	props.cam_rot_matrix  = v
 
-	local rotview = mat4()
-	cpml.mat4.mul(rotview, v, m)
-	props.cam_rotview_matrix = rotview
+	--local rotview = mat4()
+	--cpml.mat4.mul(rotview, v, m)
+	--props.cam_rotview_matrix = rotview
 
 	return props.cam_view_matrix, props.cam_rot_matrix
 end
 
 -- returns corners of camera`s view frustrum in world space,
 -- also returns the vector in the middle of this frustrum
+local __mat4temp = cpml.mat4.new()
 function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	local props = self.props
 	local proj = proj or props.cam_perspective_matrix
 	local view = view or props.cam_rot_matrix * props.cam_view_matrix
 	local scale = scale or 1.0
 
-	local inv_m = cpml.mat4.new()
-	inv_m:invert(proj * view)
+	--local inv_m = cpml.mat4.new()
+	__mat4temp = __mat4temp:mul(proj, view)
+	__mat4temp = __mat4temp:invert(__mat4temp)
+	--inv_m:invert(proj * view)
+	--
+	local inv_m = __mat4temp
 
 	local corners = {}
 

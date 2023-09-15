@@ -11,7 +11,7 @@ SHADOW_UPDATE_FREQ = 0.0
 
 Light = {__type = "light",
 		 z_mult = 1.0, -- used to increase size of orthographic lightmap projection matrix when shadowmapping
-		checkIfUpdateMatrix = periodicUpdate(6)
+		checkIfUpdateMatrix = periodicUpdate(10)
 }
 Light.__index = Light
 
@@ -30,6 +30,8 @@ function Light:new(props)
 	elseif this.props.light_pos[4] ~= 0.0 and this.props.light_pos[4] ~= 1.0 then
 		error("Light:new(): light_pos w component is "..tostring(this.props.light_pos[4])..", neither 0 or 1, ill defined light")
 	end
+
+	this.props.light_lightspace_matrix = cpml.mat4.new()
 
 	return this
 end
@@ -57,6 +59,10 @@ function Light:allocateDepthMap(size, staticsize)
 end
 
 -- unused, use other LightSpaceMatrix functions
+local __tempmat4 = cpml.mat4.new()
+local __tempvec3up = cpml.vec3.new(0,-1,0)
+local __tempvec3_1 = cpml.vec3.new()
+local __tempvec3_2 = cpml.vec3.new()
 function Light:generateLightSpaceMatrix()
 	local props = self.props
 	if props.light_static and self.props.light_lightspace_matrix then
@@ -73,16 +79,29 @@ function Light:generateLightSpaceMatrix()
 		light_proj = nil -- implement for point light
 	end
 
-	local light_view = cpml.mat4()
+	--local light_view = cpml.mat4()
+	local light_view = __tempmat4
 
-	local pos_v = cpml.vec3(pos)
-	local dir_v = cpml.vec3(dir)
+	--local pos_v = cpml.vec3(pos)
+	--local dir_v = cpml.vec3(dir)
+	local pos_v = __tempvec3_1
+	local pos_plus_dir_v = __tempvec3_2
+
+	pos_v.x = pos[1]
+	pos_v.y = pos[2]
+	pos_v.z = pos[3]
+
+	pos_plus_dir_v.x = pos[1] + dir[1]
+	pos_plus_dir_v.y = pos[2] + dir[2]
+	pos_plus_dir_v.z = pos[3] + dir[3]
+
 
 	light_view = light_view:look_at(pos_v,
 	                                pos_v + dir_v,
-									cpml.vec3(0,-1,0))
+									__tempvec3up)
 
-	props.light_lightspace_matrix = light_proj * light_view
+	--props.light_lightspace_matrix = light_proj * light_view
+	props.light_lightspace_matrix:mul(light_proj , light_view)
 	return props.light_lightspace_matrix
 end
 

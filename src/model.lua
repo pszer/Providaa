@@ -21,17 +21,27 @@ function Model:new(props)
 		baseframe = {},
 		inversebaseframe = {},
 		frames = {},
-		outframes = {},
+		--outframes = {},
+
+		--outframes_buffer = {},
+		--outframes_buffer_allocated = false,
 
 		dir_matrix = nil,
-		static_model_matrix = nil,
-		static_normal_matrix = nil,
+		outframes_allocated = false,
+		--static_model_matrix = nil,
+		--static_normal_matrix = nil,
 		bounds_corrected = false -- has the bounding box been corrected by the direction fixing matrix?
 
 		--bone_matrices = {}
 	}
 
 	setmetatable(this,Model)
+
+	--[[local mat4new = cpml.mat4.new()
+	local joint_count = this:getSkeletonJointCount()
+	for i=1,joint_count do
+		this.outframes_buffer = mat4new()
+	end--]]
 
 	return this
 end
@@ -72,6 +82,11 @@ function ModelInstance:new(props)
 	setmetatable(this,ModelInstance)
 	this:fillOutBoneMatrices(nil, 0)
 
+	local id = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+	local function id_table() local t={} for i=1,16 do t[i]=id[i] end return t end
+	self.static_model_matrix = cpml.mat4.new(id_table())
+	self.static_normal_matrix = cpml.mat4.new(id_table())
+
 	return this
 end
 
@@ -100,40 +115,73 @@ function ModelInstance:usesModelInstancing()
 	return self.props.model_i_draw_instances
 end
 
+function ModelInstance:allocateOutframeMatrices()
+	if self.outframes_allocated then return end
+
+	local model = self:getModel()
+	if model.props.model_animated then
+		local count = model:getSkeletonJointCount()
+		print("jointcount", count)
+		local mat4new = cpml.mat4.new
+		for i=1,count do
+			--print("mmmhm",i)
+			self.bone_matrices[i] = cpml.mat4.new({1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,})
+			--print(self.bone_matrices[i],i )
+		end
+		self.outframes_allocated = true
+	end
+end
+
+__vec3temp = cpml.vec3.new()
+__mat4temp = cpml.mat4.new()
 function ModelInstance:modelMatrix()
 	local is_static = self.props.model_i_static
-	if (is_static and self.static_model_matrix) or not self.model_moved then
+	if (is_static and not self.model_moved) or not self.model_moved then
 		return self.static_model_matrix, self.static_normal_matrix
 	end
 
-	prof.push("model_matrix")
+	prof.push("modelmatrix")
 	local props = self.props
 	local pos = props.model_i_position
 	local rot = props.model_i_rotation
+	local scale = props.model_i_scale
 
-	local m = cpml.mat4():identity()
+	local m = self.static_model_matrix
 
-	prof.push("calc")
-	m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
+	local id =
+	{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+	for i=1,16 do
+		m[i] = id[i]
+	end
+
+	--local m = cpml.mat4():identity()
+
+	--m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
+	__vec3temp.x = scale[1]
+	__vec3temp.y = scale[2]
+	__vec3temp.z = scale[3]
+	m:scale(m,  __vec3temp)
 
 	rotateMatrix(m, rot)
-	--m:rotate(m, rot[1], cpml.vec3.unit_x)
-	--m:rotate(m, rot[2], cpml.vec3.unit_y)
-	--m:rotate(m, rot[3], cpml.vec3.unit_z)
 
-	m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
+	__vec3temp.x = pos[1]
+	__vec3temp.y = pos[2]
+	__vec3temp.z = pos[3]
+	m:translate(m, __vec3temp )
 
-	prof.pop("calc")
-	prof.push("fixdir")
-	m = m * props.model_i_reference:getDirectionFixingMatrix() 
-	prof.pop("fixdir")
-	prof.pop("model_matrix")
+	--print(m)
 
-	prof.push("normal model_matrix")
-	local norm_m = cpml.mat4.new()
+	local dirfix = props.model_i_reference:getDirectionFixingMatrix()
+	--cpml.mat4.mul(m, m, dirfix )
+	--cpml.mat4.mul(__mat4temp, m, dirfix )
+	--for i=1,16 do
+	--	m[i]=__mat4temp[i]
+	--end
+	m = m * dirfix 
+
+	local norm_m = self.static_normal_matrix
 	norm_m = norm_m:invert(m)
 	norm_m = norm_m:transpose(norm_m)
-	prof.pop("normal model_matrix")
 
 	self.static_model_matrix = m
 	self.static_normal_matrix = norm_m
@@ -142,6 +190,7 @@ function ModelInstance:modelMatrix()
 	self.recalculate_bounds_flag = true
 
 	self:calculateBoundingBox()
+	prof.pop("modelmatrix")
 	return m, norm_m
 end
 
@@ -256,10 +305,13 @@ function ModelInstance:getModel()
 end
 
 function ModelInstance:queryModelMatrix()
+	local m,n = self.static_model_matrix, self.static_normal_matrix
+	--print(self.props.model_i_reference.props.model_name, m,n)
 	return self.static_model_matrix, self.static_normal_matrix
 end
 
 function ModelInstance:fillOutBoneMatrices(animation, frame)
+	self:allocateOutframeMatrices()
 	--if not self.update_bones() then return end
 
 	local model = self:getModel()
@@ -286,19 +338,17 @@ function ModelInstance:sendBoneMatrices(shader)
 	end
 end
 
-function ModelInstance:sendToShader(shader, reuse_model_matrix)
+function ModelInstance:sendToShader(shader)
 	local shader = shader or love.graphics.getShader()
 
-	local model_u, normal_u
-	if reuse_model_matrix then
-		model_u, normal_u = self:queryModelMatrix()
-	else
-		model_u, normal_u = self:modelMatrix()
-	end
+	local model_u, normal_u = self:queryModelMatrix()
+	--model_u, normal_u = self:modelMatrix()
 	shadersend(shader, "u_model", "column", matrix(model_u))
 	shadersend(shader, "u_normal_model", "column", matrix(normal_u))
 
+	prof.push("model_send_bone_matricessssss")
 	self:sendBoneMatrices(shader)
+	prof.pop("model_send_bone_matricessssss")
 end
 
 function ModelInstance:draw(shader, update_animation, is_main_pass)
@@ -443,7 +493,7 @@ end
 
 function ModelInstance:defaultPose()
 	if not self:isAnimated() then return end
-	local outframe = self.props.model_i_reference:getDefaultPose()
+	local outframe = self.props.model_i_reference:getDefaultPose(self.bone_matrices)
 	self.bone_matrices = outframe
 end
 
@@ -467,6 +517,20 @@ function Model:getDirectionFixingMatrix()
 	if not self.dir_matrix then self:generateDirectionFixingMatrix() end
 	return self.dir_matrix
 end
+
+--[[function Model:allocateOutframeBuffer()
+	if self.outframes_buffer_allocated then return end
+
+	if self.props.model_animated then
+		local count = model:getSkeletonJointCount()
+		print("jointcount", count)
+		local mat4new = cpml.mat4.new(1)
+		for i=1,count do
+			self.outframe_bu = mat4new()
+		end
+		self.outframes_allocated = true
+	end
+end--]]
 
 -- corrects the models bounding box by the model direction fixing matrix
 function Model:correctBoundingBox()
@@ -515,6 +579,14 @@ end
 
 function Model:getSkeleton()
 	return self.props.model_skeleton
+end
+
+function Model:getSkeletonJointCount()
+	if self.props.model_skeleton then
+		return #self.props.model_skeleton
+	else
+		return 0
+	end
 end
 
 function Model:generateBaseFrames()
@@ -595,10 +667,6 @@ function Model:getBoneMatrices(animation, frame, outframe)
 	if not self.props.model_animated then return end
 
 	local skeleton = self:getSkeleton()
-
-	local mat4 = cpml.mat4
-	local mat4new = mat4.new
-	local mat4mul = mat4.mul
 
 	--local outframe = outframe or {}
 
@@ -743,36 +811,40 @@ function Model:interpolateTwoFrames(frame1, frame2, interp, outframe)
 	local frame_interp   = interp
 	local frame_interp_i = 1.0 - interp
 
-	--local outframe = self.outframes
+	prof.push("interpolatetwoframes")
+
+	local temps = self.outframes_buffer
+	local temp_mat = mat4new()
+
 	for i,pose1 in ipairs(frame1) do
 		pose2 = frame2[i]
 
-		local pose_interp = { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 }
-
-		for i=1,16 do
-			pose_interp[i] =
-			 (frame_interp_i)*pose1[i] + frame_interp*pose2[i]
+		for j=1,16 do
+			outframe[i][j] =
+			 (frame_interp_i)*pose1[j] + frame_interp*pose2[j]
 		end
-
-		local mat = mat4new(pose_interp)
 
 		local parent_i = skeleton[i].parent
 		if parent_i > 0 then
-			outframe[i] = mat4new()
-			outframe[i] = mat4mul(outframe[i], outframe[parent_i], mat)
+			mat4mul(outframe[i], outframe[parent_i], outframe[i])
 		else
-			outframe[i] = mat
+			--outframe[i] = outframe[i]
 		end
 	end
+	prof.pop("interpolatetwoframes")
 
 	return outframe
 end
 
 function Model:getDefaultPose(outframe)
+	local id =
+	{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+
 	local skeleton = self:getSkeleton()
-	local mat = cpml.mat4.new(1.0)
 	for i,v in ipairs(skeleton) do
-		outframe[i] = mat
+		for j=1,16 do
+			outframe[i][j] = id[j]
+		end
 	end
 	return outframe
 end

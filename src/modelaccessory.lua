@@ -20,9 +20,12 @@ function ModelDecor:new(props)
 
 	setmetatable(this,ModelDecor)
 
+	this.local_model_u = cpml.mat4.new()
+
 	return this
 end
 
+local __tempvec3 = cpml.vec3.new()
 function ModelDecor:getLocalModelMatrix()
 	-- decor objects are attached to another models bones, it's rare
 	-- to ever need it's local position to change so we only calculate the local
@@ -32,28 +35,41 @@ function ModelDecor:getLocalModelMatrix()
 		local props = self.props
 		local pos = props.decor_position
 		local rot = props.decor_rotation
+		local scale = props.decor_scale
 
 		pos[4] = 0
 		cpml.mat4.mul_vec4(pos, self:getModel():getDirectionFixingMatrix(), pos)
 
-		local m = cpml.mat4():identity()
+		local m = self.local_model_u
 
-		m:scale(m,  cpml.vec3(unpack(props.decor_scale)))
+		__tempvec3.x = scale[1]
+		__tempvec3.y = scale[2]
+		__tempvec3.z = scale[3]
+		--m:scale(m,  cpml.vec3(unpack(props.decor_scale)))
+		m = m:scale(m, __tempvec3)
 
 		rotateMatrix(m, rot)
 		--m:rotate(m, rot[1], cpml.vec3.unit_x)
 		--:rotate(m, rot[2], cpml.vec3.unit_y)
 		--m:rotate(m, rot[3], cpml.vec3.unit_z)
 
-		m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
+		--m:translate(m, cpml.vec3( pos[1], pos[2], pos[3] ))
+		__tempvec3.x = pos[1]
+		__tempvec3.y = pos[2]
+		__tempvec3.z = pos[3]
+		m = m:translate(m, __tempvec3)
 
 		self.local_model_u = m
 		self.recalc_model = false
+
+		return m
 	end
 
 	return self.local_model_u
 end
 
+local __tempmat4__ = cpml.mat4.new(1)
+local __tempmat4id__ = cpml.mat4.new(1)
 -- returns model_u, normal_model_u to be used in shader
 function ModelDecor:getGlobalModelMatrix(parent)
 	local local_model_u = self:getLocalModelMatrix()
@@ -61,13 +77,16 @@ function ModelDecor:getGlobalModelMatrix(parent)
 	local props = self.props
 	local model_matrix = parent:queryModelMatrix()
 	local bone_matrix  = parent:queryBoneMatrix(props.decor_parent_bone)
-	local model_u = model_matrix * bone_matrix * local_model_u
+	--local model_u = model_matrix * bone_matrix * local_model_u
+	__tempmat4__:mul(model_matrix,bone_matrix)
+	__tempmat4__:mul(__tempmat4__, local_model_u)
 
-	local norm_m = cpml.mat4.new(1)
+	local norm_m = __tempmat4id__
 	--norm_m = norm_m:invert(model_u)
 	--norm_m = norm_m:transpose(model_u)
 
-	return model_u, norm_m
+	return __tempmat4__, norm_m
+	--return model_u, norm_m
 end
 
 function ModelDecor:getModel()

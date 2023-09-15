@@ -2,7 +2,7 @@ require "props.entityprops"
 
 local entity_walk_towards = require "ent.states.state_walking.entity_walk_towards"
 
-StateWalkingPrototype = EntityStatePropPrototype:extend{
+local StateWalkingPrototype = EntityStatePropPrototype:extend{
 
 	{"state_commands", "table", nil, PropDefaultTable
 		{
@@ -11,11 +11,11 @@ StateWalkingPrototype = EntityStatePropPrototype:extend{
 		"state_walking commands"
 	}, -- done
 
-	{"state_update", nil, function(GameData) return function(ent,state) print("hellooo") end end, nil },
+	{"state_update", nil, function(GameData) return function(ent,state) end end, nil },
 	{"state_enter" , nil, function(GameData) return function(ent,state) end end, nil },
 	{"state_exit"  , nil, function(GameData) return function(ent,state) end end, nil },
 
-	{"state_walking_speed", "number", 10, nil, "max walk speed, stated in world units per second"}
+	{"state_walking_speed", "number", 100, nil, "max walk speed, stated in world units per second"}
 
 }
 

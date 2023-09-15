@@ -12,6 +12,7 @@ function CustomModel:fromCfg(name)
 	if not props then
 		error(string.format("CustomModel:fromCfg: no custom model %s found in cfg/custommodel", name))
 	end
+	return self:load(props)
 end
 
 function CustomModel:load(props)

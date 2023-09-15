@@ -66,7 +66,7 @@ function Prov:load()
 		insts
 	)
 
-	instance = ModelInstance:newInstance(pianko)
+	--[[instance = ModelInstance:newInstance(pianko)
 
 	instance.props.model_i_outline_flag = true
 	instance.props.model_i_contour_flag = true
@@ -119,13 +119,8 @@ function Prov:load()
 		}
 	}
 
-	pianko_ent:enableStateByName("state_walking")
-	self:addEntity(pianko_ent)
-
-	local cam = self.scene:getCamera()
-	cam:setController(
-		camcontrol:followEntityFixed(pianko_ent, {0,-5,90}, {0.5,0.55,0.5})
-	)
+	--pianko_ent:enableStateByName("state_walking")
+	--self:addEntity(pianko_ent)]]
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
 	self.scene:addModelInstance{ sphere, crate_i }
@@ -137,6 +132,15 @@ function Prov:load()
 	--animthread:process()
 	--
 	GameData:setupFromProv(self)
+
+	local playerproto  = require "ent.player"
+	local theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}})
+	theent:enableStateByName("state_walking")
+
+	local cam = self.scene:getCamera()
+	cam:setController(
+		camcontrol:followEntityFixed(theent, {0,-5,90}, {0.5,0.55,0.5})
+	)
 
 	-- only load once
 	self.load = function() end
@@ -153,8 +157,8 @@ function Prov:update(dt)
 	c = c*c*c*c*c
 	local s = math.sin(getTick()*1.5/60)
 	s = s*s*s*s*s
-	animface.props.animface_righteye_dir = {3*c,3*s,12}
-	animface.props.animface_lefteye_dir  = {3*c,3*s,12}
+	--animface.props.animface_righteye_dir = {3*c,3*s,12}
+	--animface.props.animface_lefteye_dir  = {3*c,3*s,12}
 
 	--if scancodeIsDown("space", CTRL.GAME) then
 	--	pianko_ent:delete()
@@ -163,9 +167,12 @@ function Prov:update(dt)
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
 	prof.pop("pollinputhandlers")
+
 	prof.push("update_ents")
 	self:updateEnts()
 	prof.pop("update_ents")
+
+	self.scene:updateModelMatrices()
 
 	prof.push("scene_update")
 	self.scene:update()
@@ -179,9 +186,9 @@ function Prov:update(dt)
 		self.scene:updateModelAnimationsUnthreaded()
 	end
 
-	local pos = pianko_ent:getPosition()
-	local rot = pianko_ent:getRotation()
-	--pianko_ent:setPosition{pos[1], pos[2]+3*dt, pos[3]}	
+	--local pos = pianko_ent:getPosition()
+	--local rot = pianko_ent:getRotation()
+	--pianko_ent:setPosition{pos[1]-10*dt, pos[2], pos[3]+10*dt}	
 	--pianko_ent:setPosition{pos[1], pos[2], pos[3]}	
 	--pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
 	--
@@ -193,9 +200,9 @@ function Prov:update(dt)
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral"
 	 }
 	prof.push("push_composite")
-	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
-	animface.props.animface_lefteye_pose = pose
-	animface.props.animface_righteye_pose = pose
+	--local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
+	--animface.props.animface_lefteye_pose = pose
+	--animface.props.animface_righteye_pose = pose
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")
@@ -336,6 +343,46 @@ function Prov:updateEntityPartitionSpace()
 			ent:informNewBoundsAreHandled()
 		end
 	end
+end
+
+function Prov:createEntityFromPrototype(prototype, props)
+	local ent = prototype(props)
+
+	local model_name = ent.ent_model_name
+	local ent_states = ent.ent_states
+	local ent_states = ent.ent_states
+
+	local ent_hitboxsize = ent.ent_hitbox_size
+
+	if model_name then
+		print("nice :}", model_name)
+		local model_i = nil
+		if type(model_name == "string") then
+			print("nice :}}}")
+			model_i = CustomModel:fromCfg(model_name)
+		else
+			model_i = CustomModel:load(model_name)
+		end
+		
+		if model_i then
+			ent.ent_model = model_i
+		end
+	end
+
+	if ent_states then
+		print("yeh",type(ent_states))
+		for i,v in pairs(ent_states) do
+			ent_states[i] = Entity:stateFromPrototype(GameData, v)
+		end
+	end
+
+	return Entity:newFromPrototype(prototype, ent)
+end
+
+function Prov:addEntityFromPrototype(prototype, props)
+	local ent = self:createEntityFromPrototype(prototype, props)
+	self:addEntity(ent)
+	return ent
 end
 
 function Prov:establishEntityHooks(ent)

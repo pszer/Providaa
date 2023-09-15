@@ -19,11 +19,31 @@ function Entity:new(props)
 	return this
 end
 
+function Entity:newFromPrototype(prototype, props)
+	local this = {
+		props = prototype(props),
+
+		ent_moved = true,
+		recalculate_bounds_flag = true
+	}
+
+	setmetatable(this,Entity)
+
+	return this
+end
+
 -- this function should not be treated as a virtual function to overwrite, thats the job of Entity:update
 -- let this do what its gotta do
 function Entity:internalUpdate()
+	for i,v in pairs(self.props.ent_current_states) do
+		if v.state_update then
+			v.state_update()
+		end
+	end
+
 	self:updateModelPosition()
 	if self.props.ent_hitbox_inherit then
+		print(self.props.ent_identifier, self.props.ent_hitbox_inherit)
 		self:copyHitboxFromModel()
 	end
 	self.ent_moved = false
@@ -83,7 +103,15 @@ function Entity:setScale(scale)
 end
 
 function Entity:translatePosition(vec)
-	
+	if vec[1]==0 and vec[2]==0 and vec[3]==0 then return end
+
+	local v = self.props.ent_position
+	local new_pos = {
+		v[1]+vec[1],
+		v[2]+vec[2],
+		v[3]+vec[3]
+	}
+	self:setPosition(new_pos)
 end
 
 function Entity:copyHitboxFromModel()
@@ -103,6 +131,10 @@ function Entity:copyHitboxFromModel()
 
 		self.props.ent_hitbox_position = local_pos
 	end
+end
+
+function Entity:updateHitbox()
+	--if self.props.ent_hitbox_inherit then
 end
 
 function Entity:areBoundsChanged()
@@ -148,9 +180,9 @@ function Entity:getHitboxPointByRelativeCoord(coord)
 	}
 end
 
-function Entity:currentState()
-	return self.props.ent_current_state
-end
+--function Entity:currentState()
+--	return self.props.ent_current_state
+--end
 
 function Entity:getStateByName(name)
 	if not name then return nil end
@@ -304,11 +336,11 @@ function Entity:stateFromPrototype(GameData, prototype)
 	return state
 end
 
-local walkingproto = require "ent.states.state_walking"
-local playerproto  = require "ent.player"
+--local walkingproto = require "ent.states.state_walking"
+--local playerproto  = require "ent.player"
 
-local state = Entity:stateFromPrototype(GameData, walkingproto)
+--local state = Entity:stateFromPrototype(GameData, walkingproto)
 
-for i,v in pairs(state) do
-	print(i,v)
-end
+--for i,v in pairs(state) do
+--	print(i,v)
+--end

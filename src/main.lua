@@ -65,14 +65,16 @@ function love.run()
 
 		update_dt_acc = update_dt_acc + dt
 
+		prof.push("frame")
 		-- Call update and draw
-		local count = 0
+		--[[local count = 0
 		while update_dt_acc > UPDATE_DT do
 			count = count + 1
 			if count > max_updates_in_frame then break end
 			update_dt_acc = update_dt_acc - UPDATE_DT
 			if love.update then love.update(UPDATE_DT) end -- will pass 0 if love.timer is disabled
-		end
+		end--]]
+		if love.update then love.update( dt ) end -- will pass 0 if love.timer is disabled
 
 		if love.graphics and love.graphics.isActive() then
 			love.graphics.origin()
@@ -82,17 +84,18 @@ function love.run()
 
 			love.graphics.present()
 		end
+		prof.pop("frame")
 
 		-- im fuckin around too much here
-		local diff = (1/600 - dt)
+		--[[local diff = (1/400 - dt)
 		if diff > 0.0 then
 			sleep_acc = sleep_acc + diff
 		end
 		if love.timer and sleep_acc>0.001 then
 			love.timer.sleep(0.001)
 			sleep_acc = sleep_acc - 0.001
-		end
-		--if love.timer then love.timer.sleep(0.001) end
+		end]]
+		if love.timer then love.timer.sleep(0.001) end
 	end
 end
 
@@ -126,7 +129,6 @@ function __limitFPS( limit , dt )
 end
 
 function love.update(dt)
-	prof.push("frame")
 	prof.push("update")
 
 	stepTick(dt)
@@ -153,7 +155,6 @@ function love.draw()
 	Renderer.drawFPS()
 
 	prof.pop("draw")
-	prof.pop("frame")
 end
 
 function love.resize( w,h )
