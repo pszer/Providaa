@@ -10,13 +10,16 @@ LightPropPrototype = Props:prototype{
 	-- name      type        value        validation     info      only
 
 	{"light_pos", "table", nil, PropDefaultTable{0,0,0,0}, "light position, if w component is 0 then light is directional, otherwise its a point light" },
-	{"light_dir", "table", nil, PropDefaultTable(0,-1,0), "light direction (each component is a rotation around that axis)"},
+	{"light_dir", "table", nil, PropDefaultTable{0,-1,0, "rot"}, "light direction"},
 
+	{"light_size", "number", 500, nil,                     "light's size, only applies for point lights"},
 	{"light_col", "table", nil, PropDefaultTable{1,1,1,1}, "light's colour; alpha channel determines light`s strength"},
 
 	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
 	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
+
 	{"light_cubemap",  nil, nil, nil,          "light's depthbuffer for shaddow mapping (point lights)"},
+	{"light_cube_lightspace_matrices", "table", nil, PropDefaultTable{}, "6 lightspace matrices used for static point light shadowmaps"},
 
 	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
 	{"light_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},

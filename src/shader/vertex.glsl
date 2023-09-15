@@ -1,6 +1,6 @@
 #pragma language glsl3
 
-//const int MAX_POINT_LIGHTS = 10;
+const int MAX_POINT_LIGHTS = 10;
 // the distance at which the dynamic shadowmap ends, its here
 // we transition from sampling the dynamic shadowmap to the static one
 const float DIR_LIGHT_TRANSITION_DISTANCE = 360;
@@ -13,7 +13,7 @@ varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 
-//uniform int POINT_LIGHT_COUNT;
+uniform int POINT_LIGHT_COUNT;
 uniform float u_shadow_imult;
 uniform mat4 u_dir_lightspace;
 uniform mat4 u_dir_static_lightspace;
@@ -139,6 +139,10 @@ uniform vec3 view_pos;
 uniform vec3 light_dir;
 uniform vec4 light_col;
 uniform vec4 ambient_col;
+
+// light size is stored in point_light_pos[i].w 
+uniform vec4 point_light_pos[MAX_POINT_LIGHTS];
+uniform vec4 point_light_col[MAX_POINT_LIGHTS];
 
 uniform Image MainTex;
 uniform sampler2DShadow dir_shadow_map; 
@@ -304,6 +308,19 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	return (1.0 - shadow * (1.0-u_shadow_imult))*(diffuse + specular);
 }
 
+vec3 calc_point_light_col(int point_light_id, vec3 normal) {
+
+	vec3  light_pos  = point_light_pos[point_light_id].xyz;
+	float light_size = point_light_pos[point_light_id].w;
+	vec4  light_col  = point_light_col[point_light_id];
+
+	vec3 light_dir_n = normalize( -(light_pos - frag_w_position) );
+	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );
+	vec3 specular = specular_highlight( normal , light_dir_n, light_col );
+	return (diffuse + specular);
+
+}
+
 // love_Canvases[0] is HDR color
 // love_Canvases[1] is outline buffer
 void effect( ) {
@@ -324,8 +341,12 @@ void effect( ) {
 	vec3 dir_light_result = calc_dir_light_col(dir_frag_light_pos, dir_static_frag_light_pos, u_dir_lightspace, u_dir_static_lightspace,
 		dir_shadow_map, dir_static_shadow_map,
 		frag_normal, dir_light_dir, dir_light_col, dist);
-
 	light += dir_light_result;
+
+	for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+		vec3 point_light = calc_point_light_col(i, frag_normal);
+		light += point_light;
+	}
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 

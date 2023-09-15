@@ -47,8 +47,12 @@ function Light:isDirectional()
 	return self.props.light_pos[4] == 0 end
 function Light:isPoint()
 	return self.props.light_pos[4] == 1 end
+function Light:isStatic()
+	return self.props.light_static end
 
 function Light:allocateDepthMap(size, staticsize)
+	if not self:isStatic() then return end
+
 	local size = size or gfxSetting("shadow_map_size")
 	local w,h = limit.clampTextureSize(size)
 
@@ -71,6 +75,8 @@ local __tempvec3up = cpml.vec3.new(0,-1,0)
 local __tempvec3_1 = cpml.vec3.new()
 local __tempvec3_2 = cpml.vec3.new()
 function Light:generateLightSpaceMatrix()
+	if not self:isStatic() or not self:isDirectional() then return end
+
 	local props = self.props
 	if props.light_static and self.props.light_lightspace_matrix then
 		return props.light_lightspace_matrix
@@ -112,15 +118,55 @@ function Light:generateLightSpaceMatrix()
 	return props.light_lightspace_matrix
 end
 
+local __tempvec3dirs = {
+	cpml.vec3.new( 1.0, 0.0, 0.0),
+	cpml.vec3.new(-1.0, 0.0, 0.0),
+	cpml.vec3.new( 0.0, 1.0, 0.0),
+	cpml.vec3.new( 0.0,-1.0, 0.0),
+	cpml.vec3.new( 0.0, 0.0, 1.0),
+	cpml.vec3.new( 0.0, 0.0,-1.0)
+}
+local __tempvec3 = cpml.vec3.new(0,0,0)
+local __tempvec3_2 = cpml.vec3.new(0,0,0)
+local __tempvec3_up = cpml.vec3.new(0,1,0)
 function Light:generatePointLightSpaceMatrix()
+	if not self:isStatic() or not self:isPoint() then return end
 
+	local size = self.props.light_size
+
+	local proj_mat4 = cpml.mat4.from_perspective(90.0, 1.0, 1.0, size*1.5)
+
+	local sides = {}
+	local dirs = {
+		{ 1.0 , 0.0 , 0.0 },
+		{-1.0 , 0.0 , 0.0 },
+		{ 0.0 , 1.0 , 0.0 },
+		{ 1.0 ,-0.0 , 0.0 },
+		{ 0.0 , 0.0 , 1.0 },
+		{ 0.0 , 0.0 ,-1.0 }}
+	local pos = self.props.light_pos
+	__tempvec3.x = pos[1]
+	__tempvec3.y = pos[2]
+	__tempvec3.z = pos[3]
+
+	for i=1,6 do
+		local mat = cpml.mat4.new()
+
+		__tempvec3_2.x = pos[1] + dirs[i][1]
+		__tempvec3_2.y = pos[2] + dirs[i][2]
+		__tempvec3_2.z = pos[3] + dirs[i][3]
+
+		mat = mat:look_at(pos, __tempvec3, __tempvec3_2, __tempvec3_up)
+		mat = mat:mul(proj_mat4, mat)
+		sides[i] = mat
+	end
 end
 
 function Light:generateLightSpaceMatrixFromCamera( cam )
 	if not self:isDirectional() then return end
 	if not self:checkIfUpdateMatrix() then return end
 
-	if self:getLightType() == "directional" then
+	if self:isDirectional() then
 		-- use perspective matrix with far plane very close to camera for dynamic shadowmapping
 		local proj = cam:calculatePerspectiveMatrix(nil, 350)
 		local mat, dim, g_dim = self:calculateLightSpaceMatrixFromFrustrum(
@@ -146,6 +192,8 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 			self.props.light_static_lightspace_matrix_global_dimensions = static_global_dim
 			self.props.light_static_depthmap_redraw_flag = true
 		end
+	elseif self:isPoint() then
+		if not self:isStatic() then return end
 	end
 end
 
@@ -320,6 +368,26 @@ function Light:clearStaticDepthMap(opt)
 		love.graphics.clear(0,0,0,0)
 		if not opt then love.graphics.setCanvas() end
 	end
+end
+
+function Light:setColor(r,g,b)
+	local col = self.props.light_col
+	local max = math.max
+	if type(r) ~= "table" then
+		col[1] = max(r,0)
+		col[2] = max(g,0)
+		col[3] = max(b,0)
+	elseif type(r) == "table" then
+		col[1] = max(r[1],0)
+		col[2] = max(r[2],0)
+		col[3] = max(r[3],0)
+	end
+end
+
+function Light:setBrightness( val )
+	local col = self.props.light_col
+	local max = math.max
+	col[4] = max(val, 0)
 end
 
 function Light:getLightDirection()
