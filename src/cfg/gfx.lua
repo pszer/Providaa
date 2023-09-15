@@ -6,7 +6,7 @@ GFX_SETTINGS = {
 		default = "medium" , low = 1024 , medium = 1024+2   , high = 1024*4 , ultra = 1024*8 },
 	["enable_contour"] = { "enable" ,
 		default = "enable" , enable = true, disable = false },
-	["multithread_animation"] = { "disable", -- borked, keep disabled. 
+	["multithread_animation"] = { "disable", -- bad, keep disabled. 
 		default = "enable" , enable = true, disable = false }
 
 }

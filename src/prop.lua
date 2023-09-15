@@ -70,7 +70,7 @@ function Props:extend(arg)
 	end
 
 	for _,row in pairs(arg) do
-		local property = {row[2], row[3], row[4], row[5] or row[1].." "..row[2],
+		local property = {row[2], row[3], row[4], row[5] or row[1],
 			row[6]~=nil and string.find(row[6], "readonly"),
 			row[6]~=nil and string.find(row[6], "callonly"),
 			}

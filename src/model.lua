@@ -615,6 +615,26 @@ function Model:getBoneMatrices(animation, frame, outframe)
 		return self:getDefaultPose(outframe)
 	end
 
+	local frame1,frame2,interp = self:getInterpolatedFrames(animation, frame)
+	outframe = self:interpolateTwoFrames(frame1, frame2, interp, outframe)
+	return outframe
+end
+
+function Model:getInterpolatedFrames(animation, frame, dont_loop)
+	if not self.props.model_animated then return nil, nil end
+
+	local anim_data = nil
+	if animation then
+		anim_data = self.props.model_animations[animation]
+	end
+	if not anim_data then
+		--local outframe = self.outframes
+		if animation then
+			print("getInterpolatedFrames(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+			return nil,nil,nil
+		end
+	end
+
 	local anim_first  = anim_data.first
 	local anim_last   = anim_data.last
 	local anim_length = anim_last - anim_first
@@ -623,13 +643,105 @@ function Model:getBoneMatrices(animation, frame, outframe)
 	local frame_fitted = frame * anim_rate / tickRate()
 	local frame_floor  = math.floor(frame_fitted)
 	local frame_interp = frame_fitted - frame_floor
-	local frame_interp_i = 1.0 - frame_interp 
+	--local frame_interp_i = 1.0 - frame_interp 
 
 	local frame1_id = anim_first + (frame_floor-1) % anim_length
 	local frame2_id = anim_first + (frame_floor) % anim_length
 
 	local frame1 = self.frames[frame1_id]
 	local frame2 = self.frames[frame2_id]
+
+	return frame1, frame2, frame_interp
+end
+
+function Model:getInterpolatedFrameIndices(animation, frame, dont_loop)
+	if not self.props.model_animated then return nil, nil end
+
+	local anim_data = nil
+	if animation then
+		anim_data = self.props.model_animations[animation]
+	end
+	if not anim_data then
+		if animation then
+			print("getInterpolatedFrameIndices(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+			return nil,nil
+		end
+	end
+
+	local anim_first  = anim_data.first
+	local anim_last   = anim_data.last
+	local anim_length = anim_last - anim_first
+	local anim_rate   = anim_data.framerate
+
+	local frame_fitted = frame * anim_rate / tickRate()
+	local frame_floor  = math.floor(frame_fitted)
+	local frame_interp = frame_fitted - frame_floor
+	--local frame_interp_i = 1.0 - frame_interp 
+
+	local clamp = function(a,low,up) return min(max(a,low),up) end
+	
+	if not dont_loop then
+		local frame1_id = anim_first + (frame_floor-1) % anim_length
+		local frame2_id = anim_first + (frame_floor) % anim_length
+		return frame1_id, frame2_id
+	else
+		local frame1_id = clamp(anim_first + (frame_floor-1), 0, anim_last)
+		local frame2_id = clamp(anim_first + (frame_floor),   0, anim_last)
+		return frame1_id, frame2_id
+	end
+end
+
+function Model:getUninterpolatedFrame(animation, frame, dont_loop)
+	if not self.props.model_animated then return nil, nil end
+	local dont_loop = dont_loop or false
+
+	local anim_data = nil
+	if animation then
+		anim_data = self.props.model_animations[animation]
+	end
+	if not anim_data then
+		--local outframe = self.outframes
+		if animation then
+			print("getInterpolatedFrames(): animation \"" .. animation .. "\" does not exist, (model " .. self.props.model_name .. ")")
+		end
+		return nil,nil,nil
+	end
+
+	local anim_first  = anim_data.first
+	local anim_last   = anim_data.last
+	local anim_length = anim_last - anim_first
+	local anim_rate   = anim_data.framerate
+
+	local frame_fitted = frame * anim_rate / tickRate()
+	local frame_floor  = math.floor(frame_fitted)
+	--local frame_interp = frame_fitted - frame_floor
+	--local frame_interp_i = 1.0 - frame_interp
+	--
+	local clamp = function(a,low,up) return min(max(a,low),up) end
+
+	local frame_id = nil
+	if not dont_loop then
+		frame_id = anim_first + (frame_floor-1) % anim_length
+	else
+		frame_id = clamp(anim_first + (frame_floor-1), 1, anim_last)
+	end
+	--local frame1_id = anim_first + (frame_floor-1) % anim_length
+	--local frame2_id = anim_first + (frame_floor) % anim_length
+
+	local frame = self.frames[frame_id]
+
+	return frame
+end
+
+function Model:interpolateTwoFrames(frame1, frame2, interp, outframe)
+	local skeleton = self:getSkeleton()
+
+	local mat4 = cpml.mat4
+	local mat4new = mat4.new
+	local mat4mul = mat4.mul
+
+	local frame_interp   = interp
+	local frame_interp_i = 1.0 - interp
 
 	--local outframe = self.outframes
 	for i,pose1 in ipairs(frame1) do

@@ -7,6 +7,7 @@ local tick_rate_inv = 1/tick_rate
 FPS = 0
 FPS_LIMIT = 0
 REFRESH_RATE = 60
+UPDATE_DT = 1/60
 
 function getTick()
 	return TICK
@@ -25,6 +26,11 @@ function getRefreshRate()
 
 	REFRESH_RATE = rate
 	return rate
+end
+
+function setUpdateDt(refresh_rate)
+	local refresh_rate = refresh_rate or getRefreshRate()
+	UPDATE_DT = 1/refresh_rate
 end
 
 function getTickSmooth()

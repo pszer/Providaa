@@ -1,5 +1,7 @@
 require "props.entityprops"
 require "event"
+require "custommodel"
+require "gameinterface"
 
 Entity = {__type = "entity"}
 Entity.__index = Entity
@@ -168,13 +170,14 @@ function Entity:getStateParent(state)
 	return nil
 end
 
+-- returns a command and the state it belongs to
 function Entity:getCommand(command_name)
 	local function traverse(state, recur)
-		if not state then return nil end
+		if not state then return nil, nil end
 
 		local command = state.state_commands[command_name]
 		if command then
-			return command
+			return command, state
 		else
 			local parent = self:getStateParent(state)
 			return recur(parent, recur)
@@ -182,10 +185,10 @@ function Entity:getCommand(command_name)
 	end
 
 	for i,v in pairs(self.props.ent_current_states) do
-		local found = traverse(v, traverse)
-		if found then return found end
+		local found, state = traverse(v, traverse)
+		if found then return found, state end
 	end
-	return nil
+	return nil, nil
 end
 
 function Entity:enableState(state)
@@ -198,7 +201,7 @@ function Entity:enableState(state)
 		local enter = state.state_enter
 		table.insert(self.props.ent_current_states, state)
 		if enter then
-			enter(self)
+			enter(self, state)
 		end
 	else
 		print(string.format("Entity:changeState: tried to enter non-existant state"))
@@ -223,7 +226,7 @@ function Entity:disableState(state)
 		local exit = state.state_exit
 		table.remove(self.props.ent_current_states, index)
 		if exit then
-			exit(self)
+			exit(self, state)
 		end
 	else
 		print(string.format("Entity:changeState: tried to exit non-existant state"))
@@ -254,13 +257,13 @@ end
 
 function Entity:callCommand(command_name, ...)
 	local args = {...}
-	local command = self:getCommand(command_name)
+	local command, state = self:getCommand(command_name)
 
 	if not command then
 		return
 	end
 
-	command(self, unpack(args))
+	command(self, state, unpack(args))
 end
 
 -- takes in established hooks from Prov:establishEntityHooks()
@@ -281,4 +284,30 @@ end
 
 function Entity:getHooksInfo()
 	return self.props.ent_hooks_info
+end
+
+function Entity:stateFromPrototype(GameData, prototype)
+	local state = prototype()
+
+	local proto_update = state.state_update
+	local proto_enter  = state.state_enter
+	local proto_exit   = state.state_exit
+
+	local proto_comms  = state.state_commands
+	for i,v in pairs(proto_comms) do
+		proto_comms[i] = v(GameData)
+	end
+	if state.state_update then state.state_update = state.state_update(GameData) end
+	if state.state_enter  then state.state_enter = state.state_enter(GameData) end 
+	if state.state_exit   then state.state_exit = state.state_exit(GameData) end
+
+	return state
+end
+
+local walkingproto = require "ent.states.state_walking"
+
+local state = Entity:stateFromPrototype(GameData, walkingproto)
+
+for i,v in pairs(state) do
+	print(i,v)
 end

@@ -4,7 +4,7 @@
 -- making it difficult to write entity behaviour and would require a messy 'require "providaa"'
 -- 
 -- entities get given a game state interface through which they can query the game state with functions.
--- the wont have direct access to Prov and these functions have predictable side-effects.
+-- they wont have direct access to Prov and these functions have predictable side-effects.
 --
 
 require "table"
@@ -14,7 +14,7 @@ require 'boundingbox'
 GameData = {}
 GameData.__index = {}
 
-function GameData:setUpFromProv( Prov )
+function GameData:setupFromProv( Prov )
 
 	function GameData:getTileAtWorldCoord(x,y,z)
 
@@ -24,38 +24,50 @@ function GameData:setUpFromProv( Prov )
 
 	end
 
-	GameData.tileCoordToWorld = Tile.tileCoordToWorld
-	GameData.worldCoordToTile = Tile.worldCoordToTile
+	function GameData:tileCoordToWorld(x,y,z)
+		return Tile.tileCoordToWorld(x,y,z)
+	end
+	function GameData:worldCoordToTile(x,y,z)
+		return Tile.worldCoordToTile(x,y,z)
+	end
 
+	-- queries an entity by a given name
 	function GameData:queryEntity(name)
 		return Prov.ents[name]
 	end
 
-	-- for now these spacial query functions are shit and don't utilize any space
-	-- partitioning
 	function GameData:queryEntitiesAtPoint( point_vec )
-		local ents_tested = {}
-		for i,ent in ipairs(Prov.ents) do
-			local x,y,z, dx,dy,dz = ent:getWorldHitbox()
-				
-			local test = testPointInBoundingBox(point_vec, {x,y,z}, {dx,dy,dz})
+		return Prov:queryEntitiesAtPoint( point_vec )
+	end 
 
-			if test then
-				table.insert(ents_tested, ent)
-			end
-		end
-	end -- queryEntitiesAtPoint
-
+	-- finds all entities with hitboxes intersecting a given rectangle given by pos,size
 	function GameData:queryEntitiesInRegion( rect_pos , rect_size )
+		return Prov:queryEntitiesInRegion( rect_pos, rect_size )
+	end 
 
-	end -- queryEntitiesInRegion
+	-- finds all entities with hitboxes intersecting a given rectangle given by min,max
+	function GameData:queryEntitiesInRegionMinMax( min , max )
+		local size = { max[1] - min[1] , max[2] - min[2] , max[3] - min[3] }
+		return self:queryEntitiesInRegion( min , size )
+	end
 
+	-- gets the current directional light in the scene
 	function GameData:queryLight()
 
 	end
 
+	-- creates and adds an entity to the world, returns said entity for further manipulation
 	function GameData:createEntity(prototype, props)
 
+	end
+
+	-- raises an internal Prov event
+	function GameData:raiseEvent(event, ...)
+
+	end
+
+	function GameData:getDt()
+		return Prov.__dt
 	end
 
 end

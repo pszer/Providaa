@@ -30,7 +30,7 @@ Prov = {
 
 	input_handlers = {},
 
-	LIMIT_TO_TICK_RATE = true
+	__dt = 0
 }
 Prov.__index = Prov
 
@@ -67,63 +67,22 @@ function Prov:load()
 	)
 
 	instance = ModelInstance:newInstance(pianko)
-	instance2 = ModelInstance:newInstance(pianko, {model_i_position = {228, -24, -240}})
-	instance3 = ModelInstance:newInstance(pianko, {model_i_position = {150, -24, -240}})
-	instance4 = ModelInstance:newInstance(pianko, {model_i_position = {180, -24, -240}})
-	instance5 = ModelInstance:newInstance(pianko, {model_i_position = {200, -24, -240}})
-	instance6 = ModelInstance:newInstance(pianko, {model_i_position = {130, -24, -240}})
-	instance7 = ModelInstance:newInstance(pianko, {model_i_position = {240, -24, -240}})
-	instance8 = ModelInstance:newInstance(pianko, {model_i_position = {260, -24, -240}})
 
 	instance.props.model_i_outline_flag = true
 	instance.props.model_i_contour_flag = true
-	instance2.props.model_i_outline_flag = true
-	instance2.props.model_i_contour_flag = true
-	instance3.props.model_i_outline_flag = true
-	instance3.props.model_i_contour_flag = true
-	instance4.props.model_i_outline_flag = true
-	instance4.props.model_i_contour_flag = true
-	instance5.props.model_i_outline_flag = true
-	instance5.props.model_i_contour_flag = true
-	instance6.props.model_i_outline_flag = true
-	instance6.props.model_i_contour_flag = true
-	instance7.props.model_i_outline_flag = true
-	instance7.props.model_i_contour_flag = true
-	instance8.props.model_i_outline_flag = true
-	instance8.props.model_i_contour_flag = true
 
 	decor,animface = faceFromCfg("pianko_face")
 	instance:attachDecoration(decor)
 
-	decor2,animface2 = faceFromCfg("pianko_face")
-	instance2:attachDecoration(decor2)
-
-	decor3,animface3 = faceFromCfg("pianko_face")
-	instance3:attachDecoration(decor3)
-
-	decor4,animface4 = faceFromCfg("pianko_face")
-	instance4:attachDecoration(decor4)
-
-	decor5,animface5 = faceFromCfg("pianko_face")
-	instance5:attachDecoration(decor5)
-
-	decor6,animface6 = faceFromCfg("pianko_face")
-	instance6:attachDecoration(decor6)
-
-	decor7,animface7 = faceFromCfg("pianko_face")
-	instance7:attachDecoration(decor7)
-
-	decor8,animface8 = faceFromCfg("pianko_face")
-	instance8:attachDecoration(decor8)
-
 	pianko_ent = Entity:new{
+		["ent_identifier"] = "player",
 		["ent_model"] = instance,
 		["ent_position"] = {200, -24, -200},
 		["ent_states"] = {
 			["state_walking"] =
 			EntityStatePropPrototype{
 				["state_commands"] = {
-					["entity_walk_towards"] = function(ent, dir) end
+					["entity_walk_towards"] = function(ent, state, dir) print(unpack(dir)) end
 				},
 
 				["state_enter"] = function(ent) print("enter") end
@@ -169,19 +128,23 @@ function Prov:load()
 	)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i, instance2 , instance3 , instance4 , instance5 , instance6, instance7, instance8 }
+	self.scene:addModelInstance{ sphere, crate_i }
 
 	self:fitNewEntityPartitionSpace()
 
 	--local frame1,frame2,parents,interp = pianko:getAnimationFramesDataForThread("Walk",2.5)
 	--animthread:addToQueue(instance, frame1, frame2, parents, interp)
 	--animthread:process()
+	--
+	GameData:setupFromProv(self)
 
 	-- only load once
 	self.load = function() end
 end
 
 function Prov:update(dt)
+	self.__dt = dt
+
 	if tickChanged() then
 		self:onTickChange()
 	end
@@ -218,9 +181,10 @@ function Prov:update(dt)
 
 	local pos = pianko_ent:getPosition()
 	local rot = pianko_ent:getRotation()
-	--pianko_ent:setPosition{pos[1], pos[2], pos[3]+5*dt}	
-	pianko_ent:setPosition{pos[1], pos[2], pos[3]}	
+	--pianko_ent:setPosition{pos[1], pos[2]+3*dt, pos[3]}	
+	--pianko_ent:setPosition{pos[1], pos[2], pos[3]}	
 	--pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
+	--
 
 	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
@@ -232,18 +196,6 @@ function Prov:update(dt)
 	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
 	animface.props.animface_lefteye_pose = pose
 	animface.props.animface_righteye_pose = pose
-	animface2.props.animface_lefteye_pose = pose
-	animface2.props.animface_righteye_pose = pose
-	animface3.props.animface_lefteye_pose = pose
-	animface3.props.animface_righteye_pose = pose
-	animface4.props.animface_lefteye_pose = pose
-	animface4.props.animface_righteye_pose = pose
-	animface5.props.animface_lefteye_pose = pose
-	animface5.props.animface_righteye_pose = pose
-	animface6.props.animface_lefteye_pose = pose
-	animface6.props.animface_righteye_pose = pose
-	animface7.props.animface_lefteye_pose = pose
-	animface7.props.animface_righteye_pose = pose
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")
@@ -405,4 +357,65 @@ function Prov:establishEntityHooks(ent)
 			ent:addHook(hook)
 		end
 	end
+end
+
+-- see's what entities have their hitbox intersect with a given point
+-- in 3D space
+function Prov:queryEntitiesAtPoint( point_vec )
+	local partition = self.ent_bins
+
+	local ents, outside = partition:getInsideRectangle( point_vec[1] , point_vec[3], 0.1,0.1)
+
+	for i=#ents,1,-1 do
+		local ent = ents[i]
+		local pos, size = ent:getWorldHitboxPosSize()
+
+		local inside = testPointInBoundingBox(point_vec, pos, size)
+
+		if not inside then
+			table.remove(ents, i)
+		end
+	end
+
+	for i,ent in ipairs(outside) do
+		local pos, size = ent:getWorldHitboxPosSize()
+
+		local inside = testPointInBoundingBox(point_vec, pos, size)
+
+		if inside then
+			table.insert(ents, ent)
+		end
+	end
+
+	return ents
+end
+
+-- see's what entities have their hitbox intersect with a given rectangle
+function Prov:queryEntitiesInRegion( rect_pos , rect_size )
+	local partition = self.ent_bins 
+
+	local ents, outside = partition:getInsideRectangle(rect_pos[1], rect_pos[3], rect_size[1], rect_size[3])
+
+	for i=#ents,1,-1 do
+		local ent = ents[i]
+		local pos, size = ent:getWorldHitboxPosSize()
+
+		local inside = testBoxInBoxPosSize(pos, size, rect_pos, rect_size)
+
+		if not inside then
+			table.remove(ents, i)
+		end
+	end
+
+	for i,ent in ipairs(outside) do
+		local pos, size = ent:getWorldHitboxPosSize()
+
+		local inside = testBoxInBoxPosSize(pos, size, rect_pos, rect_size)
+
+		if inside then
+			table.insert(ents, ent)
+		end
+	end
+
+	return ents
 end

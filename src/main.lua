@@ -41,6 +41,8 @@ function love.run()
 	if love.timer then love.timer.step() end
 
 	local dt = 0
+	local update_dt_acc = 0
+	local max_updates_in_frame = 3
 	local sleep_acc = 0
 
 	-- Main loop time.
@@ -61,8 +63,16 @@ function love.run()
 		-- Update dt, as we'll be passing it to update
 		if love.timer then dt = love.timer.step() end
 
+		update_dt_acc = update_dt_acc + dt
+
 		-- Call update and draw
-		if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
+		local count = 0
+		while update_dt_acc > UPDATE_DT do
+			count = count + 1
+			if count > max_updates_in_frame then break end
+			update_dt_acc = update_dt_acc - UPDATE_DT
+			if love.update then love.update(UPDATE_DT) end -- will pass 0 if love.timer is disabled
+		end
 
 		if love.graphics and love.graphics.isActive() then
 			love.graphics.origin()
@@ -74,7 +84,7 @@ function love.run()
 		end
 
 		-- im fuckin around too much here
-		local diff = (1/400 - dt)
+		local diff = (1/600 - dt)
 		if diff > 0.0 then
 			sleep_acc = sleep_acc + diff
 		end
