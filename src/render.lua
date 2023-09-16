@@ -47,7 +47,9 @@ Renderer = {
 	fps_draw_obj = nil,
 
 	avglum_buffer_size = 1024,
-	avglum_mipmap_count = -1
+	avglum_mipmap_count = -1,
+
+	nil_cubemap = nil
 }
 
 Renderer.__index = Renderer
@@ -90,6 +92,8 @@ function Renderer.createCanvas()
 	else
 		Renderer.bloom_renderer = BloomRenderer:new(w,h)
 	end
+
+	if not Renderer.nil_cubemap then love.graphics.newCanvas(1,1,{format="depth16",type="cube",readable=true})end
 
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h

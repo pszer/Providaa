@@ -17,7 +17,9 @@ uniform int u_point_light_count;
 uniform float u_shadow_imult;
 uniform mat4 u_dir_lightspace;
 uniform mat4 u_dir_static_lightspace;
-//uniform mat4 u_point_lightspaces[MAX_POINT_LIGHTS];
+
+// used to set the brightness of fog
+uniform float skybox_brightness;
 
 #ifdef VERTEX
 
@@ -144,6 +146,16 @@ uniform vec4 ambient_col;
 uniform vec4 point_light_pos[MAX_POINT_LIGHTS];
 uniform vec4 point_light_col[MAX_POINT_LIGHTS];
 
+//uniform int point_light_shadow_map_index[MAX_POINT_LIGHTS];
+uniform bool point_light_has_shadow_map[MAX_POINT_LIGHTS];
+// these next two uniform's are only defined for static point lights, dynamic
+// point lights do not have shadow maps
+// these arrays are indexed by point_light_shadow_map_index[i], where i is the index for a point light
+// if the point light at index i does not have shadow maps, point_light_shadow_map_index will be -1
+//uniform samplerCubeShadow point_light_shadow_maps[MAX_POINT_LIGHTS];
+uniform samplerCube point_light_shadow_maps[MAX_POINT_LIGHTS];
+uniform int point_light_far_planes[MAX_POINT_LIGHTS];
+
 uniform Image MainTex;
 uniform sampler2DShadow dir_shadow_map; 
 uniform sampler2DShadow dir_static_shadow_map;
@@ -255,7 +267,7 @@ float texture_shadow_clampone(sampler2DShadow shadow, vec3 vec) {
 	}
 }
 
-float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map , vec3 normal , vec3 light_dir, float bias) {
+float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map , vec3 normal , vec3 light_dir, float bias ) {
 	vec4 prooj_coords = pos.xyzw;
 	prooj_coords = vec4(prooj_coords.xyz * 0.5 + 0.5, prooj_coords.w);
 
@@ -291,6 +303,10 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	}
 
 	return shadow;
+}
+
+float cube_shadow_calculation( vec4 pos, vec4 light_pos, samplerCubeShadow shadow_map, float far_plane, float bias ) {
+	return 0.0;
 }
 
 vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 lightspace, mat4 static_lightspace, sampler2DShadow map, sampler2DShadow static_map,
@@ -338,14 +354,37 @@ vec3 calc_point_light_col(int point_light_id, vec3 normal) {
 
 	float quad_comp   = 1.0/(light_size*light_size);
 	float linear_comp = 50.0/light_size;
-	float attenuate = 1.01/(1.0 + linear_comp*dist + quad_comp*dist*dist);
-	attenuate = max(0.0, attenuate - 0.01);
+	float attenuate = 1.03/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	attenuate = max(0.0, attenuate - 0.03);
 
 	vec3 light_dir_n = normalize( dir );
 	vec3 diffuse = diffuse_lighting_2( normal, light_dir_n, light_col );
 	//vec3 specular = specular_highlight( normal , light_dir_n, light_col );
 	vec3 specular = vec3(0.0);
 	return (diffuse + specular) * attenuate;
+}
+
+
+vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int point_shadow_id, float bias, samplerCube map) {
+	float far_plane = point_light_far_planes[point_shadow_id];
+	vec3 light_pos  = point_light_pos[point_light_id].xyz;
+
+	float shadow = 1.0;
+
+	vec3 frag_to_light = (frag_w_position - light_pos);
+	float curr_depth = length(frag_to_light);
+	float closest_depth = texture(map, frag_to_light).r;
+	closest_depth *= far_plane;
+
+	float adjusted_bias = bias * max( curr_depth / 90 , 1.0 );
+
+	shadow = curr_depth - adjusted_bias > closest_depth ? 1.0 : 0.0;
+	//float s = texture( map, vec4(frag_to_light, (curr_depth-bias)));
+	//shadow -= (0.5 - s*0.5);
+	//shadow -= s;
+
+	vec3 light_result = calc_point_light_col( point_light_id , normal );
+	return (1.0 - shadow * (1.0-u_shadow_imult))*light_result;
 }
 
 // love_Canvases[0] is HDR color
@@ -370,10 +409,96 @@ void effect( ) {
 		frag_normal, dir_light_dir, dir_light_col, dist);
 	light += dir_light_result;
 
-	for (int i = 0; i < u_point_light_count; ++i) {
-		vec3 point_light = calc_point_light_col(i, frag_normal);
+	/*for (int i = 0; i < u_point_light_count; ++i) {
+		vec3 point_light;
+
+		int shadow_index = point_light_shadow_map_index[i];
+		if (shadow_index >= 0) {
+			//point_light = calc_point_light_col_shadow(i, frag_normal, shadow_index);
+			point_light = calc_point_light_col_shadow(i, frag_normal, i);
+		} else {
+			point_light = calc_point_light_col(i, frag_normal);
+		}
+
 		light += point_light;
+	}*/
+
+	//
+	// STUPID FUCKED EVIL SHIT OH MY GOD - NO CUBEMAP ARRAYS, NO GLSL 4.0+ VARIABLE INDEXING.
+	//
+	float point_bias = 1.35;
+	if (u_point_light_count > 0) {
+		if (point_light_has_shadow_map[0]) {
+			light += calc_point_light_col_shadow(0, frag_normal, 0, point_bias, point_light_shadow_maps[0]);
+		} else {
+			light += calc_point_light_col(0, frag_normal);
+		}
 	}
+
+	if (u_point_light_count > 1) {
+		if (point_light_has_shadow_map[1]) {
+			light += calc_point_light_col_shadow(1, frag_normal, 1, point_bias, point_light_shadow_maps[1]);
+		} else {
+			light += calc_point_light_col(1, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 2) {
+		if (point_light_has_shadow_map[2]) {
+			light += calc_point_light_col_shadow(2, frag_normal, 2, point_bias, point_light_shadow_maps[2]);
+		} else {
+			light += calc_point_light_col(2, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 3) {
+		if (point_light_has_shadow_map[3]) {
+			light += calc_point_light_col_shadow(3, frag_normal, 3, point_bias, point_light_shadow_maps[3]);
+		} else {
+			light += calc_point_light_col(3, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 4) {
+		if (point_light_has_shadow_map[4]) {
+			light += calc_point_light_col_shadow(4, frag_normal, 4, point_bias, point_light_shadow_maps[4]);
+		} else {
+			light += calc_point_light_col(4, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 5) {
+		if (point_light_has_shadow_map[5]) {
+			light += calc_point_light_col_shadow(5, frag_normal, 5, point_bias, point_light_shadow_maps[5]);
+		} else {
+			light += calc_point_light_col(5, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 6) {
+		if (point_light_has_shadow_map[6]) {
+			light += calc_point_light_col_shadow(6, frag_normal, 6, point_bias, point_light_shadow_maps[6]);
+		} else {
+			light += calc_point_light_col(6, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 7) {
+		if (point_light_has_shadow_map[7]) {
+			light += calc_point_light_col_shadow(7, frag_normal, 7, point_bias, point_light_shadow_maps[7]);
+		} else {
+			light += calc_point_light_col(7, frag_normal);
+		}
+	}
+
+	if (u_point_light_count > 8) {
+		if (point_light_has_shadow_map[8]) {
+			light += calc_point_light_col_shadow(8, frag_normal, 8, point_bias, point_light_shadow_maps[8]);
+		} else {
+			light += calc_point_light_col(8, frag_normal);
+		}
+	}
+
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
@@ -383,7 +508,7 @@ void effect( ) {
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	// TODO make the fog colour work properly with HDR
-	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*fog_colour, pix.a);
+	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour, pix.a);
 
 	love_Canvases[0] = result;
 	//love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;

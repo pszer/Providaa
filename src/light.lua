@@ -67,7 +67,10 @@ function Light:allocateDepthMap(size, staticsize)
 		self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
 		self.props.light_static_depthmap:setDepthSampleMode("greater")
 	elseif self:isPoint() then
+		print(size*2)
+		local w,h = limit.clampTextureSize(size*2)
 		self.props.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
+		--self.props.light_cubemap:setDepthSampleMode("greater")
 	end
 end
 
@@ -132,17 +135,9 @@ function Light:generateMatrices(cam)
 	end
 end
 
---[[local __tempvec3dirs = {
-	cpml.vec3.new( 1.0, 0.0, 0.0),
-	cpml.vec3.new(-1.0, 0.0, 0.0),
-	cpml.vec3.new( 0.0, 1.0, 0.0),
-	cpml.vec3.new( 0.0,-1.0, 0.0),
-	cpml.vec3.new( 0.0, 0.0, 1.0),
-	cpml.vec3.new( 0.0, 0.0,-1.0)
-}]]
 local __tempvec3 = cpml.vec3.new(0,0,0)
 local __tempvec3_2 = cpml.vec3.new(0,0,0)
-local __tempvec3_up = cpml.vec3.new(0,1,0)
+local __tempvec3_up = cpml.vec3.new(0,-1,0)
 local __tempvec3_up2 = cpml.vec3.new(0,0,1)
 --TEMP_PROJ = {}
 --TEMP_VIEW = {}
@@ -152,7 +147,9 @@ function Light:generatePointLightSpaceMatrix()
 
 	local size = self.props.light_size
 
-	local proj_mat4 = cpml.mat4.from_perspective(90.0, 1.0, 1.0, size*1.5)
+	local far_plane = size*1
+	local proj_mat4 = cpml.mat4.from_perspective(90.0, 1.0, 1.0, far_plane)
+	self.props.light_cube_lightspace_far_plane = far_plane
 
 	local sides = {}
 	local dirs = {
@@ -427,6 +424,11 @@ function Light:setBrightness( val )
 	local col = self.props.light_col
 	local max = math.max
 	col[4] = max(val, 0)
+end
+
+-- sets flag to redraw static maps for this light next frame
+function Light:redrawStaticMap()
+	self.props.light_static_depthmap_redraw_flag = true
 end
 
 function Light:getLightDirection()

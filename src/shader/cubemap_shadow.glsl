@@ -1,9 +1,9 @@
+
 #pragma language glsl3
 
-varying vec4 frag_w_position;
+varying vec4 frag_position;
 
 #ifdef VERTEX
-
 extern mat4 u_model;
 extern mat4 u_lightspace;
 
@@ -49,28 +49,21 @@ mat4 get_model_matrix() {
 
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
-	vec4 pos_v = skin_u * vertex;
-	frag_w_position = pos_v;
-	return  u_lightspace * pos_v;
+	vec4 pos_v = u_lightspace * skin_u * vertex;
+	frag_position = pos_v;
+	return pos_v;
 }
 
 #endif
 
 #ifdef PIXEL
-
 	uniform vec3 light_pos;
 	uniform float far_plane;
-	uniform bool point_light;
 
 	void effect() {
-		if (!point_light) {
-			gl_FragDepth = gl_FragCoord.z;
-			return;
-		}
-
+		gl_FragDepth = gl_FragCoord.z;
 		// get distance between fragment and light source
-    	float light_distance = length(frag_w_position.xyz - light_pos);
-    	//float light_distance = length(frag_position.xyz);
+    	float light_distance = length(frag_position.xyz - light_pos);
 
 		// map to [0;1] range by dividing by far_plane
 		light_distance = light_distance / far_plane;

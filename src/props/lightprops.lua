@@ -20,6 +20,7 @@ LightPropPrototype = Props:prototype{
 
 	{"light_cubemap",  nil, nil, nil,          "light's cubemap depthbuffer for shadow mapping (point lights)"},
 	{"light_cube_lightspace_matrices", "table", nil, PropDefaultTable{}, "6 lightspace matrices used for static point light shadowmaps"},
+	{"light_cube_lightspace_far_plane", "number", 0, nil, "the far plane for the point lights projection matrices"},
 
 	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
 	{"light_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},

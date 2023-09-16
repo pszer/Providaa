@@ -44,18 +44,18 @@ function Prov:load()
 		Light:new{
 			["light_pos"] = {0,0,0,0},
 			["light_dir"] = {-0.8,1.7,-1.5},
-			["light_col"] = {255/255, 235/255, 224/255, 13},
+			["light_col"] = {255/255, 235/255, 224/255, 1},
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {300,-84,-300,1},
-			["light_col"] = {255/255,235/255,224/255,3000},
-			["light_size"] = 250,
+			["light_pos"] = {300,-30,-280,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
 			["light_static"] = true
 		}
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 14
+	self.scene.props.scene_skybox_hdr_brightness = 2
 
 	pianko = Models.queryModel("pianko/pianko.iqm")
 	piankoface = Models.queryModel("pianko/piankoface.iqm")
