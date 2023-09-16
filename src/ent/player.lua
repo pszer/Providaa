@@ -2,6 +2,11 @@ require "props/entityprops"
 
 local state_walking = require "ent.states.state_walking"
 
+local dir_up    = {dir={ 0, 0,-1}}
+local dir_down  = {dir={ 0, 0, 1}}
+local dir_left  = {dir={-1, 0, 0}}
+local dir_right = {dir={ 1, 0, 0}}
+
 local EntityPlayerPrototype = EntityPropPrototype:extend{
 
 	{"ent_identifier", "string", "player", nil},
@@ -19,28 +24,28 @@ local EntityPlayerPrototype = EntityPropPrototype:extend{
 		{type="control", handler="overworld", keybind="move_up", event="press",
 		 hook_func = function(ent)
 			return function(args)
-				ent:callCommand("entity_walk_towards", {dir={ 0 , 0 , -1 }})
+				ent:callCommand("entity_walk_towards", dir_up)
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_down", event="press",
 		 hook_func = function(ent)
 			return function(args)
-				ent:callCommand("entity_walk_towards", {dir={ 0 , 0 , 1 }})
+				ent:callCommand("entity_walk_towards", dir_down)
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_left", event="press",
 		 hook_func = function(ent)
 			return function(args)
-				ent:callCommand("entity_walk_towards", {dir={ -1 , 0 , 0 }})
+				ent:callCommand("entity_walk_towards", dir_left)
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_right", event="press",
 		 hook_func = function(ent)
 			return function(args)
-				ent:callCommand("entity_walk_towards", {dir={ 1 , 0 , 0 }})
+				ent:callCommand("entity_walk_towards", dir_right)
 			end
 		 end}
 	}}

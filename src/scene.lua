@@ -222,26 +222,12 @@ function Scene:draw(cam)
 
 	prof.push("shaderpushes")
 	local sh = Renderer.setupCanvasFor3D()
+	prof.push("pushshadowmaps")
 	self:pushShadowMaps(sh)
+	prof.pop("pushshadowmaps")
 	self:pushFog(sh)
 	self:pushAmbience(sh)
 	self.props.scene_camera:pushToShader(sh)
-
-	--[[local point = self.props.scene_lights[2]
-	print(unpack(point.props.light_pos))
-
-	local t = (math.floor(getTick()/120) % 6) + 1
-	t = 3
-	--local mat = point.props.light_cube_lightspace_matrices[t]
-	local proj = TEMP_PROJ[t]
-	local view = TEMP_VIEW[t]
-
-	shadersend(sh, "u_proj", "column", matrix(proj))
-	shadersend(sh, "u_view", "column", matrix(view))
-	shadersend(sh, "u_rot", "column", matrix(cpml.mat4.new()))
-
-	print(t)--]]
-
 	prof.pop("shaderpushes")
 
 	prof.push("drawgrid")
@@ -318,6 +304,8 @@ function Scene:pointStaticShadowPass( shader , light )
 		shadersend(shader, "u_lightspace", "column", matrix(mats[i]))
 
 		love.graphics.setMeshCullMode("front")
+		--self:drawStaticModels()
+		--self:drawModels(false, false)
 		self:drawStaticModels()
 
 		love.graphics.setMeshCullMode("front")
@@ -364,6 +352,13 @@ function Scene:shadowPass( )
 end
 
 -- pushes lights and shadow maps to shader
+local point_light_max   = 9
+local point_light_pos = {}
+for i=1,point_light_max do point_light_pos[i] = {0,0,0,0} end
+local point_light_col = {}
+local point_light_has_shadow_map = {}
+local point_light_shadow_maps = {}
+local point_light_far_planes = {}
 function Scene:pushShadowMaps(shader)
 	local lights = self.props.scene_lights
 	local light_count = #lights
@@ -379,16 +374,15 @@ function Scene:pushShadowMaps(shader)
 
 	--local point_shadow_maps = {}
 	--
-	local point_light_max   = 9
 	local point_light_count = 0
 	local point_light_shadowmap_count = 0
 
-	local point_light_pos = {}
-	local point_light_col = {}
-	local point_light_has_shadow_map = {}
-	local point_light_shadow_maps = {}
-	local point_light_far_planes = {}
-	local point_light_shadow_map_index = {}
+	--local point_light_pos = {}
+	--local point_light_col = {}
+	--local point_light_has_shadow_map = {}
+	--local point_light_shadow_maps = {}
+	--local point_light_far_planes = {}
+	--local point_light_shadow_map_index = {}
 
 	for i,light in ipairs(lights) do
 		local light_type = light:getLightType()
@@ -416,7 +410,7 @@ function Scene:pushShadowMaps(shader)
 				local col = light:getLightColour()
 				local pos = light:getLightPosition()
 				local size = light:getLightSize()
-				local pos_to_shader = {pos[1], pos[2], pos[3], size}
+				--local pos_to_shader = {pos[1], pos[2], pos[3], size}
 
 				if light:isStatic() then
 					point_light_shadowmap_count = point_light_shadowmap_count + 1
@@ -424,7 +418,7 @@ function Scene:pushShadowMaps(shader)
 					local cubemap = light:getCubeMap()
 					local farplane = light.props.light_cube_lightspace_far_plane
 
-					point_light_shadow_map_index[point_light_count] = point_light_shadowmap_count - 1
+					--point_light_shadow_map_index[point_light_count] = point_light_shadowmap_count - 1
 					--point_light_shadow_maps[point_light_shadowmap_count] = cubemap
 					--point_light_far_planes[point_light_shadowmap_count] = farplane
 					point_light_shadow_maps[point_light_count] = cubemap
@@ -438,20 +432,15 @@ function Scene:pushShadowMaps(shader)
 					point_light_has_shadow_map[point_light_count] = false
 				end
 
-				point_light_pos[point_light_count] = pos_to_shader
+				point_light_pos[point_light_count][1] = pos[1]
+				point_light_pos[point_light_count][2] = pos[2]
+				point_light_pos[point_light_count][3] = pos[3]
+				point_light_pos[point_light_count][4] = size
 				point_light_col[point_light_count] = col
 			end
 		end
 	end
 
-	--[[if point_light_count == 0 then
-		point_light_pos = {{0,0,0,0}}
-		point_light_col = {{0,0,0,0}}
-		point_light_has_shadow_map = {false}
-		point_light_shadow_maps = {Renderer.nil_cubemap}
-		point_light_far_planes = {1}
-	end]]
-	
 	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
 	shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
 	shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
@@ -570,16 +559,29 @@ function Scene:redrawStaticMaps()
 	end
 end
 
+local __tempmin={1/0,1/0,1/0}
+local __tempmax={-1/0,-1/0,-1/0}
 function Scene:getModelsInViewFrustrum(min, max)
+	prof.push("view_culling")
 	local cam = self.props.scene_camera
 
 	local min,max = min,max
 	if min == nil or max == nil then
 
-		min = { 1/0,  1/0,  1/0}
-		max = {-1/0, -1/0, -1/0}
+		--min = { 1/0,  1/0,  1/0}
+		--max = {-1/0, -1/0, -1/0}
+		min = __tempmin
+		min[1] = 1/0
+		min[2] = 1/0
+		min[3] = 1/0
+		max = __tempmax
+		max[1] = -1/0
+		max[2] = -1/0
+		max[3] = -1/0
 
+		prof.push("genfrustrum")
 		local frustrum_corners = cam:generateFrustrumCornersWorldSpace()
+		prof.pop("genfrustrum")
 
 		for i=1,8 do
 			local vec = frustrum_corners[i]
@@ -596,7 +598,9 @@ function Scene:getModelsInViewFrustrum(min, max)
 
 	local x,y,w,h = min[1], min[3], max[1]-min[1], max[3]-min[3]
 
+	prof.push("getinsiderectangle")
 	local models, outside_models = self.model_bins:getInsideRectangle(x,y,w,h)
+	prof.pop("getinsiderectangle")
 	for _,m in ipairs(outside_models) do
 		local pos,size = m:getBoundingBoxPosSize()
 		local is_inside = testRectInRectPosSize(x,y,w,h,
@@ -614,5 +618,6 @@ function Scene:getModelsInViewFrustrum(min, max)
 		end
 	end
 
+	prof.pop("view_culling")
 	return models
 end

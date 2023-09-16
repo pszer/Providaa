@@ -15,7 +15,8 @@ function Camera:new(props)
 
 		__last_aspect    = 16/9,
 		__last_fov       = 75.0,
-		__last_far_plane = 2000.0
+		__last_far_plane = 2000.0,
+		__frustrum_generated = false
 	}
 
 	setmetatable(this,Camera)
@@ -23,6 +24,10 @@ function Camera:new(props)
 	this.props.cam_view_matrix = cpml.mat4.new()
 	this.props.cam_rot_matrix = cpml.mat4.new()
 	this.props.cam_perspective_matrix = cpml.mat4.new()
+
+	this.props.cam_frustrum_corners = {{},{},{},{},{},{},{},{}}
+	this.props.cam_frustrum_centre  = {}
+
 
 	this:generatePerspectiveMatrix()
 	this:generateViewMatrix()
@@ -157,11 +162,17 @@ end
 -- returns corners of camera`s view frustrum in world space,
 -- also returns the vector in the middle of this frustrum
 local __mat4temp = cpml.mat4.new()
+local __X = {-1.0,1.0}
+local __Y = {-1.0,1.0}
+local __Z = {-1.0,1.0}
+local __temppoint = {}
 function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	local props = self.props
 	local proj = proj or props.cam_perspective_matrix
 	local view = view or props.cam_rot_matrix * props.cam_view_matrix
 	local scale = scale or 1.0
+
+	self.__frustrum_generated = true
 
 	--local inv_m = cpml.mat4.new()
 	__mat4temp = __mat4temp:mul(proj, view)
@@ -170,15 +181,12 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	--
 	local inv_m = __mat4temp
 
-	local corners = {}
+	local corners = props.cam_frustrum_corners
 
 	-- used to find vector in the centre
 	local sum_x, sum_y, sum_z = 0.0, 0.0, 0.0
 
-	local X = {-1.0,1.0}
-	local Y = {-1.0,1.0}
-	local Z = {-1.0,1.0}
-
+	local count = 1
 	for x=1,2 do
 		for y=1,2 do
 			for z=1,2 do
@@ -187,9 +195,14 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view)
 					2.0 * y - 1.0,
 					2.0 * z - 1.0,
 					1.0 }]]
-				local point = {
-					X[x],Y[y],Z[z],1.0
-				}
+				--local point = {
+				--	__X[x],__Y[y],__Z[z],1.0
+				--}
+				__temppoint[1] = __X[x]
+				__temppoint[2] = __Y[y]
+				__temppoint[3] = __Z[z]
+				__temppoint[4] = 1.0
+				local point = __temppoint
 				cpml.mat4.mul_vec4(point, inv_m, point)
 
 				-- perform perspective division by w component
@@ -203,7 +216,12 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view)
 				sum_y = sum_y + point[2]
 				sum_z = sum_z + point[3]
 
-				table.insert(corners, point)
+				--table.insert(corners, point)
+				corners[count][1] = point[1]
+				corners[count][2] = point[2]
+				corners[count][3] = point[3]
+				corners[count][4] = 1.0
+				count = count + 1
 			end
 		end
 	end
@@ -211,7 +229,11 @@ function Camera:generateFrustrumCornersWorldSpace(proj, view)
 	sum_x = sum_x / 8.0
 	sum_y = sum_y / 8.0
 	sum_z = sum_z / 8.0
-	local centre = {sum_x, sum_y, sum_z}
+	--local centre = {sum_x, sum_y, sum_z}
+	local centre = props.cam_frustrum_centre
+	centre[1] = sum_x
+	centre[2] = sum_y
+	centre[3] = sum_z
 
 	props.cam_frustrum_corners = corners
 	props.cam_frustrum_centre  = centre
@@ -220,7 +242,7 @@ end
 
 function Camera:getFrustrumCornersWorldSpace()
 	local props = self.props
-	if not props.cam_frustrum_corners then
+	if not self.__frustrum_generated then
 		self:generateFrustrumCornersWorldSpace()
 	end
 	return props.cam_frustrum_corners, props.cam_frustrum_centre

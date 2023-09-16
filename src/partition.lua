@@ -192,6 +192,8 @@ end
 -- second table is for all the objects outside of the partion space
 -- if the given rectangle goes outside of it, these objects are not guaranteed
 -- to be inside the rectangle, subsequent testing might be needed
+local __tempset = {}
+local __tempoutside = {}
 function GridPartition:getInsideRectangle(x,y,w,h)
 	local floor = math.floor
 	local max = math.max
@@ -206,7 +208,10 @@ function GridPartition:getInsideRectangle(x,y,w,h)
 	local endxi = floor((x+w-gridx)/self.stepx)
 	local endyi = floor((y+h-gridy)/self.stepy)
 
-	local outside_set = {}
+	local outside_set = __tempoutside
+	local outside_count = #__tempoutside
+	for i=1,outside_count do
+		outside_set[i]=nil end
 
 	-- we test if the rectangle goes outside of range
 	if startxi < 0 or endxi >= self.countx or
@@ -231,7 +236,10 @@ function GridPartition:getInsideRectangle(x,y,w,h)
 		end
 		tableinsert(set, x)
 	end
-	local set = {}
+	local set = __tempset
+	local set_count = #set
+	for i=1,set_count do
+		set[i]=nil end
 
 	for i = startxi,endxi do
 		for j = startyi,endyi do

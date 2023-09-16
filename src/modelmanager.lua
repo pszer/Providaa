@@ -69,9 +69,12 @@ function Models.openFilename(fname, texture_fname, load_anims)
 	local has_anims = false
 
 	if load_anims and objs.has_anims then
+		print(string.format("%s has animations, loading",fname))
 		anims = Models.openAnimations(fname)
 		skeleton = anims.skeleton
 		has_anims = true
+	else
+		print(string.format("%s doesn`t have animations",fname))
 	end
 
 	local model = Model:new{

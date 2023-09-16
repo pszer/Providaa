@@ -357,11 +357,11 @@ function ModelInstance:queryModelMatrix()
 end
 
 function ModelInstance:fillOutBoneMatrices(animation, frame)
-	self:allocateOutframeMatrices()
 	--if not self.update_bones() then return end
 
 	local model = self:getModel()
 	if model.props.model_animated then
+		self:allocateOutframeMatrices()
 		prof.push("get_bone_matrices")
 		self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
 		prof.pop("get_bone_matrices")
@@ -417,7 +417,7 @@ function ModelInstance:draw(shader, update_animation, is_main_pass)
 	if props.model_i_draw_instances then
 		self:drawInstances(shader)
 	elseif is_main_pass then
-		if props.model_i_outline_flag then
+		if props.model_i_contour_flag then
 			self:drawOutlined(shader)
 		else
 			modelprops.model_mesh:drawModel(shader)

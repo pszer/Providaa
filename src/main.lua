@@ -133,6 +133,8 @@ function love.update(dt)
 
 	stepTick(dt)
 
+	--if getTick()%60==0 then print(collectgarbage("count")) end 
+
 	prof.push("gamestate_update")
 	GAMESTATE:update(dt)
 	prof.pop("gamestate_update")

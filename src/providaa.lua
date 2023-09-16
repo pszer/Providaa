@@ -123,8 +123,9 @@ function Prov:load()
 		insts
 	)
 
-	sphere = ModelInstance:newInstance(sphere, {model_i_position = {800,-48,-300}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i , crate_i2, crate_i3, crate_i4, crate_i5, crate_i6, crate_i7, crate_i8}
+	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
+	--self.scene:addModelInstance{ sphere, crate_i , crate_i2, crate_i3, crate_i4, crate_i5, crate_i6, crate_i7, crate_i8}
+	self.scene:addModelInstance{ sphere, crate_i }
 
 	self:fitNewEntityPartitionSpace()
 
@@ -136,31 +137,31 @@ function Prov:load()
 
 	local playerproto  = require "ent.player"
 	theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {0,-24,0}})
-	local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30,-24,0}})
-	local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60,-24,0}})
-	local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90,-24,0}})
-	local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120,-24,0}})
-	local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150,-24,0}})
-	local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30,-24,0}})
-	local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60,-24,0}})
-	local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90,-24,0}})
-	local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120,-24,0}})
-	local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150,-24,0}})
+	--local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30,-24,0}})
+	--local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60,-24,0}})
+	--local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90,-24,0}})
+	--local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120,-24,0}})
+	--local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150,-24,0}})
+	--local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30,-24,0}})
+	--local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60,-24,0}})
+	--local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90,-24,0}})
+	--local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120,-24,0}})
+	--local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150,-24,0}})
 	theent:enableStateByName("state_walking")
-	theent2:enableStateByName("state_walking")
-	theent3:enableStateByName("state_walking")
-	theent4:enableStateByName("state_walking")
-	theent5:enableStateByName("state_walking")
-	theent6:enableStateByName("state_walking")
-	theent7:enableStateByName("state_walking")
-	theent8:enableStateByName("state_walking")
-	theent9:enableStateByName("state_walking")
-	theent10:enableStateByName("state_walking")
-	theent11:enableStateByName("state_walking")
+	--theent2:enableStateByName("state_walking")
+	--theent3:enableStateByName("state_walking")
+	--theent4:enableStateByName("state_walking")
+	--theent5:enableStateByName("state_walking")
+	--theent6:enableStateByName("state_walking")
+	--theent7:enableStateByName("state_walking")
+	--theent8:enableStateByName("state_walking")
+	--theent9:enableStateByName("state_walking")
+	--theent10:enableStateByName("state_walking")
+	--theent11:enableStateByName("state_walking")
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(theent, {0,-5,150}, {0.5,0.55,0.5})
+		camcontrol:followEntityFixed(theent, {0,-5,75}, {0.5,0.55,0.5})
 	)
 
 	-- only load once
@@ -185,7 +186,7 @@ function Prov:update(dt)
 	--	pianko_ent:delete()
 	--end
 	--
-	theent:setRotation{0,getTick()/60,0,"rot"}
+	--theent:setRotation{0,getTick()/60,0,"rot"}
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
@@ -219,9 +220,10 @@ function Prov:update(dt)
 	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral"
 	 }
 	prof.push("push_composite")
-	--local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
-	--animface.props.animface_lefteye_pose = pose
-	--animface.props.animface_righteye_pose = pose
+	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
+	local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
+	animface.props.animface_lefteye_pose = pose
+	animface.props.animface_righteye_pose = pose
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")
