@@ -18,29 +18,29 @@ local EntityPlayerPrototype = EntityPropPrototype:extend{
 	{"ent_hooks_info", "table", nil, PropDefaultTable{
 		{type="control", handler="overworld", keybind="move_up", event="press",
 		 hook_func = function(ent)
-			return function(ticktime, realtime)
-				ent:callCommand("entity_walk_towards", { 0 , 0 , -1 })
+			return function(args)
+				ent:callCommand("entity_walk_towards", {dir={ 0 , 0 , -1 }})
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_down", event="press",
 		 hook_func = function(ent)
-			return function(ticktime, realtime)
-				ent:callCommand("entity_walk_towards", { 0 , 0 , 1 })
+			return function(args)
+				ent:callCommand("entity_walk_towards", {dir={ 0 , 0 , 1 }})
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_left", event="press",
 		 hook_func = function(ent)
-			return function(ticktime, realtime)
-				ent:callCommand("entity_walk_towards", { -1 , 0 , 0 })
+			return function(args)
+				ent:callCommand("entity_walk_towards", {dir={ -1 , 0 , 0 }})
 			end
 		 end},
 
 		{type="control", handler="overworld", keybind="move_right", event="press",
 		 hook_func = function(ent)
-			return function(ticktime, realtime)
-				ent:callCommand("entity_walk_towards", { 1 , 0 , 0 })
+			return function(args)
+				ent:callCommand("entity_walk_towards", {dir={ 1 , 0 , 0 }})
 			end
 		 end}
 	}}

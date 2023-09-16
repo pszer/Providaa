@@ -23,14 +23,15 @@ function Event:unlock()
 function Event:isLocked()
 	return self.lock end
 
-function Event:raise(...)
+function Event:raise(args)
 	if self.lock then return end
-	local args = {...}
 
+	prof.push("teh_call")
 	local h = self.hooks
 	for i=1,h[0] do
-		h[i].call(unpack(args))
+		h[i].call(args)
 	end
+	prof.pop("teh_call")
 end
 
 function Event:addHook( hook )

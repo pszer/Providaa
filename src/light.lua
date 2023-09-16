@@ -67,8 +67,6 @@ function Light:allocateDepthMap(size, staticsize)
 		self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
 		self.props.light_static_depthmap:setDepthSampleMode("greater")
 	elseif self:isPoint() then
-		print(size*2)
-		local w,h = limit.clampTextureSize(size*2)
 		self.props.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
 		--self.props.light_cubemap:setDepthSampleMode("greater")
 	end
@@ -138,7 +136,7 @@ end
 local __tempvec3 = cpml.vec3.new(0,0,0)
 local __tempvec3_2 = cpml.vec3.new(0,0,0)
 local __tempvec3_up = cpml.vec3.new(0,-1,0)
-local __tempvec3_up2 = cpml.vec3.new(0,0,1)
+local __tempvec3_up2 = cpml.vec3.new(0,0,-1)
 --TEMP_PROJ = {}
 --TEMP_VIEW = {}
 function Light:generatePointLightSpaceMatrix()
@@ -399,7 +397,6 @@ function Light:clearStaticDepthMap(opt)
 	end
 
 	if self.props.light_cubemap then
-		print("mhhhhm")
 		love.graphics.setCanvas{nil, depthstencil=self.props.light_cubemap}
 		love.graphics.clear(0,0,0,0)
 		if not opt then love.graphics.setCanvas() end

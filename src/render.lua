@@ -93,7 +93,7 @@ function Renderer.createCanvas()
 		Renderer.bloom_renderer = BloomRenderer:new(w,h)
 	end
 
-	if not Renderer.nil_cubemap then love.graphics.newCanvas(1,1,{format="depth16",type="cube",readable=true})end
+	if not Renderer.nil_cubemap then Renderer.nil_cubemap = love.graphics.newCanvas(1,1,{format="depth16",type="cube",readable=true})end
 
 	Renderer.viewport_w = w
 	Renderer.viewport_h = h

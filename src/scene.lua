@@ -379,7 +379,7 @@ function Scene:pushShadowMaps(shader)
 
 	--local point_shadow_maps = {}
 	--
-	local point_light_max   = 10
+	local point_light_max   = 9
 	local point_light_count = 0
 	local point_light_shadowmap_count = 0
 
@@ -443,10 +443,15 @@ function Scene:pushShadowMaps(shader)
 			end
 		end
 	end
+
+	--[[if point_light_count == 0 then
+		point_light_pos = {{0,0,0,0}}
+		point_light_col = {{0,0,0,0}}
+		point_light_has_shadow_map = {false}
+		point_light_shadow_maps = {Renderer.nil_cubemap}
+		point_light_far_planes = {1}
+	end]]
 	
-	--shadersend(shader, "u_lightspaces", "column", unpack(lightspace_mats))
-	--shadersend(shader, "shadow_maps", unpack(shadow_maps))
-	--shadersend(shader, "LIGHT_COUNT", light_count)
 	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
 	shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
 	shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
@@ -455,12 +460,14 @@ function Scene:pushShadowMaps(shader)
 	shadersend(shader, "dir_light_col", dir_light_col)
 
 	shadersend(shader, "u_point_light_count", point_light_count)
-	shadersend(shader, "point_light_pos", unpack(point_light_pos))
-	shadersend(shader, "point_light_col", unpack(point_light_col))
-	--shadersend(shader, "point_light_shadow_map_index", unpack(point_light_shadow_map_index))
-	shadersend(shader, "point_light_has_shadow_map", unpack(point_light_has_shadow_map))
-	shadersend(shader, "point_light_shadow_maps", unpack(point_light_shadow_maps))
-	shadersend(shader, "point_light_far_planes", unpack(point_light_far_planes))
+	if point_light_count > 0 then
+		shadersend(shader, "point_light_pos", unpack(point_light_pos))
+		shadersend(shader, "point_light_col", unpack(point_light_col))
+		--shadersend(shader, "point_light_shadow_map_index", unpack(point_light_shadow_map_index))
+		shadersend(shader, "point_light_has_shadow_map", unpack(point_light_has_shadow_map))
+		shadersend(shader, "point_light_shadow_maps", unpack(point_light_shadow_maps))
+		shadersend(shader, "point_light_far_planes", unpack(point_light_far_planes))
+	end
 
 	self.pushed_static_lights = true
 end

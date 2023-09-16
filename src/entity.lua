@@ -43,7 +43,6 @@ function Entity:internalUpdate()
 
 	self:updateModelPosition()
 	if self.props.ent_hitbox_inherit then
-		print(self.props.ent_identifier, self.props.ent_hitbox_inherit)
 		self:copyHitboxFromModel()
 	end
 	self.ent_moved = false
@@ -80,7 +79,11 @@ function Entity:getScale()
 function Entity:setPosition(pos)
 	local v = self.props.ent_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
-		self.props.ent_position = pos
+		--local ent_pos = self.props.ent_position
+		self.props.ent_position[1] = pos[1]
+		self.props.ent_position[2] = pos[2]
+		self.props.ent_position[3] = pos[3]
+		--self.props.ent_position = pos
 		self.ent_moved = true
 		self.recalculate_bounds_flag = true
 	end
@@ -88,7 +91,11 @@ end
 function Entity:setRotation(rot)
 	local r = self.props.ent_rotation
 	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] or rot[4] ~= r[4] then
-		self.props.ent_rotation = rot
+		--self.props.ent_rotation = rot
+		self.props.ent_rotation[1] = rot[1]
+		self.props.ent_rotation[2] = rot[2]
+		self.props.ent_rotation[3] = rot[3]
+		self.props.ent_rotation[4] = rot[4]
 		self.ent_moved = true
 		self.recalculate_bounds_flag = true
 	end
@@ -287,15 +294,17 @@ function Entity:delete()
 	self.props.ent_delete_flag = true
 end
 
-function Entity:callCommand(command_name, ...)
-	local args = {...}
+function Entity:callCommand(command_name, args)
+	--local args = {...}
+	prof.push("call_command")
 	local command, state = self:getCommand(command_name)
 
 	if not command then
 		return
 	end
 
-	command(self, state, unpack(args))
+	command(self, state, args)
+	prof.pop("call_command")
 end
 
 -- takes in established hooks from Prov:establishEntityHooks()
@@ -336,11 +345,3 @@ function Entity:stateFromPrototype(GameData, prototype)
 	return state
 end
 
---local walkingproto = require "ent.states.state_walking"
---local playerproto  = require "ent.player"
-
---local state = Entity:stateFromPrototype(GameData, walkingproto)
-
---for i,v in pairs(state) do
---	print(i,v)
---end

@@ -1,6 +1,6 @@
 #pragma language glsl3
 
-const int MAX_POINT_LIGHTS = 10;
+const int MAX_POINT_LIGHTS = 9;
 // the distance at which the dynamic shadowmap ends, its here
 // we transition from sampling the dynamic shadowmap to the static one
 const float DIR_LIGHT_TRANSITION_DISTANCE = 360;
@@ -68,7 +68,8 @@ mat3 get_normal_matrix(mat4 skin_u) {
 	// if skinning is enabled then this needs to be recalculated
 	if (u_skinning != 0 || instance_draw_call) {
 		return mat3(transpose(inverse(skin_u)));
-	}
+	} 
+	//return mat3(transpose(inverse(skin_u)));
 	return mat3(u_normal_model);
 }
 
@@ -376,7 +377,7 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	float closest_depth = texture(map, frag_to_light).r;
 	closest_depth *= far_plane;
 
-	float adjusted_bias = bias * max( curr_depth / 90 , 1.0 );
+	float adjusted_bias = bias * max( curr_depth / 60 , 1.0 );
 
 	shadow = curr_depth - adjusted_bias > closest_depth ? 1.0 : 0.0;
 	//float s = texture( map, vec4(frag_to_light, (curr_depth-bias)));
@@ -426,79 +427,17 @@ void effect( ) {
 	//
 	// STUPID FUCKED EVIL SHIT OH MY GOD - NO CUBEMAP ARRAYS, NO GLSL 4.0+ VARIABLE INDEXING.
 	//
+	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col(i, frag_normal);}}
 	float point_bias = 1.35;
-	if (u_point_light_count > 0) {
-		if (point_light_has_shadow_map[0]) {
-			light += calc_point_light_col_shadow(0, frag_normal, 0, point_bias, point_light_shadow_maps[0]);
-		} else {
-			light += calc_point_light_col(0, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 1) {
-		if (point_light_has_shadow_map[1]) {
-			light += calc_point_light_col_shadow(1, frag_normal, 1, point_bias, point_light_shadow_maps[1]);
-		} else {
-			light += calc_point_light_col(1, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 2) {
-		if (point_light_has_shadow_map[2]) {
-			light += calc_point_light_col_shadow(2, frag_normal, 2, point_bias, point_light_shadow_maps[2]);
-		} else {
-			light += calc_point_light_col(2, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 3) {
-		if (point_light_has_shadow_map[3]) {
-			light += calc_point_light_col_shadow(3, frag_normal, 3, point_bias, point_light_shadow_maps[3]);
-		} else {
-			light += calc_point_light_col(3, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 4) {
-		if (point_light_has_shadow_map[4]) {
-			light += calc_point_light_col_shadow(4, frag_normal, 4, point_bias, point_light_shadow_maps[4]);
-		} else {
-			light += calc_point_light_col(4, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 5) {
-		if (point_light_has_shadow_map[5]) {
-			light += calc_point_light_col_shadow(5, frag_normal, 5, point_bias, point_light_shadow_maps[5]);
-		} else {
-			light += calc_point_light_col(5, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 6) {
-		if (point_light_has_shadow_map[6]) {
-			light += calc_point_light_col_shadow(6, frag_normal, 6, point_bias, point_light_shadow_maps[6]);
-		} else {
-			light += calc_point_light_col(6, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 7) {
-		if (point_light_has_shadow_map[7]) {
-			light += calc_point_light_col_shadow(7, frag_normal, 7, point_bias, point_light_shadow_maps[7]);
-		} else {
-			light += calc_point_light_col(7, frag_normal);
-		}
-	}
-
-	if (u_point_light_count > 8) {
-		if (point_light_has_shadow_map[8]) {
-			light += calc_point_light_col_shadow(8, frag_normal, 8, point_bias, point_light_shadow_maps[8]);
-		} else {
-			light += calc_point_light_col(8, frag_normal);
-		}
-	}
-
+	DO_POINT_LIGHT(0);
+	DO_POINT_LIGHT(1);
+	DO_POINT_LIGHT(2);
+	DO_POINT_LIGHT(3);
+	DO_POINT_LIGHT(4);
+	DO_POINT_LIGHT(5);
+	DO_POINT_LIGHT(6);
+	DO_POINT_LIGHT(7);
+	DO_POINT_LIGHT(8);
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 

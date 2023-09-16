@@ -53,7 +53,49 @@ function Prov:load()
 			["light_col"] = {255/255,235/255,224/255,1000},
 			["light_size"] = 500,
 			["light_static"] = true
-		}
+		},
+
+		--[[Light:new{
+			["light_pos"] = {800,-30,-280,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {1600,-30,-280,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {2400,-30,-280,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {300,-30,-1080,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {600,-30,-1080,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {1000,-30,-1080,1},
+			["light_col"] = {255/255,235/255,224/255,1000},
+			["light_size"] = 500,
+			["light_static"] = true
+		},]]
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 2
 
@@ -63,6 +105,13 @@ function Prov:load()
 	crate = Models.queryModel("shittycrate.iqm")
 
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
+	crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240}, model_i_static = true})
+	crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240}, model_i_static = true})
+	crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240}, model_i_static = true})
+	crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240}, model_i_static = true})
+	crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900}, model_i_static = true})
+	crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240}, model_i_static = true})
+	crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240}, model_i_static = true})
 
 	insts = {}
 
@@ -74,8 +123,8 @@ function Prov:load()
 		insts
 	)
 
-	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i }
+	sphere = ModelInstance:newInstance(sphere, {model_i_position = {800,-48,-300}, model_i_static = true})
+	self.scene:addModelInstance{ sphere, crate_i , crate_i2, crate_i3, crate_i4, crate_i5, crate_i6, crate_i7, crate_i8}
 
 	self:fitNewEntityPartitionSpace()
 
@@ -86,12 +135,32 @@ function Prov:load()
 	GameData:setupFromProv(self)
 
 	local playerproto  = require "ent.player"
-	local theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {0,-24,0}})
+	theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {0,-24,0}})
+	local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30,-24,0}})
+	local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60,-24,0}})
+	local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90,-24,0}})
+	local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120,-24,0}})
+	local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150,-24,0}})
+	local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30,-24,0}})
+	local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60,-24,0}})
+	local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90,-24,0}})
+	local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120,-24,0}})
+	local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150,-24,0}})
 	theent:enableStateByName("state_walking")
+	theent2:enableStateByName("state_walking")
+	theent3:enableStateByName("state_walking")
+	theent4:enableStateByName("state_walking")
+	theent5:enableStateByName("state_walking")
+	theent6:enableStateByName("state_walking")
+	theent7:enableStateByName("state_walking")
+	theent8:enableStateByName("state_walking")
+	theent9:enableStateByName("state_walking")
+	theent10:enableStateByName("state_walking")
+	theent11:enableStateByName("state_walking")
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(theent, {0,-5,90}, {0.5,0.55,0.5})
+		camcontrol:followEntityFixed(theent, {0,-5,150}, {0.5,0.55,0.5})
 	)
 
 	-- only load once
@@ -115,6 +184,8 @@ function Prov:update(dt)
 	--if scancodeIsDown("space", CTRL.GAME) then
 	--	pianko_ent:delete()
 	--end
+	--
+	theent:setRotation{0,getTick()/60,0,"rot"}
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
@@ -303,10 +374,8 @@ function Prov:createEntityFromPrototype(prototype, props)
 	local ent_hitboxsize = ent.ent_hitbox_size
 
 	if model_name then
-		print("nice :}", model_name)
 		local model_i = nil
 		if type(model_name == "string") then
-			print("nice :}}}")
 			model_i = CustomModel:fromCfg(model_name)
 		else
 			model_i = CustomModel:load(model_name)

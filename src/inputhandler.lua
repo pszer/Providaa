@@ -47,26 +47,31 @@ function InputHandler:hookToKeybind(hook, keybind)
 end
 
 -- goes over all of its keybinds and checks their status, raising the appropiate events
+local __temptable = {}
 function InputHandler:poll()
 	for keybind,events in pairs(self) do
 		local level = events.level
 
 		local status, ticks, realtime = queryKeybind(keybind, level)
 
+		__temptable = {ticks, realtime}
+
+		prof.push("raise_events")
 		if status == "down" then
-			events.down:raise(ticks, realtime)
+			events.down:raise(__temptable)
 
 		elseif status == "held" then
-			events.held:raise(ticks, realtime)
+			events.held:raise(__temptable)
 
 		elseif status == "up" then
-			events.up:raise(ticks, realtime)
+			events.up:raise(__temptable)
 
 		end
 
 		if status == "down" or status == "held" then
-			events.press:raise(ticks, realtime)
+			events.press:raise(__temptable)
 		end
+		prof.pop("raise_events")
 	end
 end
 

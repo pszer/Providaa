@@ -80,12 +80,18 @@ function ModelInstance:new(props)
 	}
 
 	setmetatable(this,ModelInstance)
+
 	this:fillOutBoneMatrices(nil, 0)
 
-	local id = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
-	local function id_table() local t={} for i=1,16 do t[i]=id[i] end return t end
-	self.static_model_matrix = cpml.mat4.new(id_table())
-	self.static_normal_matrix = cpml.mat4.new(id_table())
+	--local id = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+	--local function id_table() local t={} for i=1,16 do t[i]=id[i] end return t end
+	this.static_model_matrix = cpml.mat4.new()
+	this.static_normal_matrix = cpml.mat4.new()
+
+	local a = {0,0,0}
+	local b = {0,0,0}
+	this.props.model_i_bounding_box.min = a
+	this.props.model_i_bounding_box.max = b
 
 	return this
 end
@@ -125,18 +131,20 @@ function ModelInstance:allocateOutframeMatrices()
 		local mat4new = cpml.mat4.new
 		for i=1,count do
 			--print("mmmhm",i)
-			self.bone_matrices[i] = cpml.mat4.new({1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,})
+			--self.bone_matrices[i] = cpml.mat4.new({1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,})
+			self.bone_matrices[i] = cpml.mat4.new()
 			--print(self.bone_matrices[i],i )
 		end
 		self.outframes_allocated = true
 	end
 end
 
-__vec3temp = cpml.vec3.new()
-__mat4temp = cpml.mat4.new()
+local __vec3temp = cpml.vec3.new()
+local __mat4temp = cpml.mat4.new()
 function ModelInstance:modelMatrix()
 	local is_static = self.props.model_i_static
-	if (is_static and not self.model_moved) or not self.model_moved then
+	--if (is_static and not self.model_moved) or not self.model_moved then
+	if not self.model_moved then
 		return self.static_model_matrix, self.static_normal_matrix
 	end
 
@@ -154,7 +162,7 @@ function ModelInstance:modelMatrix()
 		m[i] = id[i]
 	end
 
-	--local m = cpml.mat4():identity()
+	--m = cpml.mat4.new()
 
 	--m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
 	__vec3temp.x = scale[1]
@@ -172,14 +180,11 @@ function ModelInstance:modelMatrix()
 	--print(m)
 
 	local dirfix = props.model_i_reference:getDirectionFixingMatrix()
-	--cpml.mat4.mul(m, m, dirfix )
-	--cpml.mat4.mul(__mat4temp, m, dirfix )
-	--for i=1,16 do
-	--	m[i]=__mat4temp[i]
-	--end
-	m = m * dirfix 
+	m = cpml.mat4.mul(m, m, dirfix )
+	--m = m * dirfix 
 
 	local norm_m = self.static_normal_matrix
+	--local norm_m = cpml.mat4.new()
 	norm_m = norm_m:invert(m)
 	norm_m = norm_m:transpose(norm_m)
 
@@ -210,6 +215,17 @@ function ModelInstance:getUnfixedModelReferenceBoundingBox()
 	return self.props.model_i_reference.props.model_bounding_box_unfixed
 end
 
+local __p_temptable = {
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0},
+{0,0,0,0}}
+local __tempnewmin = {}
+local __tempnewmax = {}
 function ModelInstance:calculateBoundingBox()
 	local bbox = self:getUnfixedModelReferenceBoundingBox()
 	local min = bbox.min
@@ -218,7 +234,7 @@ function ModelInstance:calculateBoundingBox()
 	local model_mat = self.static_model_matrix
 
 	-- all 8 vertices of the bounding box
-	local p = {}
+	--[[local p = {}
 	p[1] = {min[1], min[2], min[3], 1}
 	p[2] = {max[1], min[2], min[3], 1}
 	p[3] = {min[1], max[2], min[3], 1}
@@ -226,7 +242,18 @@ function ModelInstance:calculateBoundingBox()
 	p[5] = {min[1], min[2], max[3], 1}
 	p[6] = {max[1], min[2], max[3], 1}
 	p[7] = {min[1], max[2], max[3], 1}
-	p[8] = {max[1], max[2], max[3], 1}
+	p[8] = {max[1], max[2], max[3], 1}]]
+
+	local p = __p_temptable
+	-- beautiful
+	p[1][1] = min[1]     p[1][2] = min[2]    p[1][3] = min[3]  p[1][4] = 1
+	p[2][1] = max[1]     p[2][2] = min[2]    p[2][3] = min[3]  p[2][4] = 1
+	p[3][1] = min[1]     p[3][2] = max[2]    p[3][3] = min[3]  p[3][4] = 1
+	p[4][1] = max[1]     p[4][2] = max[2]    p[4][3] = min[3]  p[4][4] = 1
+	p[5][1] = min[1]     p[5][2] = min[2]    p[5][3] = max[3]  p[5][4] = 1
+	p[6][1] = max[1]     p[6][2] = min[2]    p[6][3] = max[3]  p[6][4] = 1
+	p[7][1] = min[1]     p[7][2] = max[2]    p[7][3] = max[3]  p[7][4] = 1
+	p[8][1] = max[1]     p[8][2] = max[2]    p[8][3] = max[3]  p[8][4] = 1
 
 	local mat_vec4_mul = cpml.mat4.mul_vec4
 	-- transform all 8 vertices by the model matrix
@@ -245,8 +272,16 @@ function ModelInstance:calculateBoundingBox()
 	-- we find out the new min/max x,y,z components of all the
 	-- transformed vertices to get the min/max for our new
 	-- bounding box
-	local new_min = { 1/0,  1/0,  1/0}
-	local new_max = {-1/0, -1/0, -1/0}
+	local new_min = __tempnewmin
+	local new_max = __tempnewmax
+	--local new_min = { 1/0,  1/0,  1/0}
+	--local new_max = {-1/0, -1/0, -1/0}
+	new_min[1] = 1/0
+	new_min[2] = 1/0
+	new_min[3] = 1/0
+	new_max[1] =-1/0
+	new_max[2] =-1/0
+	new_max[3] =-1/0
 
 	for i=1,8 do
 		local vec = p[i]
@@ -260,8 +295,12 @@ function ModelInstance:calculateBoundingBox()
 	end
 
 	local self_bbox = self.props.model_i_bounding_box
-	self_bbox.min = new_min
-	self_bbox.max = new_max
+	self_bbox.min[1] = new_min[1]
+	self_bbox.min[2] = new_min[2]
+	self_bbox.min[3] = new_min[3]
+	self_bbox.max[1] = new_max[1]
+	self_bbox.max[2] = new_max[2]
+	self_bbox.max[3] = new_max[3]
 end
 
 -- returns the bounding box
@@ -277,14 +316,21 @@ end
 function ModelInstance:setPosition(pos)
 	local v = self.props.model_i_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
-		self.props.model_i_position = pos
+		self.props.model_i_position[1] = pos[1]
+		self.props.model_i_position[2] = pos[2]
+		self.props.model_i_position[3] = pos[3]
+		--self.props.model_i_position = pos
 		self.model_moved = true
 	end
 end
 function ModelInstance:setRotation(rot)
 	local r = self.props.model_i_rotation
 	if rot[1]~=r[1] or rot[2]~=r[2] or rot[3]~=r[3] or rot[4] ~= rot[4] then
-		self.props.model_i_rotation = rot
+		--self.props.model_i_rotation = rot
+		self.props.model_i_rotation[1] = rot[1]
+		self.props.model_i_rotation[2] = rot[2]
+		self.props.model_i_rotation[3] = rot[3]
+		self.props.model_i_rotation[4] = rot[4]
 		self.model_moved = true
 	end
 end
