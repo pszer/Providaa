@@ -155,7 +155,6 @@ function Scene:drawStaticModels(model_subset)
 	if model_subset then		
 		for i,v in ipairs(model_subset) do
 			if v:isStatic() then
-				print("static")
 				v:draw(nil, nil, nil)
 			end
 		end
@@ -163,7 +162,6 @@ function Scene:drawStaticModels(model_subset)
 	end
 
 	for i,v in ipairs(self.static_models) do
-		print("static")
 		v:draw(nil, nil, nil)
 	end
 end
@@ -188,7 +186,8 @@ end
 
 function Scene:updateLights( cam )
 	for i,v in ipairs(self.props.scene_lights) do
-		v:generateLightSpaceMatrixFromCamera(cam)
+		v:generateMatrices(cam)
+		--v:generateLightSpaceMatrixFromCamera(cam)
 	end
 end
 
@@ -220,6 +219,22 @@ function Scene:draw(cam)
 	self:pushFog(sh)
 	self:pushAmbience(sh)
 	self.props.scene_camera:pushToShader(sh)
+
+	--[[local point = self.props.scene_lights[2]
+	print(unpack(point.props.light_pos))
+
+	local t = (math.floor(getTick()/120) % 6) + 1
+	t = 3
+	--local mat = point.props.light_cube_lightspace_matrices[t]
+	local proj = TEMP_PROJ[t]
+	local view = TEMP_VIEW[t]
+
+	shadersend(sh, "u_proj", "column", matrix(proj))
+	shadersend(sh, "u_view", "column", matrix(view))
+	shadersend(sh, "u_rot", "column", matrix(cpml.mat4.new()))
+
+	print(t)--]]
+
 	prof.pop("shaderpushes")
 
 	prof.push("drawgrid")
@@ -233,7 +248,64 @@ function Scene:draw(cam)
 	Renderer.dropCanvas()
 end
 
-function Scene:shadowPass( cam )
+function Scene:dirDynamicShadowPass( shader , light )
+	light:clearDepthMap(false)
+	Renderer.setupCanvasForDirShadowMapping(light, "dynamic", true)
+
+	local light_matrix = light:getLightSpaceMatrix()
+	shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
+
+	local dims_min, dims_max = light:getLightSpaceMatrixGlobalDimensionsMinMax()
+	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
+
+	--love.graphics.setMeshCullMode("front")
+	prof.push("dyn_models")
+	self:drawModels(false, false, in_view)
+	prof.pop("dyn_models")
+
+	--love.graphics.setMeshCullMode("front")
+	prof.push("dyn_grid")
+	self:drawGridMapForShadowMapping()
+	prof.pop("dyn_grid")
+end
+
+function Scene:dirStaticShadowPass( shader , light )
+	light.props.light_static_depthmap_redraw_flag = false
+	light:clearStaticDepthMap(false)
+	Renderer.setupCanvasForDirShadowMapping(light, "static", true)
+
+	local light_matrix = light:getStaticLightSpaceMatrix()
+	shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
+
+	local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
+	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
+
+	love.graphics.setMeshCullMode("front")
+	self:drawStaticModels(in_view)
+
+	love.graphics.setMeshCullMode("front")
+	self:drawGridMapForShadowMapping()
+end
+
+function Scene:pointStaticShadowPass( shader , light )
+	light.props.light_static_depthmap_redraw_flag = false
+	light:clearStaticDepthMap(false)
+
+	local mats = light:getPointLightSpaceMatrices()
+
+	for i=1,6 do
+		Renderer.setupCanvasForPointShadowMapping(light, i, true)
+		shadersend(shader, "u_lightspace", "column", matrix(mats[i]))
+
+		love.graphics.setMeshCullMode("front")
+		self:drawStaticModels(in_view)
+
+		love.graphics.setMeshCullMode("front")
+		self:drawGridMapForShadowMapping()
+	end
+end
+
+function Scene:shadowPass( )
 
 	local shader = Renderer.shadow_shader
 	love.graphics.setDepthMode( "less", true )
@@ -245,25 +317,7 @@ function Scene:shadowPass( cam )
 	prof.push("dyn_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
 		if light:isDirectional() then
-			light:clearDepthMap(false)
-			Renderer.setupCanvasForShadowMapping(light, "dynamic", true)
-
-			local light_matrix = light:getLightSpaceMatrix()
-			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
-
-			local dims_min, dims_max = light:getLightSpaceMatrixGlobalDimensionsMinMax()
-			local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
-
-			--love.graphics.setMeshCullMode("front")
-			prof.push("dyn_models")
-			self:drawModels(false, false, in_view)
-			--self:drawModels(false, false)
-			prof.pop("dyn_models")
-
-			--love.graphics.setMeshCullMode("front")
-			prof.push("dyn_grid")
-			self:drawGridMapForShadowMapping()
-			prof.pop("dyn_grid")
+			self:dirDynamicShadowPass( shader , light)
 		end
 
 	end
@@ -273,33 +327,23 @@ function Scene:shadowPass( cam )
 	prof.push("static_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
 		local isdir = light:isDirectional()
+		local ispoint = light:isPoint()
 		if (isdir and light.props.light_static_depthmap_redraw_flag) or
 		   (isdir and self.force_redraw_static_shadow)
 		then
-			light.props.light_static_depthmap_redraw_flag = false
-			light:clearStaticDepthMap(false)
-			Renderer.setupCanvasForShadowMapping(light, "static", "true")
-
-			local light_matrix = light:getStaticLightSpaceMatrix()
-			shadersend(shader, "u_lightspace", "column", matrix(light_matrix))
-
-			local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
-			local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
-
-			love.graphics.setMeshCullMode("front")
-			self:drawStaticModels(in_view)
-			--self:drawStaticModels()
-
-			love.graphics.setMeshCullMode("front")
-			self:drawGridMapForShadowMapping()
-
-			self.force_redraw_static_shadow = false
+			self:dirStaticShadowPass( shader , light )
+		elseif ispoint and light:isStatic() and light.props.light_static_depthmap_redraw_flag then
+			self:pointStaticShadowPass( shader , light )
+		else
+			--print(ispoint , light:isStatic() , light.props.light_static_depthmap_redraw_flag )
 		end
 	end
+	self.force_redraw_static_shadow = false
 	--Renderer.dropCanvas()
 	prof.pop("static_shadow_map")
 end
 
+-- pushes lights and shadow maps to shader
 function Scene:pushShadowMaps(shader)
 	local lights = self.props.scene_lights
 	local light_count = #lights
@@ -314,6 +358,12 @@ function Scene:pushShadowMaps(shader)
 	local dir_light_col
 
 	--local point_shadow_maps = {}
+	--
+	local point_light_max   = 10
+	local point_light_count = 0
+
+	local point_light_pos = {}
+	local point_light_col = {}
 
 	for i,light in ipairs(lights) do
 		local light_type = light:getLightType()
@@ -328,12 +378,24 @@ function Scene:pushShadowMaps(shader)
 				dir_light_dir = light:getLightDirection()
 				dir_light_col = light:getLightColour()
 			else
-				print("MULTIPLE DIRECTIONAL LIGHTS, IGNORING")
+				print("pushShadowMaps(): multiple directional lights, ignoring")
 			end
 			--shadow_maps[i] = light.props.light_static_depthmap
 			--lightspace_mats[i] = matrix(light.props.light_static_lightspace_matrix)
-		else
+		elseif light_type == "point" then
+			point_light_count = point_light_count + 1
 
+			if point_light_count > point_light_max then
+				print(string.format("pushShadowMaps(): point light count exceeds maximum limit of %s", point_light_max))
+			else
+				local col = light:getLightColour()
+				local pos = light:getLightPosition()
+				local size = light:getLightSize()
+				local pos_to_shader = {pos[1], pos[2], pos[3], size}
+
+				point_light_pos[point_light_count] = pos_to_shader
+				point_light_col[point_light_count] = col
+			end
 		end
 	end
 	
@@ -341,13 +403,15 @@ function Scene:pushShadowMaps(shader)
 	--shadersend(shader, "shadow_maps", unpack(shadow_maps))
 	--shadersend(shader, "LIGHT_COUNT", light_count)
 	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
-	--if not self.pushed_static_lights then
-		shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
-		shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
-	--end
+	shadersend(shader, "u_dir_static_lightspace", "column", matrix(dir_static_lightspace_mat))
+	shadersend(shader, "dir_static_shadow_map", dir_static_shadow_map)
 	shadersend(shader, "dir_shadow_map", dir_shadow_map)
 	shadersend(shader, "dir_light_dir", dir_light_dir)
 	shadersend(shader, "dir_light_col", dir_light_col)
+
+	shadersend(shader, "u_point_light_count", point_light_count)
+	shadersend(shader, "point_light_pos", unpack(point_light_pos))
+	shadersend(shader, "point_light_col", unpack(point_light_col))
 
 	self.pushed_static_lights = true
 end

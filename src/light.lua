@@ -18,6 +18,8 @@ Light.__index = Light
 function Light:new(props)
 	local this = {
 		props = LightPropPrototype(props),
+
+		recalc_point_matrices = true
 	}
 
 	setmetatable(this,Light)
@@ -118,19 +120,35 @@ function Light:generateLightSpaceMatrix()
 	return props.light_lightspace_matrix
 end
 
-local __tempvec3dirs = {
+function Light:generateMatrices(cam)
+	if not self:isStatic() then
+		return
+	end
+
+	if self:isDirectional() then
+		self:generateLightSpaceMatrixFromCamera(cam)
+	elseif self:isPoint() then
+		self:generatePointLightSpaceMatrix()
+	end
+end
+
+--[[local __tempvec3dirs = {
 	cpml.vec3.new( 1.0, 0.0, 0.0),
 	cpml.vec3.new(-1.0, 0.0, 0.0),
 	cpml.vec3.new( 0.0, 1.0, 0.0),
 	cpml.vec3.new( 0.0,-1.0, 0.0),
 	cpml.vec3.new( 0.0, 0.0, 1.0),
 	cpml.vec3.new( 0.0, 0.0,-1.0)
-}
+}]]
 local __tempvec3 = cpml.vec3.new(0,0,0)
 local __tempvec3_2 = cpml.vec3.new(0,0,0)
 local __tempvec3_up = cpml.vec3.new(0,1,0)
+local __tempvec3_up2 = cpml.vec3.new(0,0,1)
+--TEMP_PROJ = {}
+--TEMP_VIEW = {}
 function Light:generatePointLightSpaceMatrix()
 	if not self:isStatic() or not self:isPoint() then return end
+	if not self.recalc_point_matrices then return end
 
 	local size = self.props.light_size
 
@@ -141,7 +159,7 @@ function Light:generatePointLightSpaceMatrix()
 		{ 1.0 , 0.0 , 0.0 },
 		{-1.0 , 0.0 , 0.0 },
 		{ 0.0 , 1.0 , 0.0 },
-		{ 1.0 ,-0.0 , 0.0 },
+		{ 0.0 ,-1.0 , 0.0 },
 		{ 0.0 , 0.0 , 1.0 },
 		{ 0.0 , 0.0 ,-1.0 }}
 	local pos = self.props.light_pos
@@ -155,11 +173,23 @@ function Light:generatePointLightSpaceMatrix()
 		__tempvec3_2.x = pos[1] + dirs[i][1]
 		__tempvec3_2.y = pos[2] + dirs[i][2]
 		__tempvec3_2.z = pos[3] + dirs[i][3]
+		if i~=3 and i~=4 then
+			mat = mat:look_at(__tempvec3, __tempvec3_2, __tempvec3_up)
+		else
+			mat = mat:look_at(__tempvec3, __tempvec3_2, __tempvec3_up2)
+		end
 
-		mat = mat:look_at(pos, __tempvec3, __tempvec3_2, __tempvec3_up)
+		--TEMP_VIEW[i] = cpml.mat4.new()
+		--TEMP_PROJ[i] = cpml.mat4.new()
+		--for j=1,16 do TEMP_VIEW[i][j] = mat[j] end
+		--for j=1,16 do TEMP_PROJ[i][j] = proj_mat4[j] end
+
 		mat = mat:mul(proj_mat4, mat)
 		sides[i] = mat
 	end
+
+	self.props.light_cube_lightspace_matrices = sides
+	self.recalc_point_matrices = false
 end
 
 function Light:generateLightSpaceMatrixFromCamera( cam )
@@ -322,6 +352,8 @@ function Light:getLightSpaceMatrix()
 	return self.props.light_lightspace_matrix end
 function Light:getStaticLightSpaceMatrix()
 	return self.props.light_static_lightspace_matrix end
+function Light:getPointLightSpaceMatrices()
+	return self.props.light_cube_lightspace_matrices end
 
 function Light:getLightSpaceMatrixDimensionsMinMax()
 	local dim = self.props.light_lightspace_matrix_dimensions
@@ -368,6 +400,13 @@ function Light:clearStaticDepthMap(opt)
 		love.graphics.clear(0,0,0,0)
 		if not opt then love.graphics.setCanvas() end
 	end
+
+	if self.props.light_cubemap then
+		print("mhhhhm")
+		love.graphics.setCanvas{nil, depthstencil=self.props.light_cubemap}
+		love.graphics.clear(0,0,0,0)
+		if not opt then love.graphics.setCanvas() end
+	end
 end
 
 function Light:setColor(r,g,b)
@@ -392,5 +431,11 @@ end
 
 function Light:getLightDirection()
 	return self.props.light_dir end
+function Light:getLightColour()
+	return self.props.light_col end
+function Light:getLightPosition()
+	return self.props.light_pos end
+function Light:getLightSize()
+	return self.props.light_size end
 function Light:getLightColour()
 	return self.props.light_col end

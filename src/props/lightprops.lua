@@ -18,7 +18,7 @@ LightPropPrototype = Props:prototype{
 	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
 	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
 
-	{"light_cubemap",  nil, nil, nil,          "light's depthbuffer for shaddow mapping (point lights)"},
+	{"light_cubemap",  nil, nil, nil,          "light's cubemap depthbuffer for shadow mapping (point lights)"},
 	{"light_cube_lightspace_matrices", "table", nil, PropDefaultTable{}, "6 lightspace matrices used for static point light shadowmaps"},
 
 	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
@@ -28,7 +28,7 @@ LightPropPrototype = Props:prototype{
 	{"light_static_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light`s (for static shadowmapping)."},
 	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
 	{"light_static_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
-	{"light_static_depthmap_redraw_flag", "boolean", false, nil, [[set to true whenever a new static lightspace matrix is generated.
+	{"light_static_depthmap_redraw_flag", "boolean", true, nil, [[set to true whenever a new static lightspace matrix is generated.
 	                                                               set it to false after rendering a new static shadowmap!]]},
 
 	{"light_static", "boolean", true, nil,     "true if light is never expected to change in property"}

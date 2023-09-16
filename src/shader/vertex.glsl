@@ -13,7 +13,7 @@ varying vec3 frag_normal;
 varying vec2 texscale;
 varying vec2 texoffset;
 
-uniform int POINT_LIGHT_COUNT;
+uniform int u_point_light_count;
 uniform float u_shadow_imult;
 uniform mat4 u_dir_lightspace;
 uniform mat4 u_dir_static_lightspace;
@@ -162,12 +162,30 @@ vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
 
+// diffuse lighting with a "clamped effect", there is very little transition between
+// points in light and points in shadow so things look flatter
 vec3 diffuse_lighting( vec3 normal, vec3 light_dir, vec4 light_col) {
-	float diff = 0.0;
-	if (dot(normal, normalize(light_dir)) > 0.0) {
-		diff = 1.0 - pow(diff,4);
+	//float diff = 0.0;
+	float diff = max(0.0, dot(normalize(normal), normalize(light_dir))) ;
+	if (diff > 0.0) {
+		diff = 1.0 - pow( 1.0 - diff , 8 );
+		diff = min(1.0, 1.3 * diff);
 	}
 	//float diff = max(0.0, dot(normal, normalize(light_dir)));
+	vec3 diff_col = light_col.rgb * light_col.a * diff;
+	return diff_col;
+}
+
+// diffuse lighting with a less pronounced clamping effect compared to diffuse_lighting, this is used for
+// point lights
+vec3 diffuse_lighting_2( vec3 normal, vec3 light_dir, vec4 light_col) {
+	float diff = max(0.0, dot(normal, normalize(light_dir))) ;
+	if (diff > 0.0) {
+		float old_diff = diff;
+		diff = 1.0 - pow( 1.0 - diff , 2 );
+		diff = min(1.0, 1.1 * diff);
+		diff = (old_diff + diff) * 0.5;
+	}
 	vec3 diff_col = light_col.rgb * light_col.a * diff;
 	return diff_col;
 }
@@ -311,14 +329,23 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 vec3 calc_point_light_col(int point_light_id, vec3 normal) {
 
 	vec3  light_pos  = point_light_pos[point_light_id].xyz;
-	float light_size = point_light_pos[point_light_id].w;
+	float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
 	vec4  light_col  = point_light_col[point_light_id];
 
-	vec3 light_dir_n = normalize( -(light_pos - frag_w_position) );
-	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );
-	vec3 specular = specular_highlight( normal , light_dir_n, light_col );
-	return (diffuse + specular);
+	vec3 dir = light_pos - frag_w_position;
+	// we add a tiny bias to ensure we never have a distance of 0
+	float dist = sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) + 0.0001;
 
+	float quad_comp   = 1.0/(light_size*light_size);
+	float linear_comp = 50.0/light_size;
+	float attenuate = 1.01/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	attenuate = max(0.0, attenuate - 0.01);
+
+	vec3 light_dir_n = normalize( dir );
+	vec3 diffuse = diffuse_lighting_2( normal, light_dir_n, light_col );
+	//vec3 specular = specular_highlight( normal , light_dir_n, light_col );
+	vec3 specular = vec3(0.0);
+	return (diffuse + specular) * attenuate;
 }
 
 // love_Canvases[0] is HDR color
@@ -343,7 +370,7 @@ void effect( ) {
 		frag_normal, dir_light_dir, dir_light_col, dist);
 	light += dir_light_result;
 
-	for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+	for (int i = 0; i < u_point_light_count; ++i) {
 		vec3 point_light = calc_point_light_col(i, frag_normal);
 		light += point_light;
 	}

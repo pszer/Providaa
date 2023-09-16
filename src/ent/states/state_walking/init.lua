@@ -15,7 +15,7 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	{"state_enter" , nil, function(GameData) return function(ent,state) end end, nil },
 	{"state_exit"  , nil, function(GameData) return function(ent,state) end end, nil },
 
-	{"state_walking_speed", "number", 100, nil, "max walk speed, stated in world units per second"}
+	{"state_walking_speed", "number", 200, nil, "max walk speed, stated in world units per second"}
 
 }
 

@@ -44,7 +44,15 @@ function Prov:load()
 		Light:new{
 			["light_pos"] = {0,0,0,0},
 			["light_dir"] = {-0.8,1.7,-1.5},
-			["light_col"] = {255/255, 235/255, 224/255, 10}
+			["light_col"] = {255/255, 235/255, 224/255, 13},
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {300,-84,-300,1},
+			["light_col"] = {255/255,235/255,224/255,3000},
+			["light_size"] = 250,
+			["light_static"] = true
 		}
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 14
@@ -66,7 +74,7 @@ function Prov:load()
 		insts
 	)
 
-	sphere = ModelInstance:newInstance(sphere, {model_i_position = {100,-200,-100}, model_i_static = true})
+	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
 	self.scene:addModelInstance{ sphere, crate_i }
 
 	self:fitNewEntityPartitionSpace()
@@ -78,7 +86,7 @@ function Prov:load()
 	GameData:setupFromProv(self)
 
 	local playerproto  = require "ent.player"
-	local theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}})
+	local theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {0,-24,0}})
 	theent:enableStateByName("state_walking")
 
 	local cam = self.scene:getCamera()

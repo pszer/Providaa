@@ -18,6 +18,7 @@ Renderer = {
 	contour_shader = nil,
 	hdr_shader     = nil,
 	mask_shader    = nil,
+	dt_exposure_shader = nil,
 
 	skybox_model = nil,
 
@@ -27,8 +28,10 @@ Renderer = {
 	scene_outline_viewport       = nil,
 	scene_buffer  = {nil, nil},
 	scene_postprocess_viewport   = nil,
-	scene_avglum_buffer = nil,
 	scene_depthbuffer   = nil,
+
+	scene_avglum_buffer = nil,
+	scene_dt_exposure_buffer = nil,
 
 	bloom_renderer = nil,
 
@@ -37,8 +40,9 @@ Renderer = {
 
 	enable_hdr = true,
 	hdr_exposure = 0.15,
-	hdr_exposure_min = 0.1,
-	hdr_exposure_max = 0.9,
+	hdr_exposure_min = 0.05,
+	hdr_exposure_max = 1.5,
+	hdr_exposure_adjust_speed = 2.5,
 
 	fps_draw_obj = nil,
 
@@ -65,6 +69,7 @@ function Renderer.loadShaders()
 	Renderer.outline_shader = love.graphics.newShader("shader/outline.glsl")
 	Renderer.blur_shader    = love.graphics.newShader("shader/blur.glsl")
 	Renderer.mask_shader    = love.graphics.newShader("shader/mask.glsl")
+	Renderer.dt_exposure_shader    = love.graphics.newShader("shader/dt_exposure.glsl")
 end
 
 function Renderer.createCanvas()
@@ -77,6 +82,7 @@ function Renderer.createCanvas()
 	Renderer.scene_buffer[2] = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_avglum_buffer = love.graphics.newCanvas(Renderer.avglum_buffer_size, Renderer.avglum_buffer_size,
 	                                                             {format = "r16f", mipmaps = "manual"})
+	Renderer.scene_dt_exposure_buffer = love.graphics.newCanvas(1,1, {format = "rgba16f"})
 	Renderer.scene_outline_viewport           = love.graphics.newCanvas(w,h, {format = "rgba16f"})
 	Renderer.scene_depthbuffer                = love.graphics.newCanvas(w,h, {format = "depth24stencil8"})
 	if Renderer.bloom_renderer then
@@ -165,6 +171,7 @@ function Renderer.renderScaled(canvas, hdr)
 	if hdr.hdr_enabled then
 		love.graphics.setColor(1,1,1,1)
 		Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
+		Renderer.stepGradualExposure( love.timer.getDelta() , Renderer.hdr_exposure_adjust_speed )
 
 		local bloom = Renderer.bloom_renderer:renderBloomTexture(Renderer.scene_viewport, 0.006)
 
@@ -175,8 +182,9 @@ function Renderer.renderScaled(canvas, hdr)
 		Renderer.hdr_shader:send("exposure_max", exposure_max)
 		Renderer.hdr_shader:send("bloom_blur", bloom)
 		Renderer.hdr_shader:send("exposure", exposure)
-		Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
-		Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
+		--Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
+		--Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
+		Renderer.hdr_shader:send("gradual_luminance", Renderer.scene_dt_exposure_buffer)
 		
 		love.graphics.setCanvas(Renderer.scene_postprocess_viewport)
 		love.graphics.origin()
@@ -303,6 +311,12 @@ function Renderer.sendLuminance(shader)
 	shadersend(shader, "luminance_mipmap_count", Renderer.avglum_mipmap_count)
 end
 
+function Renderer.sendGradualLuminance(shader)
+	local shader = shader or love.graphics.getShader()
+	shadersend(shader, "gradual_luminance", Renderer.scene_dt_exposure_buffer)
+	--shadersend(shader, "luminance_mipmap_count", Renderer.avglum_mipmap_count)
+end
+
 function Renderer.renderLuminance(canvas, avglum_buffer)
 	local cw,ch = canvas:getDimensions()
 	local lw,lh = avglum_buffer:getDimensions()
@@ -317,6 +331,24 @@ function Renderer.renderLuminance(canvas, avglum_buffer)
 
 	love.graphics.setCanvas()
 	love.graphics.setShader()
+end
+
+function Renderer.stepGradualExposure( dt , speed )
+	local shader = Renderer.dt_exposure_shader
+	love.graphics.setCanvas(Renderer.scene_dt_exposure_buffer)
+	love.graphics.setShader(shader)
+	Renderer.sendLuminance(shader)
+	shader:send("dt", dt * speed )
+
+	love.graphics.origin()
+	--local mode,alphamode = love.graphics.getBlendMode()
+	--love.graphics.setBlendMode("alpha")
+	love.graphics.draw(Renderer.scene_avglum_buffer, 0,0,0, 1/Renderer.avglum_buffer_size)
+	--love.graphics.draw(Re)
+	--love.graphics.setBlendMode(mode, alphamode)
+
+	--love.graphics.setCanvas()
+	--love.graphics.setShader()
 end
 
 function Renderer.resetLuminance(avglum_buffer)
@@ -359,12 +391,21 @@ function Renderer.setupCanvasForSkybox()
 	love.graphics.setShader(Renderer.skybox_shader)
 end
 
-function Renderer.setupCanvasForShadowMapping(light, map_type, keep_shader)
+function Renderer.setupCanvasForDirShadowMapping(light, map_type, keep_shader)
 	if map_type == "static" then
 		love.graphics.setCanvas{depthstencil = light.props.light_static_depthmap, depth=true}
 	else
 		love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
 	end
+	if not keep_shader then
+		love.graphics.setDepthMode( "less", true )
+		love.graphics.setMeshCullMode("front")
+		love.graphics.setShader(Renderer.shadow_shader)
+	end
+end
+
+function Renderer.setupCanvasForPointShadowMapping(light, side, keep_shader)
+	love.graphics.setCanvas{depthstencil = {light:getCubeMap(), ["face"]=side}, depth=true}
 	if not keep_shader then
 		love.graphics.setDepthMode( "less", true )
 		love.graphics.setMeshCullMode("front")

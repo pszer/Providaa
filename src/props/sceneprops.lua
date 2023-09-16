@@ -24,7 +24,7 @@ ScenePropPrototype = Props:prototype{
 	{"scene_generic_mesh", nil, nil, nil, "the mesh of the entire map without textures as one, used in shadow mapping"},
 
 	{"scene_light_col", "table", {255/255, 235/255, 204/255, 5}, nil,   "colour of the ambient light"},
-	{"scene_ambient_col", "table", {135/255, 243/255, 255/255, 7}, nil, "colour of the ambience (shows up in shadows)"},
+	{"scene_ambient_col", "table", {135/255, 243/255, 255/255, 6.6}, nil, "colour of the ambience (shows up in shadows)"},
 	{"scene_light_dir", "table", {-0.3,-0.8,0.5}, nil,             "direction of ambient light source"},
 
 	{"scene_skybox", "string", "skyday01.png", nil,           "scene's skybox, if empty string then no skybox is drawn"},

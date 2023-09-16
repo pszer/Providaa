@@ -69,6 +69,7 @@ function ModelDecor:getLocalModelMatrix()
 end
 
 local __tempmat4__ = cpml.mat4.new(1)
+local __tempmat4__2 = cpml.mat4.new(1)
 local __tempmat4id__ = cpml.mat4.new(1)
 -- returns model_u, normal_model_u to be used in shader
 function ModelDecor:getGlobalModelMatrix(parent)
@@ -81,9 +82,9 @@ function ModelDecor:getGlobalModelMatrix(parent)
 	__tempmat4__:mul(model_matrix,bone_matrix)
 	__tempmat4__:mul(__tempmat4__, local_model_u)
 
-	local norm_m = __tempmat4id__
-	--norm_m = norm_m:invert(model_u)
-	--norm_m = norm_m:transpose(model_u)
+	local norm_m = __tempmat4__2
+	norm_m = norm_m:invert(__tempmat4__)
+	norm_m = norm_m:transpose(norm_m)
 
 	return __tempmat4__, norm_m
 	--return model_u, norm_m
