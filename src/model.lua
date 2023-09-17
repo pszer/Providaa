@@ -9,6 +9,7 @@ require "modelinstancing"
 require "modelaccessory"
 require "texturemanager"
 require "rotation"
+require "animator"
 
 Model = {__type = "model"}
 Model.__index = Model
@@ -21,27 +22,23 @@ function Model:new(props)
 		baseframe = {},
 		inversebaseframe = {},
 		frames = {},
-		--outframes = {},
 
-		--outframes_buffer = {},
-		--outframes_buffer_allocated = false,
+		outframe_buffer = {}, -- an outframe buffer that can be used during animation calculation
 
 		dir_matrix = nil,
 		outframes_allocated = false,
-		--static_model_matrix = nil,
-		--static_normal_matrix = nil,
 		bounds_corrected = false -- has the bounding box been corrected by the direction fixing matrix?
-
-		--bone_matrices = {}
 	}
 
 	setmetatable(this,Model)
 
-	--[[local mat4new = cpml.mat4.new()
-	local joint_count = this:getSkeletonJointCount()
-	for i=1,joint_count do
-		this.outframes_buffer = mat4new()
-	end--]]
+	if this:isAnimated() then
+		local count = this:getSkeletonJointCount()
+		local newmat4 = cpml.mat4.new
+		for i=1,count do
+			this.outframe_buffer[i] = newmat4()
+		end
+	end
 
 	return this
 end
@@ -68,10 +65,10 @@ function ModelInstance:new(props)
 		static_model_matrix = nil,
 		static_normal_matrix = nil,
 
-		bone_matrices = {},
+		bone_matrices = {}, -- bone matrices pushed to shader
+		--bone_matrices2 = {}, -- 2nd allocated buffer to use when interpolating between animator1 and 2
 
 		model_moved = true,
-		--update_bones = periodicUpdate(1),
 
 		-- a flag that signals that this model has moved, so anything
 		-- that uses its bounding box needs to be recalculated i.e.
@@ -81,7 +78,7 @@ function ModelInstance:new(props)
 
 	setmetatable(this,ModelInstance)
 
-	this:fillOutBoneMatrices(nil, 0)
+	--this:fillOutBoneMatrices(nil, 0)
 
 	--local id = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
 	--local function id_table() local t={} for i=1,16 do t[i]=id[i] end return t end
@@ -92,6 +89,12 @@ function ModelInstance:new(props)
 	local b = {0,0,0}
 	this.props.model_i_bounding_box.min = a
 	this.props.model_i_bounding_box.max = b
+
+	if not this:isStatic() and this.props.model_i_reference:isAnimated() then
+		this.props.model_i_animator1 = Animator:new(this)
+		this.props.model_i_animator2 = Animator:new(this)
+		this:allocateOutframeMatrices()
+	end
 
 	return this
 end
@@ -130,13 +133,23 @@ function ModelInstance:allocateOutframeMatrices()
 		print("jointcount", count)
 		local mat4new = cpml.mat4.new
 		for i=1,count do
-			--print("mmmhm",i)
-			--self.bone_matrices[i] = cpml.mat4.new({1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,})
 			self.bone_matrices[i] = cpml.mat4.new()
-			--print(self.bone_matrices[i],i )
+			--self.bone_matrices2[i] = cpml.mat4.new()
 		end
 		self.outframes_allocated = true
 	end
+end
+
+function ModelInstance:getOutframe()
+	return self.bone_matrices, self.bone_matrices2
+end
+
+function ModelInstance:updateAnimation()
+	local animator1 = self.props.model_i_animator1
+	local animator2 = self.props.model_i_animator2
+	if animator1 then animator1:update() end
+	if animator2 then animator2:update() end
+	self:fillOutBoneMatrices()
 end
 
 local __vec3temp = cpml.vec3.new()
@@ -358,21 +371,28 @@ function ModelInstance:queryModelMatrix()
 	return self.static_model_matrix, self.static_normal_matrix
 end
 
-function ModelInstance:fillOutBoneMatrices(animation, frame)
+--function ModelInstance:fillOutBoneMatrices(animation, frame)
+function ModelInstance:fillOutBoneMatrices()
 	--if not self.update_bones() then return end
 
 	local model = self:getModel()
-	if model.props.model_animated then
-		self:allocateOutframeMatrices()
+
+	local animator1 = self.props.model_i_animator1
+	local animator2 = self.props.model_i_animator2
+
+	if animator1 and animator2 then
 		prof.push("get_bone_matrices")
-		self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
+
+		local interp = self.props.model_i_animator_interp
+		local outframe = self:getOutframe()
+		local outframe_buffer = model:getOutframeBuffer() -- 2nd buffer for calculation of the right size
+		                                                  -- supplied by the model :]
+
+		Animator.interpolateTwoAnimators(animator1, animator2, interp,
+		  outframe, outframe_buffer, outframe)
+
+		--self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
 		prof.pop("get_bone_matrices")
-
-		--for i,v in ipairs(self.bone_matrices) do
-		--	self.bone_matrices[i] = matrix(v)
-		--end
-
-		--self.bone_matrices = bone_matrices
 	end
 end
 
@@ -803,8 +823,8 @@ function Model:getInterpolatedFrameIndices(animation, frame, dont_loop)
 		local frame2_id = anim_first + (frame_floor) % anim_length
 		return frame1_id, frame2_id
 	else
-		local frame1_id = clamp(anim_first + (frame_floor-1), 0, anim_last)
-		local frame2_id = clamp(anim_first + (frame_floor),   0, anim_last)
+		local frame1_id = clamp(anim_first + (frame_floor-1), anim_first, anim_last)
+		local frame2_id = clamp(anim_first + (frame_floor),   anim_first, anim_last)
 		return frame1_id, frame2_id
 	end
 end
@@ -841,7 +861,7 @@ function Model:getUninterpolatedFrame(animation, frame, dont_loop)
 	if not dont_loop then
 		frame_id = anim_first + (frame_floor-1) % anim_length
 	else
-		frame_id = clamp(anim_first + (frame_floor-1), 1, anim_last)
+		frame_id = clamp(anim_first + (frame_floor-1), anim_first, anim_last)
 	end
 	--local frame1_id = anim_first + (frame_floor-1) % anim_length
 	--local frame2_id = anim_first + (frame_floor) % anim_length
@@ -886,12 +906,17 @@ function Model:interpolateTwoFrames(frame1, frame2, interp, outframe)
 	return outframe
 end
 
+function Model:getAnimationFrame(index)
+	local frame = self.frames[index]
+	assert(frame~=nil,"Model:getAnimationFrame(): index out of range")
+	return frame
+end
+
 function Model:getDefaultPose(outframe)
 	local id =
 	{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
 
-	local skeleton = self:getSkeleton()
-	for i,v in ipairs(skeleton) do
+	for i=1,self:getSkeletonJointCount() do
 		for j=1,16 do
 			outframe[i][j] = id[j]
 		end
@@ -904,6 +929,13 @@ function Model:animationExists(animation)
 	if not self.props.model_animated then return false end
 	anim_data = self.props.model_animations[animation]
 	return anim_data ~= nil
+end
+
+function Model:getAnimation(animation)
+	if not animation then return nil end
+	if not self.props.model_animated then return nil end
+	anim_data = self.props.model_animations[animation]
+	return anim_data
 end
 
 -- this is for use in multi-threaded animation calculation
@@ -964,7 +996,20 @@ function Model:getAnimationFramesDataForThread(animation, frame)
 	return frame1,frame2,parents,frame_interp
 end
 
+function Model:getAnimationFrames()
+	local frames = self.frames
+	assert(frames)
+	return frames
+end
+
+function Model:getOutframeBuffer()
+	local buf = self.outframe_buffer
+	assert(buf)
+	return buf
+end
+
 function Model:getBoneIndex(bone)
 	local joint_map = self.props.model_animations.joint_map
+	assert(joint_map)
 	return joint_map[bone]
 end

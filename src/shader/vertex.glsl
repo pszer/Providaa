@@ -300,8 +300,9 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	}
 
 	for (int i=0; i<8; i++) {
-		//int index = int(16.0*random(floor(frag_w_position.xyz*10.0), i))%16;
-		int index = int(16.0*floor(frag_w_position.xyz*10.0*i))%16;
+		int index = int(16.0*random(floor(frag_w_position.xyz*100.0), i))%16;
+		//int index = int(16.0*floor(frag_w_position.xyz*10.0*i))%16;
+		//int index = i;
 		shadow -= (1.0/12.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
 	}
 
@@ -341,19 +342,14 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	return (1.0 - shadow * (1.0-u_shadow_imult))*(diffuse + specular);
 }
 
+// same as calc_point_light_col_full but it takes in a pre-calculated attenuation
+// as an argument
 vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 
 	vec3  light_pos  = point_light_pos[point_light_id].xyz;
-	//float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
-	//float light_size = point_light_far_planes[point_light_id] + 0.1; // ensure its never 0
 	vec4  light_col  = point_light_col[point_light_id];
 
 	vec3 dir = light_pos - frag_w_position;
-	// we add a tiny bias to ensure we never have a distance of 0
-	//float dist = length(dir) + 0.0001;
-
-	//attenuate = attenuate_light(dist, light_size);
-
 	vec3 light_dir_n = normalize( dir );
 	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );
 	vec3 specular = specular_highlight( normal , light_dir_n, light_col );

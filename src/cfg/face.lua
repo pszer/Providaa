@@ -20,6 +20,6 @@ FACE_DECOR_ATTRIBUTES = {
 		decor_model_name = "pianko/piankoface.iqm",
 		decor_parent_bone = "Head",
 		decor_position = clone{0,0,0.015},
-		decor_shadow_mult = 0.95
+		decor_shadow_mult = 0.85
 	}
 }

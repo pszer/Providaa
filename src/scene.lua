@@ -26,7 +26,7 @@ function Scene:new(props)
 		
 		force_redraw_static_shadow = false,
 
-		animthreads = AnimThreads:new(4)
+		--animthreads = AnimThreads:new(4)
 	}
 
 	setmetatable(this,Scene)
@@ -493,7 +493,7 @@ function Scene:drawSkybox(cam)
 	return true
 end
 
-function Scene:pushModelAnimationsThreaded()
+--[[function Scene:pushModelAnimationsThreaded()
 	for i,model in ipairs(self.dynamic_models) do
 		if model:isAnimated() then
 			local model_ref = model.props.model_i_reference
@@ -507,9 +507,11 @@ function Scene:pushModelAnimationsThreaded()
 		end
 	end
 	self.animthreads:startProcess()
-end
+end]]
 
 function Scene:updateModelAnimatedFaces()
+	if not refreshRateLimiter() then return end
+
 	for i,model in ipairs(self.dynamic_models) do
 		local decors = model.props.model_i_decorations
 		for i,decor in ipairs(decors) do
@@ -520,7 +522,8 @@ end
 
 function Scene:updateModelAnimationsUnthreaded()
 	for i,v in ipairs(self.dynamic_models) do
-		v:fillOutBoneMatrices("Walk", getTickSmooth()+i)
+		v:updateAnimation()
+		--v:fillOutBoneMatrices()
 	end
 end
 

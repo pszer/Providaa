@@ -4,9 +4,13 @@ local tick_dt_counter = 0
 local tick_rate = 60
 local tick_rate_inv = 1/tick_rate
 
+local refreshrate_dt_counter = 0
+local REFRESH = false
+
 FPS = 0
 FPS_LIMIT = 0
 REFRESH_RATE = 60
+REFRESH_RATE_I = 1/60
 UPDATE_DT = 1/60
 
 function getTick()
@@ -25,12 +29,14 @@ function getRefreshRate()
 	end
 
 	REFRESH_RATE = rate
+	REFRESH_RATE_I = 1/rate
 	return rate
 end
 
 function setUpdateDt(refresh_rate)
 	local refresh_rate = refresh_rate or getRefreshRate()
 	UPDATE_DT = 1/refresh_rate
+	REFRESH_RATE_I = 1/refresh_rate
 end
 
 function getTickSmooth()
@@ -43,13 +49,21 @@ end
 
 function stepTick(dt)
 	TICK_CHANGED = false
+	REFRESH = false
 	tick_dt_counter = tick_dt_counter + dt
+	refreshrate_dt_counter = refreshrate_dt_counter + dt
 
 	if (tick_dt_counter > tick_rate_inv) then
 		TICK_CHANGED = true
 
 		TICK = TICK + 1
 		tick_dt_counter = tick_dt_counter - tick_rate_inv
+	end
+
+	if (refreshrate_dt_counter > REFRESH_RATE_I) then
+		REFRESH = true
+
+		refreshrate_dt_counter = refreshrate_dt_counter - REFRESH_RATE_I
 	end
 end
 
@@ -59,6 +73,10 @@ end
 
 function tickRate()
 	return tick_rate
+end
+
+function refreshRateLimiter()
+	return REFRESH
 end
 
 --

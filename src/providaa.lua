@@ -164,6 +164,14 @@ function Prov:load()
 		camcontrol:followEntityFixed(theent, {0,-5,75}, {0.5,0.55,0.5})
 	)
 
+	theent.props.ent_model.props.model_i_animator1:playAnimationByName("Walk", 0.0, 1.0, true)
+
+	--theanimator = Animator:new(theent.props.ent_model)
+	--theanimator = Animator:new(5)
+	--
+	--thewalk = theanimator:getAnimationByName("Walk")
+	--theanimator:staticAnimationByName("Walk", 0)
+
 	-- only load once
 	self.load = function() end
 end
@@ -187,6 +195,40 @@ function Prov:update(dt)
 	--end
 	--
 	--theent:setRotation{0,getTick()/60,0,"rot"}
+	--
+	local model = theent.props.ent_model
+	local animator = model.props.model_i_animator1
+	if queryScancode("space", CTRL.GAME) == "down" then
+
+		if animator:isPlaying() then
+			animator:suspendAnimation()
+		else
+			animator:resumeAnimation()
+		end
+	end
+
+	if queryScancode("p", CTRL.GAME) == "held" then
+		local speed = animator:getSpeed()
+		animator:setSpeed(speed * (1.0 + dt))
+	end
+	if queryScancode("i", CTRL.GAME) == "held" then
+		local speed = animator:getSpeed()
+		animator:setSpeed(speed * (1.0 - dt))
+	end
+	if queryScancode("o", CTRL.GAME) == "held" then
+		animator:setSpeed( 1.0 )
+	end
+
+	if queryScancode("k", CTRL.GAME) == "held" then
+		local interp = model.props.model_i_animator_interp
+		model.props.model_i_animator_interp = math.max(interp - dt*0.2, 0.0)
+		print(model.props.model_i_animator_interp)
+	end
+	if queryScancode("l", CTRL.GAME) == "held" then
+		local interp = model.props.model_i_animator_interp
+		model.props.model_i_animator_interp = math.min(interp + dt*0.2, 1.0)
+		print(model.props.model_i_animator_interp)
+	end
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()
@@ -198,20 +240,13 @@ function Prov:update(dt)
 
 	self.scene:updateModelMatrices()
 
-	if gfxSetting("multithread_animation") then
-		self.scene.animthreads:startProcess()
-		self.scene:pushModelAnimationsThreaded()
-	else
-		self.scene.animthreads:stopProcess()
+	--if gfxSetting("multithread_animation") then
+	--	self.scene.animthreads:startProcess()
+	--	self.scene:pushModelAnimationsThreaded()
+	--else
+	--	self.scene.animthreads:stopProcess()
 		self.scene:updateModelAnimationsUnthreaded()
-	end
-
-	--local pos = pianko_ent:getPosition()
-	--local rot = pianko_ent:getRotation()
-	--pianko_ent:setPosition{pos[1]-10*dt, pos[2], pos[3]+10*dt}	
-	--pianko_ent:setPosition{pos[1], pos[2], pos[3]}	
-	--pianko_ent:setRotation{rot[1], rot[2]+0.5*dt, rot[3], "rot"}
-	--
+	--end
 
 	-- this will all need to be done by a FaceAnimator
 	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",

@@ -31,3 +31,9 @@ function provtype(x)
 		return t
 	end
 end
+
+function assert_type(x,datatype)
+	if provtype(x)~=datatype then
+		error(string.format("expected %s, got %s", datatype, provtype(x)),2)
+	end
+end
