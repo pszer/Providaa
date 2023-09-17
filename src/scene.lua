@@ -143,11 +143,11 @@ function Scene:drawGridMapForShadowMapping()
 	props.scene_generic_mesh:drawGeneric()
 end
 
-function Scene:drawModels(update_anims, draw_outlines, model_subset)
+function Scene:drawModels(update_anims, is_main_pass, model_subset)
 	prof.push("draw_models")
 	local models = model_subset or self.props.scene_models
 	for i,v in ipairs(models) do
-		v:draw(nil, update_anims, draw_outlines)
+		v:draw(nil, update_anims, is_main_pass)
 	end
 	prof.pop("draw_models")
 end
@@ -275,10 +275,10 @@ function Scene:dirStaticShadowPass( shader , light )
 	local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
 	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
-	love.graphics.setMeshCullMode("front")
+	--love.graphics.setMeshCullMode("front")
 	self:drawStaticModels(in_view)
 
-	love.graphics.setMeshCullMode("front")
+	--love.graphics.setMeshCullMode("front")
 	self:drawGridMapForShadowMapping()
 end
 
@@ -303,12 +303,12 @@ function Scene:pointStaticShadowPass( shader , light )
 		Renderer.setupCanvasForPointShadowMapping(light, i, true)
 		shadersend(shader, "u_lightspace", "column", matrix(mats[i]))
 
-		love.graphics.setMeshCullMode("front")
+		--love.graphics.setMeshCullMode("front")
 		--self:drawStaticModels()
 		--self:drawModels(false, false)
 		self:drawStaticModels()
 
-		love.graphics.setMeshCullMode("front")
+		--love.graphics.setMeshCullMode("front")
 		self:drawGridMapForShadowMapping()
 	end
 end

@@ -103,7 +103,9 @@ end
 function Entity:setScale(scale)
 	local s = self.props.ent_scale
 	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
-		self.props.ent_scale = scale
+		self.props.ent_scale[1] = scale[1]
+		self.props.ent_scale[2] = scale[2]
+		self.props.ent_scale[3] = scale[3]
 		self.model_moved = true
 		self.recalculate_bounds_flag = true
 	end

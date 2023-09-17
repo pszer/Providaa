@@ -85,12 +85,12 @@ function Light:allocateDepthMap(size, staticsize)
 	end
 end
 
--- unused, use other LightSpaceMatrix functions
-local __tempmat4 = cpml.mat4.new()
-local __tempvec3up = cpml.vec3.new(0,-1,0)
-local __tempvec3_1 = cpml.vec3.new()
-local __tempvec3_2 = cpml.vec3.new()
-function Light:generateLightSpaceMatrix()
+-- deprecated, use other LightSpaceMatrix functions
+--local __tempmat4 = cpml.mat4.new()
+--local __tempvec3up = cpml.vec3.new(0,-1,0)
+--local __tempvec3_1 = cpml.vec3.new()
+--local __tempvec3_2 = cpml.vec3.new()
+--[[function Light:generateLightSpaceMatrix()
 	if not self:isStatic() or not self:isDirectional() then return end
 
 	local props = self.props
@@ -132,7 +132,7 @@ function Light:generateLightSpaceMatrix()
 	--props.light_lightspace_matrix = light_proj * light_view
 	props.light_lightspace_matrix:mul(light_proj , light_view)
 	return props.light_lightspace_matrix
-end
+end--]]
 
 function Light:generateMatrices(cam)
 	if not self:isStatic() then

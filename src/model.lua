@@ -337,7 +337,9 @@ end
 function ModelInstance:setScale(scale)
 	local s = self.props.model_i_scale
 	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
-		self.props.model_i_scale = scale
+		self.props.model_i_scale[1] = scale[1]
+		self.props.model_i_scale[2] = scale[2]
+		self.props.model_i_scale[3] = scale[3]
 		self.model_moved = true
 	end
 end
@@ -366,9 +368,9 @@ function ModelInstance:fillOutBoneMatrices(animation, frame)
 		self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
 		prof.pop("get_bone_matrices")
 
-		for i,v in ipairs(self.bone_matrices) do
-			self.bone_matrices[i] = matrix(v)
-		end
+		--for i,v in ipairs(self.bone_matrices) do
+		--	self.bone_matrices[i] = matrix(v)
+		--end
 
 		--self.bone_matrices = bone_matrices
 	end
@@ -417,11 +419,8 @@ function ModelInstance:draw(shader, update_animation, is_main_pass)
 	if props.model_i_draw_instances then
 		self:drawInstances(shader)
 	elseif is_main_pass then
-		if props.model_i_contour_flag then
-			self:drawOutlined(shader)
-		else
-			modelprops.model_mesh:drawModel(shader)
-		end
+		self:drawOutlined(shader)
+		--	modelprops.model_mesh:drawModel(shader)
 		self:drawDecorations(shader)
 	else
 		modelprops.model_mesh:drawModel(shader)
@@ -446,11 +445,16 @@ function ModelInstance:drawOutlined(shader)
 	prof.pop("after_contour_draw")
 end
 
-function ModelInstance:drawContour(shader, mesh)
-	local mesh = mesh or model:getMesh()
+function ModelInstance:drawContour(shader, dont_change_culling)
+	if not (self.props.model_i_contour_flag and gfxSetting("enable_contour")) then return end
+
+	local shader = shader or love.graphics.getShader()
+	local model = self:getModel()
+	local mesh = model:getMesh()
 	local colour = self.props.model_i_outline_colour
 	local offset = 0.25
 
+	--love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
 	love.graphics.setMeshCullMode("back")
 
 	shader:send("u_contour_outline_offset", offset)
@@ -459,10 +463,10 @@ function ModelInstance:drawContour(shader, mesh)
 
 	mesh:drawModel(shader)
 
+	love.graphics.setMeshCullMode("front")
 	shader:send("u_contour_outline_offset", 0.0)
 	shader:send("u_draw_as_contour", false)
-
-	love.graphics.setMeshCullMode("front")
+	--love.graphics.setFrontFaceWinding("ccw")
 end
 
 function ModelInstance:drawInstances(shader) 

@@ -40,8 +40,8 @@ Renderer = {
 
 	enable_hdr = true,
 	hdr_exposure = 0.15,
-	hdr_exposure_min = 0.05,
-	hdr_exposure_max = 1.5,
+	hdr_exposure_min = 0.1,
+	hdr_exposure_max = 2.0,
 	hdr_exposure_adjust_speed = 2.5,
 
 	fps_draw_obj = nil,
@@ -49,7 +49,7 @@ Renderer = {
 	avglum_buffer_size = 1024,
 	avglum_mipmap_count = -1,
 
-	nil_cubemap = nil
+	nil_cubemap = nil,
 }
 
 Renderer.__index = Renderer

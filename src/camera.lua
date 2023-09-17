@@ -69,7 +69,10 @@ function Camera:isRotationMode()
 	return self:getMode() == "rotation" end
 
 function Camera:setPosition(pos)
-	self.props.cam_position = {pos[1], pos[2], pos[3]}
+	--self.props.cam_position = {pos[1], pos[2], pos[3]}
+	self.props.cam_position[1] = pos[1]
+	self.props.cam_position[2] = pos[2]
+	self.props.cam_position[3] = pos[3]
 end
 
 -- these functions automatically set the camera mode to direction/rotation

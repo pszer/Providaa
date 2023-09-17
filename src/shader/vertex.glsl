@@ -100,17 +100,18 @@ vec4 position(mat4 transform, vec4 vertex) {
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = skinview_u * vertex;
 
-	// create a fake curved horizon effect
-	if (curve_flag) {
-		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
+	frag_position = (u_rot * view_v).xyz;
 
 	vec4 surface_offset = vec4(frag_normal * u_contour_outline_offset, 0.0);
 	view_v += surface_offset;
 
+	// create a fake curved horizon effect
+	if (curve_flag) {
+		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
+
 	view_v = u_rot * view_v;
 
 	// interpolate fragment position in viewspace and worldspace
-	frag_position = view_v.xyz;
 	frag_w_position = model_v.xyz;
 
 	// calculate fragment position in lightspaces
@@ -204,13 +205,13 @@ vec3 diffuse_lighting_2( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 1;
+	float specular_strength = 0.1;
 
-	vec3 view_dir = normalize( view_pos - frag_position );
+	vec3 view_dir = normalize( view_pos - frag_w_position );
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 5);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 16);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -287,27 +288,24 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	// we sample would also be in shadow or in light
 	for (int i=0; i<4; i++) {
 		float s = texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + distantPoints[i]/radius, (curr_depth/prooj_coords.w)-bias));
-		shadow -= (1.0/14.0) * s;
+		shadow -= (1.0/12.0) * s;
 	}
 
 	// if all distant points are in shadow, then return 1.0 (fully in shadow)
 	// otherwise 0.0 (fully in light)
 	if (shadow == 1.0) {
 		return 1.0;
-	} else if (shadow <= 1.0 - 3.9 * (1/14.0)) {
+	} else if (shadow <= 1.0 - 3.9 * (1/12.0)) {
 		return 0.0;
 	}
 
-	for (int i=0; i<10; i++) {
-		int index = int(14.0*random(floor(frag_w_position.xyz*10.0), i))%16;
-		shadow -= (1.0/14.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
+	for (int i=0; i<8; i++) {
+		//int index = int(16.0*random(floor(frag_w_position.xyz*10.0), i))%16;
+		int index = int(16.0*floor(frag_w_position.xyz*10.0*i))%16;
+		shadow -= (1.0/12.0) * texture_shadow_clampone( shadow_map, vec3(prooj_coords.xy + poissonDisk[index]/radius, (curr_depth/prooj_coords.w)-bias));
 	}
 
 	return shadow;
-}
-
-float cube_shadow_calculation( vec4 pos, vec4 light_pos, samplerCubeShadow shadow_map, float far_plane, float bias ) {
-	return 0.0;
 }
 
 vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 lightspace, mat4 static_lightspace, sampler2DShadow map, sampler2DShadow static_map,
@@ -343,48 +341,127 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 	return (1.0 - shadow * (1.0-u_shadow_imult))*(diffuse + specular);
 }
 
-vec3 calc_point_light_col(int point_light_id, vec3 normal) {
+vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 
 	vec3  light_pos  = point_light_pos[point_light_id].xyz;
-	float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
+	//float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
+	//float light_size = point_light_far_planes[point_light_id] + 0.1; // ensure its never 0
 	vec4  light_col  = point_light_col[point_light_id];
 
 	vec3 dir = light_pos - frag_w_position;
 	// we add a tiny bias to ensure we never have a distance of 0
-	float dist = sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z) + 0.0001;
+	//float dist = length(dir) + 0.0001;
 
-	float quad_comp   = 1.0/(light_size*light_size);
-	float linear_comp = 50.0/light_size;
-	float attenuate = 1.03/(1.0 + linear_comp*dist + quad_comp*dist*dist);
-	attenuate = max(0.0, attenuate - 0.03);
+	//attenuate = attenuate_light(dist, light_size);
 
 	vec3 light_dir_n = normalize( dir );
-	vec3 diffuse = diffuse_lighting_2( normal, light_dir_n, light_col );
-	//vec3 specular = specular_highlight( normal , light_dir_n, light_col );
-	vec3 specular = vec3(0.0);
+	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );
+	vec3 specular = specular_highlight( normal , light_dir_n, light_col );
+	//vec3 specular = vec3(0.0);
 	return (diffuse + specular) * attenuate;
 }
 
+float attenuate_light(float dist, float light_size) {
+	float quad_comp   = 1.0/(light_size*light_size);
+	float linear_comp = 100.0/light_size;
+	float attenuate = 1.01/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	return max(0.0, attenuate - 0.01);
+}
+
+vec3 calc_point_light_col_full(int point_light_id, vec3 normal ) {
+
+	vec3  light_pos  = point_light_pos[point_light_id].xyz;
+	float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
+	//float light_size = point_light_far_planes[point_light_id] + 0.1; // ensure its never 0
+	vec4  light_col  = point_light_col[point_light_id];
+
+	vec3 dir = light_pos - frag_w_position;
+	// we add a tiny bias to ensure we never have a distance of 0
+	float dist = length(dir) + 0.0001;
+
+	float attenuate = attenuate_light(dist, light_size);
+
+	vec3 light_dir_n = normalize( dir );
+	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );
+	vec3 specular = specular_highlight( normal , light_dir_n, light_col );
+	//vec3 specular = vec3(0.0);
+	return (diffuse + specular) * attenuate;
+}
+
+vec3 sample_offsets[20] = vec3[]
+(
+   vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
+   vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+   vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+   vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+   vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+);
+
+const vec3 poissonSphere[20] = vec3[](
+   vec3( -0.94201624 , -0.39906216 , -0.094184101),
+   vec3( 0.94558609  , -0.76890725 , -0.41893023),
+   vec3( -0.094184101, -0.92938870 , 0.99706507),
+   vec3( 0.34495938  , 0.29387760  , 0.14383161),
+   vec3( -0.91588581 , 0.45771432  , 0.75648379),
+   vec3( -0.81544232 , -0.87912464 , -0.38277543),
+   vec3( -0.38277543 , 0.27676845  , -0.87912464 ),
+   vec3( 0.97484398  , 0.75648379  , 0.53742981),
+   vec3( 0.44323325  , -0.97511554 , 0.19090188 ),
+   vec3( 0.53742981  , -0.47373420 ,-0.94201624),
+   vec3( -0.26496911 , -0.41893023 , -0.094184101),
+   vec3( 0.79197514  , 0.19090188  , 0.19984126),
+   vec3( -0.24188840 , 0.99706507  , -0.76890725 ),
+   vec3( -0.81409955 , 0.91437590  , -0.76890725 ),
+   vec3( 0.19984126  , 0.78641367  , 0.45771432),
+   vec3( 0.14383161  , -0.14100790 , -0.97511554 ),
+   vec3( -0.81409955 , -0.76890725 , 0.91437590 ),
+   vec3( -0.92938870 ,0.99706507   , -0.094184101),
+   vec3( -0.094184101, -0.94201624 , -0.39906216),
+   vec3( -0.97511554 , 0.19090188  , 0.44323325)
+);
 
 vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int point_shadow_id, float bias, samplerCube map) {
 	float far_plane = point_light_far_planes[point_shadow_id];
 	vec3 light_pos  = point_light_pos[point_light_id].xyz;
-
-	float shadow = 1.0;
+	float light_size = point_light_pos[point_light_id].w + 0.1; // ensure its never 0
 
 	vec3 frag_to_light = (frag_w_position - light_pos);
 	float curr_depth = length(frag_to_light);
-	float closest_depth = texture(map, frag_to_light).r;
-	closest_depth *= far_plane;
 
-	float adjusted_bias = bias * max( curr_depth / 60 , 1.0 );
+	float attenuate = attenuate_light(curr_depth, light_size);
+	if (attenuate < 0.005) { return vec3(0,0,0); }
 
-	shadow = curr_depth - adjusted_bias > closest_depth ? 1.0 : 0.0;
+	//float closest_depth = texture(map, frag_to_light).r;
+	//closest_depth *= far_plane;
+
+	//float adjusted_bias = bias * max( curr_depth / 60 , 1.0 );
+
+	//float shadow = curr_depth - adjusted_bias > closest_depth ? 1.0 : 0.0;
 	//float s = texture( map, vec4(frag_to_light, (curr_depth-bias)));
-	//shadow -= (0.5 - s*0.5);
 	//shadow -= s;
 
-	vec3 light_result = calc_point_light_col( point_light_id , normal );
+	float cosTheta = clamp( dot( normal, frag_to_light ), 0,1 );
+	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.1 , 20);
+	//float adjusted_bias = 0.0125*tan(acos(cosTheta));
+	//float adjusted_bias = bias;
+
+	//float adjusted_bias = bias * max( curr_depth / 500 , 1.0 ) * tan(acos(cosTheta));
+	float adjusted_bias = bias * max( curr_depth / 100 , 1.0 ) * bias_angled;
+	//float adjusted_bias = bias * max( curr_depth / 50 , 1.0 );
+
+	const int samples = 4;
+	float shadow = 1.0;
+	float disk_radius = (1.0 + (curr_depth / far_plane)) / 3.0;
+	for(int i = 0; i < samples; ++i) {
+		//int index = int(20.0*random(floor(frag_w_position.xyz*10.0), i))%20;
+		int index = i;
+	    float closest_depth = texture(map, frag_to_light + poissonSphere[index] * disk_radius).r;
+	    closest_depth *= far_plane;   // undo mapping [0;1]
+		if(curr_depth - adjusted_bias < closest_depth)
+        	shadow -= 1.0/float(samples);
+	}
+
+	vec3 light_result = calc_point_light_col( point_light_id , normal , attenuate );
 	return (1.0 - shadow * (1.0-u_shadow_imult))*light_result;
 }
 
@@ -427,8 +504,8 @@ void effect( ) {
 	//
 	// STUPID EVIL SHIT OH MY GOD - NO CUBEMAP ARRAYS, NO GLSL 4.0+ VARIABLE INDEXING.
 	//
-	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col(i, frag_normal);}}
-	float point_bias = 1.35;
+	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, frag_normal);}}
+	float point_bias = 0.3;
 	DO_POINT_LIGHT(0);
 	DO_POINT_LIGHT(1);
 	DO_POINT_LIGHT(2);
