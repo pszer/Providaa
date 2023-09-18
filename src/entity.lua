@@ -34,14 +34,16 @@ end
 
 -- this function should not be treated as a virtual function to overwrite, thats the job of Entity:update
 -- let this do what its gotta do
-function Entity:internalUpdate()
+function Entity:internalUpdate(dt)
+	assert(dt)
+
 	for i,v in pairs(self.props.ent_current_states) do
 		if v.state_update then
 			v.state_update(self, v)
 		end
 	end
 
-	self:translatePosition(self:getVelocity(), love.timer.getDelta())
+	self:translatePosition(self:getVelocity(), dt)
 
 	self:updateModelPosition()
 	if self.props.ent_hitbox_inherit then

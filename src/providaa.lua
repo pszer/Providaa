@@ -14,6 +14,7 @@ require "provhooks"
 require "facedecor"
 require "gameinterface"
 require "partition"
+require "assetloader"
 
 local camcontrol = require "cameracontrollers"
 
@@ -236,7 +237,7 @@ function Prov:update(dt)
 	prof.pop("pollinputhandlers")
 
 	prof.push("update_ents")
-	self:updateEnts()
+	self:updateEnts(dt)
 	prof.pop("update_ents")
 
 	self.scene:updateModelMatrices()
@@ -353,9 +354,9 @@ function Prov:getEntities()
 	return self.ents
 end
 
-function Prov:updateEnts()
+function Prov:updateEnts(dt)
 	for i,ent in ipairs(self.ents) do
-		ent:internalUpdate()
+		ent:internalUpdate(dt)
 	end
 end
 
