@@ -8,6 +8,8 @@
 --
 --
 
+M_PI = 3.1415926535897932384626433832795
+
 -- casts a rotation vector to a rotation type
 function toRotationVector(vec)
 	if vec[4] == "rot" then
@@ -55,7 +57,7 @@ function rotateMatrix(mat, rot)
 
 		__tempvec3.x = rot[1]
 		__tempvec3.y = -rot[2]
-		__tempvec3.z = rot[3]
+		__tempvec3.z = -rot[3]
 
 		--local vec3 = cpml.vec3.new
 		--local look = cpml.mat4.new(1)

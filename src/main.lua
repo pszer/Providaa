@@ -78,11 +78,13 @@ function love.run()
 
 		if love.graphics and love.graphics.isActive() then
 			love.graphics.origin()
-			love.graphics.clear(love.graphics.getBackgroundColor())
+			--love.graphics.clear(love.graphics.getBackgroundColor())
 
 			if love.draw then love.draw() end
 
+			prof.push("present")
 			love.graphics.present()
+			prof.pop("present")
 		end
 		prof.pop("frame")
 
@@ -118,13 +120,13 @@ function __limitFPS( limit , dt )
 		local start_time = love.timer.getTime()
 		if diff > 0.0 then
 			love.timer.sleep(diff)
-			print("slept")
+			--print("slept")
 		else
-			print("not slept")
+			--print("not slept")
 		end
 		local time_slept = love.timer.getTime() - start_time
 
-		print("fps should be", 1/(dt+time_slept))
+		--print("fps should be", 1/(dt+time_slept))
 	end
 end
 
@@ -138,9 +140,7 @@ function love.update(dt)
 	prof.push("gamestate_update")
 	GAMESTATE:update(dt)
 	prof.pop("gamestate_update")
-	prof.push("updateKeys")
 	updateKeys()
-	prof.pop("updateKeys")
 
 	FPS = love.timer.getFPS()
 	__updateFramesCounter()

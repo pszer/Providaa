@@ -74,7 +74,7 @@ function Texture.openImage(f)
 	local finfo = love.filesystem.getInfo(f)
 	if not finfo or finfo.type ~= "file" then return nil end
 
-	local img = love.graphics.newImage(f)
+	local img = love.graphics.newImage(f, {linear=false})
 	if not img then return nil end
 
 	img:setWrap("repeat","repeat")

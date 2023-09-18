@@ -371,6 +371,12 @@ function ModelInstance:queryModelMatrix()
 	return self.static_model_matrix, self.static_normal_matrix
 end
 
+function ModelInstance:getAnimator()
+	local props = self.props
+	local a1,a2 = props.model_i_animator1, props.model_i_animator2
+	return a1,a2
+end
+
 --function ModelInstance:fillOutBoneMatrices(animation, frame)
 function ModelInstance:fillOutBoneMatrices()
 	--if not self.update_bones() then return end
@@ -935,6 +941,7 @@ function Model:getAnimation(animation)
 	if not animation then return nil end
 	if not self.props.model_animated then return nil end
 	anim_data = self.props.model_animations[animation]
+	if not anim_data then error(string.format("Model:getAnimation(): model \"%s\" has no animation \"%s\".", animation)) end
 	return anim_data
 end
 

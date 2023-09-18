@@ -37,9 +37,11 @@ end
 function Entity:internalUpdate()
 	for i,v in pairs(self.props.ent_current_states) do
 		if v.state_update then
-			v.state_update()
+			v.state_update(self, v)
 		end
 	end
+
+	self:translatePosition(self:getVelocity(), love.timer.getDelta())
 
 	self:updateModelPosition()
 	if self.props.ent_hitbox_inherit then
@@ -75,6 +77,74 @@ function Entity:getRotation()
 	return self.props.ent_rotation end
 function Entity:getScale()
 	return self.props.ent_scale end
+function Entity:getVelocity()
+	return self.props.ent_velocity end
+function Entity:getSpeed()
+	local vel = self:getVelocity()
+	return math.sqrt(vel[1]*vel[1] + vel[2]*vel[2] + vel[3]*vel[3])
+end
+-- uses manhattan distance instead of euclidian
+function Entity:getApproximateSpeed()
+	local vel = self:getVelocity()
+	local abs = math.abs
+	return abs(vel[1]) + abs(vel[2]) + abs(vel[3])
+end
+
+local __temp_lmtspd_vec = {}
+function Entity:limitSpeed( max_speed )
+	local vel = self:getVelocity()
+	local spd = self:getSpeed()
+
+	if spd <= max_speed then return end
+
+	local scale = max_speed / spd;
+	__temp_lmtspd_vec[1] = scale * vel[1]
+	__temp_lmtspd_vec[2] = scale * vel[2]
+	__temp_lmtspd_vec[3] = scale * vel[3]
+	self:setVelocity( __temp_lmtspd_vec )
+end
+
+local __temp_scvel_vec = {}
+-- takes in a scalar to scale the entities velocity by
+--  1.0 means no change
+-- <1.0 decreases velocity over time
+-- >1.0 increases velocity over time
+function Entity:scaleVelocity(scale, dt)
+	local diff = scale - 1.00
+	local vel = self:getVelocity()
+	__temp_scvel_vec[1] = vel[1] * diff
+	__temp_scvel_vec[2] = vel[2] * diff
+	__temp_scvel_vec[3] = vel[3] * diff
+	self:accelerate(__temp_scvel_vec, dt)
+end
+
+function Entity:getModel()
+	return self.props.ent_model end
+function Entity:getIdentifier()
+	return self.props.ent_identifier end
+
+function Entity:setVelocity(vel)
+	local v = self.props.ent_velocity
+	if vel[1]~=v[1]or vel[2]~=v[2] or vel[3]~=v[3] then
+		self.props.ent_velocity[1] = vel[1]
+		self.props.ent_velocity[2] = vel[2]
+		self.props.ent_velocity[3] = vel[3]
+		--self.props.ent_position = pos
+		--self.ent_moved = true
+		--self.recalculate_bounds_flag = true
+	end
+end
+
+local __temp_acc_vec = {}
+-- adds an acceleration vector to the entity, scaled by
+-- a given delta time step
+function Entity:accelerate(vec, dt)
+	local vel = self:getVelocity()
+	__temp_acc_vec[1] = vel[1] + vec[1] * dt
+	__temp_acc_vec[2] = vel[2] + vec[2] * dt
+	__temp_acc_vec[3] = vel[3] + vec[3] * dt
+	self:setVelocity(__temp_acc_vec)
+end
 
 function Entity:setPosition(pos)
 	local v = self.props.ent_position
@@ -111,14 +181,16 @@ function Entity:setScale(scale)
 	end
 end
 
-function Entity:translatePosition(vec)
+function Entity:translatePosition(vec, dt)
 	if vec[1]==0 and vec[2]==0 and vec[3]==0 then return end
+
+	local dt = dt or 1.0
 
 	local v = self.props.ent_position
 	local new_pos = {
-		v[1]+vec[1],
-		v[2]+vec[2],
-		v[3]+vec[3]
+		v[1]+vec[1]*dt,
+		v[2]+vec[2]*dt,
+		v[3]+vec[3]*dt
 	}
 	self:setPosition(new_pos)
 end
@@ -307,6 +379,65 @@ function Entity:callCommand(command_name, args)
 
 	command(self, state, args)
 	prof.pop("call_command")
+end
+
+function Entity:isModelAnimated()
+	local model = self:getModel()
+	if not model then return false end
+	if not model:getAnimator() then return false end
+	return true
+end
+
+function Entity:getAnimator()
+	local model = self:getModel()
+	if not model then return nil,nil end
+	local anim1,anim2 = model:getAnimator()
+	return anim1, anim2
+end
+
+function Entity:playAnimation(anim, time, speed, loop, callback)
+	local anim1,anim2 = self:getAnimator()
+	if not anim1 then
+		error(string.format("Entity:playAnimation(): entity's \"%s\" model has no animators", self:getIdentifier())) end
+	anim1:playAnimation(anim, time, speed, loop, callback)
+	if anim2 then anim2:suspendAnimation() end
+end
+
+function Entity:playAnimationInterp(anim1, anim2, interp)
+	local model = self:getModel()
+	if not model then
+		error(string.format("Entity:playAnimationInterp(): entity "%s" has no model", self:getIdentifier())) end
+	local anim1,anim2 = self:getAnimator()
+	if not (anim1 and anim2) then
+		error(string.format("Entity:playAnimationInterp(): entity's \"%s\" model has no animators", self:getIdentifier())) end
+	anim1:playAnimation(unpack(anim1))
+	anim2:playAnimation(unpack(anim2))
+	model.props.model_i_animator_interp = interp
+end
+
+function Entity:setAnimationInterp(interp)
+	local model = self:getModel()
+	if not model then
+		error(string.format("Entity:setAnimationInterp(): entity "%s" has no model", self:getIdentifier())) end
+	model.props.model_i_animator_interp = interp
+end
+
+function Entity:setAnimationSpeed(speed)
+	local model = self:getModel()
+	if not model then
+		error(string.format("Entity:setAnimationSpeed(): entity "%s" has no model", self:getIdentifier())) end
+	local anim1,anim2 = self:getAnimator()
+	if not (anim1 and anim2) then
+		error(string.format("Entity:setAnimationSpeed(): entity's \"%s\" model has no animators", self:getIdentifier())) end
+	anim1:setSpeed(speed)
+	anim2:setSpeed(speed)
+end
+
+function Entity:getAnimationByName(name)
+	local model = self:getModel()
+	if not model then
+		error(string.format("Entity:getAnimationByName(): entity "%s" has no model", self:getIdentifier())) end
+	return model.props.model_i_reference:getAnimation( name )
 end
 
 -- takes in established hooks from Prov:establishEntityHooks()

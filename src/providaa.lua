@@ -43,21 +43,21 @@ function Prov:load()
 	self.scene.props.scene_lights = {
 		Light:new{
 			["light_pos"] = {0,0,0,0},
-			["light_dir"] = {-0.8,1.7,-1.5},
-			["light_col"] = {255/255, 235/255, 224/255, 0.1},
+			["light_dir"] = {-0.8,2.7,-1.5},
+			["light_col"] = {277.95/255, 277.95/255, 242/255, 18.0},
 			["light_static"] = true
 		},
 
-		Light:new{
+		--[[Light:new{
 			["light_pos"] = {300,-30,-280,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_col"] = {277.95/255, 255/255, 224/255,2000},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
 			["light_pos"] = {800,-30,-280,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_col"] = {277.95/255,255/255,224/255,2000},		
 			["light_size"] = 500,
 			["light_static"] = true
 		},
@@ -97,7 +97,7 @@ function Prov:load()
 			["light_static"] = true
 		},--]]
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 2
+	self.scene.props.scene_skybox_hdr_brightness = 20.0
 
 	pianko = Models.queryModel("pianko/pianko.iqm")
 	piankoface = Models.queryModel("pianko/piankoface.iqm")
@@ -164,6 +164,7 @@ function Prov:load()
 		camcontrol:followEntityFixed(theent, {0,-5,75}, {0.5,0.55,0.5})
 	)
 
+	theent.props.ent_model.props.model_i_animator2:playAnimationByName("Stand", 0.0, 1.0, true)
 	theent.props.ent_model.props.model_i_animator1:playAnimationByName("Walk", 0.0, 1.0, true)
 
 	--theanimator = Animator:new(theent.props.ent_model)
@@ -198,7 +199,7 @@ function Prov:update(dt)
 	--
 	local model = theent.props.ent_model
 	local animator = model.props.model_i_animator1
-	if queryScancode("space", CTRL.GAME) == "down" then
+	--[[if queryScancode("space", CTRL.GAME) == "down" then
 
 		if animator:isPlaying() then
 			animator:suspendAnimation()
@@ -228,7 +229,7 @@ function Prov:update(dt)
 		local interp = model.props.model_i_animator_interp
 		model.props.model_i_animator_interp = math.min(interp + dt*0.2, 1.0)
 		print(model.props.model_i_animator_interp)
-	end
+	end--]]
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()

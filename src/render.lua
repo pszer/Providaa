@@ -24,7 +24,6 @@ Renderer = {
 
 	scene_viewport               = nil,
 	scene_postprocess_viewport   = nil,
-	--scene_bloom_viewport         = nil,
 	scene_outline_viewport       = nil,
 	scene_buffer  = {nil, nil},
 	scene_postprocess_viewport   = nil,
@@ -40,8 +39,9 @@ Renderer = {
 
 	enable_hdr = true,
 	hdr_exposure = 0.15,
-	hdr_exposure_min = 0.1,
+	hdr_exposure_min = 0.05,
 	hdr_exposure_max = 2.0,
+	hdr_exposure_nudge = 1.05,
 	hdr_exposure_adjust_speed = 2.5,
 
 	fps_draw_obj = nil,
@@ -155,8 +155,10 @@ function Renderer.renderScaled(canvas, hdr)
 	local canvas = canvas or Renderer.scene_viewport
 	local hdr = hdr or {}
 	local exposure = hdr.exposure or Renderer.hdr_exposure
-	local exposure_min = hdr.exposure_min or Renderer.hdr_exposure_min
-	local exposure_max = hdr.exposure_max or Renderer.hdr_exposure_max
+	local exposure_min   = hdr.exposure_min or Renderer.hdr_exposure_min
+	local exposure_max   = hdr.exposure_max or Renderer.hdr_exposure_max
+	local exposure_nudge = hdr.exposure_nudge or Renderer.hdr_exposure_nudge
+	local gamma_value    = hdr.gamma or Renderer.gamma_value
 
 	--love.graphics.setCanvas()
 	--love.graphics.origin()
@@ -172,7 +174,7 @@ function Renderer.renderScaled(canvas, hdr)
 		hpad = (H-h)/2
 	end
 
-	if hdr.hdr_enabled then
+	--if hdr.hdr_enabled then
 		love.graphics.setColor(1,1,1,1)
 		Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
 		Renderer.stepGradualExposure( love.timer.getDelta() , Renderer.hdr_exposure_adjust_speed )
@@ -181,13 +183,15 @@ function Renderer.renderScaled(canvas, hdr)
 
 		love.graphics.setShader(Renderer.hdr_shader)
 
-		Renderer.hdr_shader:send("hdr_enabled", true)
+		--Renderer.hdr_shader:send("hdr_enabled", true)
 		Renderer.hdr_shader:send("exposure_min", exposure_min)
 		Renderer.hdr_shader:send("exposure_max", exposure_max)
+		Renderer.hdr_shader:send("exposure_nudge", exposure_nudge)
 		Renderer.hdr_shader:send("bloom_blur", bloom)
-		Renderer.hdr_shader:send("exposure", exposure)
+		--Renderer.hdr_shader:send("exposure", exposure)
 		--Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
 		--Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
+		--Renderer.hdr_shader:send("gamma", gamma_value)
 		Renderer.hdr_shader:send("gradual_luminance", Renderer.scene_dt_exposure_buffer)
 		
 		love.graphics.setCanvas(Renderer.scene_postprocess_viewport)
@@ -201,10 +205,10 @@ function Renderer.renderScaled(canvas, hdr)
 		love.graphics.setCanvas()
 		love.graphics.scale(RESOLUTION_RATIO)
 		love.graphics.draw(Renderer.scene_postprocess_viewport,wpad,hpad)
-	else
-		love.graphics.setShader()
-		love.graphics.draw(canvas, wpad, hpad)
-	end
+	--else
+	--	love.graphics.setShader()
+	--	love.graphics.draw(canvas, wpad, hpad)
+	--end
 
 	Renderer.dropCanvas()
 end

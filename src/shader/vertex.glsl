@@ -273,14 +273,14 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	vec4 prooj_coords = pos.xyzw;
 	prooj_coords = vec4(prooj_coords.xyz * 0.5 + 0.5, prooj_coords.w);
 
-	//float cosTheta = clamp( dot( normal,light_dir ), 0,1 );
+	float cosTheta = clamp( dot( normal,light_dir ), 0,1 );
 
 	float curr_depth    = prooj_coords.z;
 
-	//float bias = 0.00125*tan(acos(cosTheta));
+	float angle = tan(acos(cosTheta));
 	float radius = 2000.0; // the smaller, the larger the pcf radius
 	//bias = clamp(bias, 0.00100,0.00230);
-	//float bias = 0.0025;
+	bias = bias + (bias * min(angle,3.0))/10.0;
 
 	float shadow = 1.0;
 
@@ -329,11 +329,11 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 
 		if (interp >= 0.0) {
 			close_shadow = shadow_calculation(frag_light_pos, lightspace,
-			  map, normal , light_dir_n, 0.0060);
+			  map, normal , light_dir_n, 0.0030);
 		}
 		if (interp <= 1.0) {
 			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,
-			  static_map, normal, light_dir_n, 0.0025);
+			  static_map, normal, light_dir_n, 0.0015);
 		}
 
 		shadow = close_shadow * (1.0 - interp) + static_shadow * interp;
@@ -482,20 +482,6 @@ void effect( ) {
 		dir_shadow_map, dir_static_shadow_map,
 		frag_normal, dir_light_dir, dir_light_col, dist);
 	light += dir_light_result;
-
-	/*for (int i = 0; i < u_point_light_count; ++i) {
-		vec3 point_light;
-
-		int shadow_index = point_light_shadow_map_index[i];
-		if (shadow_index >= 0) {
-			//point_light = calc_point_light_col_shadow(i, frag_normal, shadow_index);
-			point_light = calc_point_light_col_shadow(i, frag_normal, i);
-		} else {
-			point_light = calc_point_light_col(i, frag_normal);
-		}
-
-		light += point_light;
-	}*/
 
 	//
 	// STUPID EVIL SHIT OH MY GOD - NO CUBEMAP ARRAYS, NO GLSL 4.0+ VARIABLE INDEXING.
