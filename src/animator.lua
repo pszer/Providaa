@@ -89,6 +89,9 @@ function Animator:getSpeed()
 	return self.anim_play_speed end
 function Animator:setSpeed(s)
 	self.anim_play_speed = s end
+function Animator:setTime(t)
+	self.anim_play_time_acc = t
+end
 
 -- pushes it's current animation state onto its model reference
 function Animator:pushToOutframe( outframe )

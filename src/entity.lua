@@ -440,6 +440,19 @@ function Entity:getAnimationByName(name)
 	return model.props.model_i_reference:getAnimation( name )
 end
 
+function Entity:setAnimationTime(time, which_animator)
+	if not (which_animator == 1 or which_animator == 2) then
+		error(string.format("Entity:setAnimationTime(): which_animator argument expected to be 1 or 2, got %s",
+			tostring(which_animator), self:getIdentifier())) end
+	local anim1, anim2 = self:getAnimator()
+
+	if which_animator == 1 then
+		anim1:setTime(time)
+	else
+		anim2:setTime(time)
+	end
+end
+
 -- takes in established hooks from Prov:establishEntityHooks()
 function Entity:addHook( hook )
 	table.insert(self.props.ent_hooks, hook)

@@ -20,24 +20,45 @@ function slerpRadians(r1, r2, t)
 		local delta = r2 - r1
 		if delta < pi then
 			return r1 * (1.0-t)  + r2 * t
-		else
-			local diff = (pi2 - r2) + r1
-			local a = r2 + diff * (1.0 - t)
-			if a > pi2 then a = a - pi2 end
-			return a
 		end
+
+		local diff = (pi2 - r2) + r1
+		local a = r2 + diff * (1.0 - t)
+		if a > pi2 then a = a - pi2 end
+		return a
 	end
 
 	-- from now on r1 < r2 
 	local delta = r2 - r1
 	if delta < pi then
 		return r1 * (1.0-t)  + r2 * t
-	else
-		local diff = (pi2 - r2) + r1
-		local a = r2 + diff * (1.0 - t)
-		if a > pi2 then a = a - pi2 end
-		return a
 	end
+
+	local diff = (pi2 - r2) + r1
+	local a = r2 + diff * (1.0 - t)
+	if a > pi2 then a = a - pi2 end
+	return a
+end
+
+-- gets shortest difference between two angles in radians
+function differenceRadians(r1, r2)
+	if r1 > r2 then
+		local diff = r1 - r2
+		if diff < pi then
+			return diff
+		end
+
+		r2 = r2 + pi2
+		return -(r1 - r2)
+	end
+
+	local diff = r2 - r1
+	if diff < pi then
+		return diff
+	end
+
+	r1 = r1 + pi2
+	return -(r2 - r1)
 end
 
 local atan = math.atan

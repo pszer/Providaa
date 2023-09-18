@@ -224,7 +224,7 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		-- whenever the camera's frustrum goes
 		-- outside this lightspace matrix we generate a new one and render the shadowmap again.
 		-- this way
-		local proj = cam:calculatePerspectiveMatrix(nil, cam.props.cam_far_plane)
+		local proj = cam:calculatePerspectiveMatrix(nil, cam.props.cam_far_plane * 0.66)
 		local corners, centre = cam:generateFrustrumCornersWorldSpace(proj)
 		
 		if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
