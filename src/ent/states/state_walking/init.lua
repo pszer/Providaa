@@ -12,7 +12,8 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	}, -- done
 
 	{"state_update", nil, function(GameData)
-		local dir_last_frame = {0,0,-1}
+		local rot_last_frame = {0,0,0, "rot"}
+		local __tempvec = {}
 		return function(ent,state)
 			local vel = ent:getVelocity()
 			local anim_speed = state.state_walking_anim_speed
@@ -26,14 +27,40 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 					ent:setAnimationTime(0, 1)
 				end
 			end
-			state.state_walking_deaccel = true
 
 			local walk_speed = state.state_walking_speed
+			ent:limitSpeed( walk_speed )
+			state.state_walking_deaccel = true
+
+			--local vel = ent:getVelocity()
+			local dir_this_frame = state.state_walking_dir_this_frame
+			if dir_this_frame[1] ~= 0 or dir_this_frame[3] ~= 0 then
+				local angle = atan3( dir_this_frame[1] , dir_this_frame[3] )
+				local acc = state.state_walking_rot_acc
+				local diff = differenceRadians(angle, acc) + 1.0
+
+				local rot_speed = state.state_walking_rot_speed 
+				local new_angle = slerpRadians(state.state_walking_rot_acc, angle, math.min(dt*rot_speed * diff*diff, 1.0))
+				state.state_walking_rot_acc = new_angle
+
+				__tempvec[1] = 0
+				__tempvec[2] = new_angle
+				__tempvec[3] = 0
+				__tempvec[4] = "rot"
+				ent:setRotation(__tempvec)
+			end
+
+				local walk_speed = state.state_walking_speed
 			local ent_speed  = ent:getSpeed()
 			--ent:setAnimationSpeed(0.75 + 0.25*(anim_speed * ent_speed / walk_speed))
 			ent:setAnimationSpeed(1)
 			local diff = (walk_speed - ent_speed) / walk_speed
 			ent:setAnimationInterp(diff * diff)
+
+			local dir_this_frame = state.state_walking_dir_this_frame
+			dir_this_frame[1] = 0
+			dir_this_frame[2] = 0
+			dir_this_frame[3] = 0
 		end
 	end,},
 	{"state_enter" , nil, function(GameData)
@@ -54,7 +81,8 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	{"state_walking_deaccel_scale", "number", -4.5, nil, "the smaller, the faster the deacceleration"},
 
 	{"state_walking_rot_speed", "number", 0.5, nil},
-	{"state_walking_rot_acc", "number", 0, nil}
+	{"state_walking_rot_acc", "number", 0, nil},
+	{"state_walking_dir_this_frame", "table", nil, PropDefaultTable{0,0,0}}
 
 }
 

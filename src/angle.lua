@@ -61,14 +61,24 @@ function differenceRadians(r1, r2)
 	return -(r2 - r1)
 end
 
-local atan = math.atan
+local atan2 = math.atan2
 -- ive had some wierd behaviour with lua's atan before
-function atan3(a,b)
-	local angle
+function atan3( a , b )
+	--[[local angle
 	if a == 0 and b == -1 then
 		angle = pi 
 	else
 		angle = atan(a, b) * 2 + pi2 + 0.01
+		if angle > pi2 then angle = angle - pi2 end
+	end
+	return angle]]
+
+	local angle
+	if a == 0 and b == -1 then
+		angle = pi 
+	else
+		angle = atan2(a, b)
+		angle = angle + pi2
 		if angle > pi2 then angle = angle - pi2 end
 	end
 	return angle

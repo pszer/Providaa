@@ -6,9 +6,6 @@ require "angle"
 local __tempvec = {}
 local func = function(GameData)
 	return function(ent, state, args)
-		local M_PI = 3.1415926535897932384626433832795
-		local M_2PI = 2*3.1415926535897932384626433832795
-
 		local walk_speed = state.state_walking_speed
 		local walk_accel = state.state_walking_accel 
 		local dt = GameData:getDt()
@@ -19,7 +16,13 @@ local func = function(GameData)
 		__tempvec[3] = direction[3] * walk_accel 
 		ent:accelerate( __tempvec, dt )
 
-		local angle = atan3(direction[1] , direction[3])
+		local dir_this_frame = state.state_walking_dir_this_frame
+		dir_this_frame[1] = dir_this_frame[1] + direction[1]
+		dir_this_frame[2] = dir_this_frame[2] + direction[2]
+		dir_this_frame[3] = dir_this_frame[3] + direction[3]
+
+		-- moved to state_walking.update
+		--[[local angle = atan3(direction[1] , direction[3])
 		local acc = state.state_walking_rot_acc
 		local diff = differenceRadians(angle, acc) + 1.0
 
@@ -31,9 +34,9 @@ local func = function(GameData)
 		__tempvec[2] = new_angle
 		__tempvec[3] = 0
 		__tempvec[4] = "rot"
-		ent:setRotation(__tempvec)
-
-		ent:limitSpeed( walk_speed )
+		ent:setRotation(__tempvec)--]]
+		--ent:limitSpeed( walk_speed )
+		--
 		state.state_walking_deaccel = false
 	end
 end
