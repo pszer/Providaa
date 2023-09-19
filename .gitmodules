@@ -2,4 +2,4 @@
 	url = src/cpml
 [submodule "src/iqm-exm"]
 	path = src/iqm-exm
-	url = https://github.com/excessive/iqm-exm.git
+	url = https://github.com/pszer/iqm-exm-threadsafe.git
