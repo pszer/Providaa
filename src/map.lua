@@ -118,14 +118,14 @@ function Map.loadMap(map)
 
 		if tex then
 			Textures.loadTexture(tex)
-			textures[i] = Textures.queryTexture(tex)
+			textures[i] = Textures.loadTexture(tex)
 		end
 	end
 
 	for i,t in pairs(map.wall_set) do
 		if t then
 			Textures.loadTexture(t)
-			walltextures[i] = Textures.queryTexture(t)
+			walltextures[i] = Textures.loadTexture(t)
 		end
 	end
 
@@ -278,7 +278,7 @@ function Map.getWallMeshes(map, walls, wallset, walltiles)
 	local meshes = {}
 
 	for i,v in pairs(wallset) do
-		local texture = Textures.queryTexture(map.wall_set[i])
+		local texture = Textures.loadTexture(map.wall_set[i])
 		local set_meshes = {}
 		local set_walls = {}
 
@@ -372,7 +372,7 @@ function Map.generateBottomMesh(map)
 	v3 = {x3,y3,z3, u[3], v[3]}
 	v4 = {x4,y4,z4, u[4], v[4]}
 	
-	local mesh = Mesh:new(Textures.queryTexture("nil.png"), 6, "triangles", "dynamic")
+	local mesh = Mesh:new(Textures.loadTexture("nil.png"), 6, "triangles", "dynamic")
 	mesh:setRectangle(1, v1,v2,v3,v4) -- vertices in opposite order to face downwards
 	return mesh
 end
@@ -409,7 +409,7 @@ function Map.getGridMeshes(map, grid, gridset)
 	local meshes = {}
 
 	for i,v in pairs(gridset) do
-		local texture = Textures.queryTexture(map.tile_set[i].tile_texture)
+		local texture = Textures.loadTexture(map.tile_set[i].tile_texture)
 
 		local set_meshes = {}
 		local set_tiles  = {}

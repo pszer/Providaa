@@ -25,7 +25,7 @@ function CustomModel:load(props)
 		model_contour_colour = {unpack(model_contour_colour)}
 	end
 
-	local model_ref = Models.queryModel(model_name)
+	local model_ref = Models.loadModel(model_name)
 	assert(model_ref)
 
 	local decor,animface = nil,nil

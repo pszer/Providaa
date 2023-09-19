@@ -40,7 +40,7 @@ function love.load( args )
 
 	Textures.loadTextures()
 	Textures.generateMissingTexture()
-	Models.loadModels()
+	--Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
 	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
@@ -92,7 +92,7 @@ function love.run()
 
 		if love.graphics and love.graphics.isActive() then
 			love.graphics.origin()
-			--love.graphics.clear(love.graphics.getBackgroundColor())
+			love.graphics.clear(love.graphics.getBackgroundColor())
 
 			if love.draw then love.draw() end
 

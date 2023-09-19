@@ -23,7 +23,7 @@ function faceFromCfg(name)
 	if not face_props then
 		error(string.format("faceDecorFromCfg: %s not found in FACE_ATTRIBUTES (cfg/face)", name)) end
 
-	local decor_model = Models.queryModel(decor_props.decor_model_name)
+	local decor_model = Models.loadModel(decor_props.decor_model_name)
 	if not decor_model then
 		error(string.format("faceDecorFromCfg: model %s not found for face decor %s in FACE_DECOR_ATTRIBUTES (cfg/face)",
 			tostring(decor_props.decor_model_name), name))

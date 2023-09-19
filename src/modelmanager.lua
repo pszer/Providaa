@@ -11,6 +11,7 @@ Models = {
 }
 Models.__index = Models
 
+-- a simple query
 function Models.queryModel(fname)
 	local model = Models.loaded[fname]
 	if model then
@@ -41,5 +42,25 @@ function Models.loadModels()
 	print("loading from cfg/model_attributes (Model.loadModels() should not be used!)")
 	for i,v in pairs(model_attributes) do
 		Models.loadModel(i)
+	end
+end
+
+-- releases all currently loaded models apart from entries given in it's set
+-- argument
+-- if called with an empty set then it releases ALL loaded models
+function Models.releaseModelsOutsideSet( set )
+	assert( type(set) == "table" )
+
+	local function in_set(set,x)
+		for i,v in ipairs(set) do
+			if v == x then return true end
+		end
+		return false
+	end
+
+	for name,model in pairs(Models.loaded) do
+		if not in_set(set, model) then
+			model:release()
+		end
 	end
 end

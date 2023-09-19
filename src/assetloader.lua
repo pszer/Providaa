@@ -81,6 +81,10 @@ function Loader:cleanupAssets(asset_table)
 					asset_table[name] = nil
 					asset_table.__ref_counts[name] = nil
 					asset[release_func]( asset )
+
+					print(string.format("Loader:cleaupAssets(): removing %s%s", asset_table.__dir, name))
+				else
+					print(string.format("Loader:cleaupAssets(): %s/%s has %d references", asset_table.__dir, name, ref_count))
 				end
 			end
 		end

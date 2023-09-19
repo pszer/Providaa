@@ -65,7 +65,9 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	end,},
 	{"state_enter" , nil, function(GameData)
 		return function(ent,state)
-			ent:playAnimationInterp({"Walk", 0.0, 1.0, true}, {"Stand", 0.0, 1.0, true}, 0.0)
+			local walk_anim  = {"Walk", 0.0, 1.0, true}
+			local stand_anim = {"Stand", 0.0, 1.0, true}
+			ent:playAnimationInterp(walk_anim, stand_anim, 0.0)
 		end
 	end },
 	{"state_exit"  , nil, function(GameData)

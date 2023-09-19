@@ -8,6 +8,11 @@ local function __finaliseModel( fname , objs )
 	objs.mesh = mesh
 
 	objs.mesh_data = nil
+	-- we give the model a release function
+	objs.release = function(objs)
+		local mesh = objs.mesh
+		if mesh then mesh:release() end
+	end
 
 	return objs
 end

@@ -99,6 +99,19 @@ function Scene:__removeAllModels()
 	self.dynamic_models = {}
 end
 
+-- returns a list of all models in this scene
+function Scene:listAllModels()
+	local set = require "set"
+	local model_set = set:new()
+
+	for i,v in ipairs(self:getModelInstances()) do
+		local model = v:getModel()
+		model_set:add(v)
+	end
+
+	return model_set
+end
+
 function Scene:getCamera()
 	return self.props.scene_camera end
 	
@@ -132,7 +145,7 @@ function Scene:generateGenericMesh(map, scene_meshes)
 	local meshes = {bottom_mesh, unpack(scene_meshes)}
 	--local meshes = scene_meshes
 
-	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.queryTexture("nil.png"), meshes)
+	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.loadTexture("nil.png"), meshes)
 end
 
 function Scene:pushFog(sh)
@@ -484,7 +497,7 @@ function Scene:drawSkybox(cam)
 	local skybox_tex_fname = props.scene_skybox
 	if skybox_tex_fname == "" then return nil end
 
-	local skybox_img = Textures.queryTexture(props.scene_skybox)
+	local skybox_img = Textures.loadTexture(props.scene_skybox)
 	if not skybox_img then return nil end
 	if skybox_img.props.texture_type ~= "cube" then
 		print(skybox_img.props.texture_name, " is not a cube image (drawSkybox))",skybox_img.props.texture_type)

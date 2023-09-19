@@ -409,11 +409,11 @@ function Entity:playAnimationInterp(anim1, anim2, interp)
 	local model = self:getModel()
 	if not model then
 		error(string.format("Entity:playAnimationInterp(): entity "%s" has no model", self:getIdentifier())) end
-	local anim1,anim2 = self:getAnimator()
+	local animator1,animator2 = self:getAnimator()
 	if not (anim1 and anim2) then
 		error(string.format("Entity:playAnimationInterp(): entity's \"%s\" model has no animators", self:getIdentifier())) end
-	anim1:playAnimation(unpack(anim1))
-	anim2:playAnimation(unpack(anim2))
+	animator1:playAnimationByName(unpack(anim1))
+	animator2:playAnimationByName(unpack(anim2))
 	model.props.model_i_animator_interp = interp
 end
 

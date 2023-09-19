@@ -12,25 +12,25 @@ function Set:new()
 	return s
 end
 
-function Set:Add(x)
+function Set:add(x)
 	for _,v in ipairs(self) do
 		if v == x then return end
 	end
 	table.insert(self, x)
 end
 
-function Set:RemoveByIndex(i)
+function Set:removeByIndex(i)
 	table.remove(self. i)
 end
 
-function Set:Remove(x)
+function Set:remove(x)
 	local i = self:Search(x)
 	if i then
 		table.remove(self, i)
 	end
 end
 
-function Set:Search(x)
+function Set:search(x)
 	for i,v in ipairs(self) do
 		if v == x then
 			return i
@@ -54,3 +54,5 @@ function EqualTables(a,b)
 
 	return true
 end
+
+return set
