@@ -1,6 +1,7 @@
 require "gamestate"
 require "render"
 require "console"
+require "assetloader"
 
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
@@ -23,6 +24,13 @@ function love.load( args )
 	testchannel:push(cpml.mat4.new(1))
 
 	Renderer.load()
+
+	Loader:initThread()
+	Loader:openTTF("LibreBaskerville-Regular.ttf")
+	Loader:openTexture("blue.png")
+	Loader:openModel("pianko/pianko.iqm")
+	Loader:openSound("clap.wav")
+	Loader:finishQueue()
 
 	Textures.loadTextures()
 	Textures.generateMissingTexture()
