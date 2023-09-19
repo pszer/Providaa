@@ -177,6 +177,6 @@ while true do
 		finished_channel:push(data)
 		print("Thread sent", filename)
 	else
-		love.timer.sleep(0.0125)
+		love.timer.sleep(0.0020)
 	end
 end

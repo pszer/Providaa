@@ -1,5 +1,4 @@
 require "provtype"
---require "threads.assetload"
 
 Loader = {__type = "loader",
 
@@ -159,8 +158,18 @@ function Loader:popRequest( demand , timeout )
 		print(string.format("Loader: %s%s success", asset_table.__dir, filename))
 	end
 
-	asset_table[filename] = asset
+	asset_table[filename] = self:finaliseAsset( asset_type , filename , asset )
 	return true
+end
+
+-- the worker thread returns models without a Love2D mesh and images
+-- as ImageData and not as textures, this function takes these incomplete
+-- assets and finalises them on the main thread.
+function Loader:finaliseAsset( type , filename , asset )
+	local finalisers = require "assetfinalise"
+	local func = finalisers[type]
+	assert(func)
+	return func(filename , asset)
 end
 
 function Loader:finishQueue()
