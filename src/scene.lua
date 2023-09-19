@@ -82,6 +82,21 @@ function Scene:removeModelInstance(inst)
 	else
 		r(inst, self:getDynamicModelInstances())
 	end
+	inst:releaseModel()
+end
+
+-- dangerous function
+function Scene:__removeAllModels()
+	local models = self.props.scene_models
+	local count = #models
+	for i = count,1,-1 do
+		self.model_bins:remove(models[i])
+		models[i]:releaseModel()
+		models[i] = nil
+	end
+
+	self.static_models = {}
+	self.dynamic_models = {}
 end
 
 function Scene:getCamera()
@@ -146,6 +161,7 @@ end
 function Scene:drawModels(update_anims, is_main_pass, model_subset)
 	prof.push("draw_models")
 	local models = model_subset or self.props.scene_models
+	--print("models, ", #models)
 	for i,v in ipairs(models) do
 		v:draw(nil, update_anims, is_main_pass)
 	end

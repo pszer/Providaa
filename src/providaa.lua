@@ -100,10 +100,9 @@ function Prov:load()
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 20.0
 
-	pianko = Models.queryModel("pianko/pianko.iqm")
-	piankoface = Models.queryModel("pianko/piankoface.iqm")
-	sphere = Models.queryModel("Sphere.iqm")
-	crate = Models.queryModel("shittycrate.iqm")
+	pianko = Model:fromLoader("pianko/pianko.iqm")
+	sphere = Model:fromLoader("Sphere.iqm")
+	crate = Model:fromLoader("shittycrate.iqm")
 
 	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
 	crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240}, model_i_static = true})
@@ -113,6 +112,7 @@ function Prov:load()
 	crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900}, model_i_static = true})
 	crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240}, model_i_static = true})
 	crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240}, model_i_static = true})
+	pianko_inst = ModelInstance:newInstance(pianko)
 
 	insts = {}
 
@@ -126,7 +126,7 @@ function Prov:load()
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
 	--self.scene:addModelInstance{ sphere, crate_i , crate_i2, crate_i3, crate_i4, crate_i5, crate_i6, crate_i7, crate_i8}
-	self.scene:addModelInstance{ sphere, crate_i }
+	self.scene:addModelInstance{ sphere, crate_i , crate_i2 ,crate_i3 ,crate_i4 ,crate_i5 ,crate_i6 ,crate_i7 , crate_i8 }
 
 	self:fitNewEntityPartitionSpace()
 
@@ -192,9 +192,9 @@ function Prov:update(dt)
 	--animface.props.animface_righteye_dir = {3*c,3*s,12}
 	--animface.props.animface_lefteye_dir  = {3*c,3*s,12}
 
-	--if scancodeIsDown("space", CTRL.GAME) then
-	--	pianko_ent:delete()
-	--end
+	if scancodeIsDown("space", CTRL.GAME) then
+		--self.scene:__removeAllModels()
+	end
 	--
 	--theent:setRotation{0,getTick()/60,0,"rot"}
 	--

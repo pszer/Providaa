@@ -28,7 +28,9 @@ function Model:new(props)
 
 		dir_matrix = nil,
 		outframes_allocated = false,
-		bounds_corrected = false -- has the bounding box been corrected by the direction fixing matrix?
+		bounds_corrected = false, -- has the bounding box been corrected by the direction fixing matrix?
+
+		ref_count = 0
 	}
 
 	setmetatable(this,Model)
@@ -47,7 +49,7 @@ end
 function Model:fromLoader( filename )
 	assert_type(filename, "string")
 	local model_attributes = require 'cfg.model_attributes'
-	local attributes   = model_attributes[fname] or {}
+	local attributes   = model_attributes[ filename ] or {}
 
 	local texture_name = attributes["model_texture_fname"]
 	local winding      = attributes["model_vertex_winding"]
@@ -106,7 +108,12 @@ function Model:fromLoader( filename )
 end
 
 function Model:release( )
+	local ref_count = self.ref_count
 	local name = self.props.model_name
+	if ref_count ~= 0 then
+		error(string.format("Model:release(): Model %s has %d references still remaining.", tostring(name), ref_count))
+	end
+
 	local tex_name = self.props.model_texture_fname
 	Loader:deref("model", name)
 	Loader:deref("texture", tex_name)
@@ -114,6 +121,19 @@ end
 
 function Model:getMesh()
 	return self.props.model_mesh
+end
+
+function Model:ref()
+	self.ref_count = self.ref_count + 1
+	print(self.ref_count)
+end
+
+function Model:deref()
+	if self.ref_count <= 0 then
+		error(string.format("Model:deref(): ref count is <=0, (%s)", self.props.model_name))
+	end
+	self.ref_count = self.ref_count - 1
+	print(self.ref_count)
 end
 
 ModelInstance = {__type = "modelinstance"}
@@ -127,7 +147,8 @@ ModelInstance.__index = ModelInstance
 --
 --]]
 
-function ModelInstance:new(props)
+-- this should never be called directly
+function ModelInstance:__new(props)
 	local this = {
 		props = ModelInstancePropPrototype(props),
 
@@ -171,7 +192,8 @@ end
 function ModelInstance:newInstance(model, props)
 	local props = props or {}
 	props.model_i_reference = model
-	return ModelInstance:new(props)
+	model:ref()
+	return ModelInstance:__new(props)
 end
 
 function ModelInstance:newInstances(model, instances)
@@ -186,7 +208,14 @@ function ModelInstance:newInstances(model, instances)
 		["model_i_instances_count"] = count
 	}
 
-	return ModelInstance:new(props)
+	model:ref()
+	return ModelInstance:__new(props)
+end
+
+function ModelInstance:releaseModel()
+	local model = self:getModel()
+	model:deref()
+	self:releaseDecorations()
 end
 
 function ModelInstance:usesModelInstancing()
@@ -506,7 +535,7 @@ function ModelInstance:draw(shader, update_animation, is_main_pass)
 	prof.pop("model_shader_send")
 
 	local modelprops = self:getModel().props
-	love.graphics.setFrontFaceWinding(modelprops.model_vertex_winding)
+	--love.graphics.setFrontFaceWinding(modelprops.model_vertex_winding)
 
 	local props = self.props
 
@@ -515,14 +544,19 @@ function ModelInstance:draw(shader, update_animation, is_main_pass)
 		self:drawInstances(shader)
 	elseif is_main_pass then
 		self:drawOutlined(shader)
-		--	modelprops.model_mesh:drawModel(shader)
 		self:drawDecorations(shader)
 	else
-		modelprops.model_mesh:drawModel(shader)
+		shadersend(shader,"texture_animated", false)
+		self:callDrawMesh()
 		--self:drawDecorations(shader)
 	end
 	prof.pop("model_drawwww")
-	love.graphics.setFrontFaceWinding("ccw")
+	--love.graphics.setFrontFaceWinding("ccw")
+end
+
+function ModelInstance:callDrawMesh()
+	local model = self:getModel()
+	love.graphics.draw(model.props.model_mesh)
 end
 
 function ModelInstance:drawOutlined(shader)
@@ -532,20 +566,20 @@ function ModelInstance:drawOutlined(shader)
 
 	prof.push("contour_draw")
 	if self.props.model_i_contour_flag and gfxSetting("enable_contour") then
-		self:drawContour(shader, mesh)
+		self:drawContour(shader)
 	end
 	prof.pop("contour_draw")
 	prof.push("after_contour_draw")
-	mesh:drawModel(shader)
+	self:callDrawMesh()
 	prof.pop("after_contour_draw")
 end
 
-function ModelInstance:drawContour(shader, dont_change_culling)
+function ModelInstance:drawContour(shader)
 	if not (self.props.model_i_contour_flag and gfxSetting("enable_contour")) then return end
 
 	local shader = shader or love.graphics.getShader()
 	local model = self:getModel()
-	local mesh = model:getMesh()
+	--local mesh = model:getMesh()
 	local colour = self.props.model_i_outline_colour
 	local offset = 0.25
 
@@ -556,7 +590,8 @@ function ModelInstance:drawContour(shader, dont_change_culling)
 	shader:send("u_draw_as_contour", true)
 	shader:send("u_contour_colour", colour)
 
-	mesh:drawModel(shader)
+	self:callDrawMesh()
+	--mesh:drawModel(shader)
 
 	love.graphics.setMeshCullMode("front")
 	shader:send("u_contour_outline_offset", 0.0)
@@ -567,7 +602,7 @@ end
 function ModelInstance:drawInstances(shader) 
 	local shader = shader or love.graphics.getShader()
 	local attr_mesh = self:getInstancesAttributeMesh()
-	local model_mesh = self:getModel():getMesh().mesh
+	local model_mesh = self:getModel():getMesh()
 	model_mesh:attachAttribute("InstanceColumn1", attr_mesh, "perinstance")
 	model_mesh:attachAttribute("InstanceColumn2", attr_mesh, "perinstance")
 	model_mesh:attachAttribute("InstanceColumn3", attr_mesh, "perinstance")
@@ -607,7 +642,13 @@ end
 
 function ModelInstance:attachDecoration(decor)
 	local name = decor:name()
+	assert_type(name, "string")
 	local decor_table = self.props.model_i_decorations
+
+	if decor_table[name] then
+		error(string.format("ModelInstance:attachDecoration(): decor with name \"%s\" already attached", name))
+	end
+
 	table.insert(decor_table, decor)
 	decor_table[name] = decor
 end
@@ -616,7 +657,12 @@ end
 -- or an index in the decor_table
 function ModelInstance:detachDecoration(name)
 	local decor_table = self.props.model_i_decorations
-	if name == "string" then
+	if type(name) == "string" then
+		local decor = decor_table[name]
+		if not decor then
+			error(string.format("ModelInstance:detachDecoration(string): no decor with name \"%s\" found", name))
+		end
+		decor:releaseModel()
 		decor_table[name] = nil
 		for i,decor in ipairs(decor_table) do
 			if decor:name() == name then
@@ -625,9 +671,24 @@ function ModelInstance:detachDecoration(name)
 			end
 		end
 	else -- if the argument name is a number index
+		local decor = decor_table[name]
+		if not decor then
+			error(string.format("ModelInstance:detachDecoration(int): index %d out of range", name))
+		end
+		decor:releaseModel()
 		decor_name = decor_table[name]:name()
 		decor_table[decor_name] = nil
 		table.remove(decor_table, name)
+	end
+end
+
+function ModelInstance:releaseDecorations()
+	local decor_table = self.props.model_i_decorations
+	for i,decor in ipairs(decor_table) do
+		decor_name = decor:name()
+		decor:releaseModel()
+		decor_table[decor_name] = nil
+		table.remove(decor_table, i)
 	end
 end
 
@@ -662,20 +723,6 @@ function Model:getDirectionFixingMatrix()
 	if not self.dir_matrix then self:generateDirectionFixingMatrix() end
 	return self.dir_matrix
 end
-
---[[function Model:allocateOutframeBuffer()
-	if self.outframes_buffer_allocated then return end
-
-	if self.props.model_animated then
-		local count = model:getSkeletonJointCount()
-		print("jointcount", count)
-		local mat4new = cpml.mat4.new(1)
-		for i=1,count do
-			self.outframe_bu = mat4new()
-		end
-		self.outframes_allocated = true
-	end
-end--]]
 
 -- corrects the models bounding box by the model direction fixing matrix
 function Model:correctBoundingBox()
@@ -742,10 +789,10 @@ function Model:generateBaseFrames()
 		local rotation_q = bone.rotation
 		local scale_v = bone.scale
 
-		local bone_pos_v = cpml.vec3.new(position_v.x, position_v.y, position_v.z)
-		local bone_rot_q = cpml.quat.new(rotation_q.x, rotation_q.y, rotation_q.z, rotation_q.w)
+		local bone_pos_v = cpml.vec3.new(position_v[1], position_v[2], position_v[3])
+		local bone_rot_q = cpml.quat.new(rotation_q[1], rotation_q[2], rotation_q[3], rotation_q[4])
 		bone_rot_q = bone_rot_q:normalize()
-		local bone_scale_v = cpml.vec3.new(scale_v.x, scale_v.y, scale_v.z)
+		local bone_scale_v = cpml.vec3.new(scale_v[1], scale_v[2], scale_v[3])
 
 		local rotation_u = cpml.mat4.from_quaternion( bone_rot_q )
 		local position_u = cpml.mat4.new(1)
@@ -780,10 +827,10 @@ function Model:generateAnimationFrames()
 			local rotation = pose.rotate
 			local scale = pose.scale
 
-			local pos_v = cpml.vec3.new(position.x, position.y, position.z)
-			local rot_q = cpml.quat.new(rotation.x, rotation.y, rotation.z, rotation.w)
+			local pos_v = cpml.vec3.new(position[1], position[2], position[3])
+			local rot_q = cpml.quat.new(rotation[1], rotation[2], rotation[3], rotation[4])
 			rot_q = rot_q:normalize()
-			local scale_v = cpml.vec3.new(scale.x, scale.y, scale.z)
+			local scale_v = cpml.vec3.new(scale[1], scale[2], scale[3])
 
 			local position_u = cpml.mat4.new(1)
 			local rotation_u = cpml.mat4.from_quaternion( rot_q )

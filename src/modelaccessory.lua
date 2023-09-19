@@ -10,7 +10,7 @@ local matrix = require 'matrix'
 ModelDecor = {__type = "decor"}
 ModelDecor.__index = ModelDecor
 
-function ModelDecor:new(props)
+function ModelDecor:__new(props)
 	local this = {
 		props = ModelDecorPropPrototype(props),
 
@@ -23,6 +23,21 @@ function ModelDecor:new(props)
 	this.local_model_u = cpml.mat4.new()
 
 	return this
+end
+
+function ModelDecor:newInstance(model, props)
+	assert_type(model, "model")
+
+	local decor = ModelDecor:__new(props)
+	decor.props.decor_reference = model
+	decor.props.decor_model_name = model.props.model_name
+	model:ref()
+	return decor
+end
+
+function ModelDecor:releaseModel()
+	local model = self.props.decor_reference
+	model:deref()
 end
 
 local __tempvec3 = cpml.vec3.new()
@@ -129,7 +144,8 @@ function ModelDecor:draw(parent, shader)
 	shadersend(shader, "u_shadow_imult", shadow_mult)
 
 	local mesh = self:getModel():getMesh()
-	mesh:drawModel(shader)
+	love.graphics.draw(mesh)
+	--mesh:drawModel(shader)
 
 	shadersend(shader, "u_shadow_imult", 0.0)
 end

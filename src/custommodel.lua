@@ -26,6 +26,8 @@ function CustomModel:load(props)
 	end
 
 	local model_ref = Models.queryModel(model_name)
+	assert(model_ref)
+
 	local decor,animface = nil,nil
 	if model_face then
 		decor,animface = faceFromCfg(model_face)

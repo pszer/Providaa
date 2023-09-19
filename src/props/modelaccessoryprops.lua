@@ -5,7 +5,7 @@ ModelDecorPropPrototype = Props:prototype{
 
 	{"decor_name",       "string", "", nil, "model decor ID"},
 	{"decor_reference",   nil, nil, nil, "model accessory model" },
-	{"decor_model_name", "string", "", nil, "filename for this model decor's model"},
+	{"decor_model_name", "string", "", nil, "filename for this model decor's reference model"},
 
 	{"decor_position", "table", nil, PropDefaultTable{0,0,0}, "model accessory's local position"},
 	{"decor_rotation", "table", nil, PropDefaultTable{0,0,0, "rot"}, "model accessory's local rotation"},

@@ -28,7 +28,7 @@ ModelPropPrototype = Props:prototype{
 
 	{"model_animations", nil, nil, nil, "model's animations"},
 	{"model_skeleton"  , nil, nil, nil, "model's skeleton"},
-	{"model_animated"  , "boolean", false, nil, "is model animated?"}
+	{"model_animated"  , "boolean", false, nil, "is model animated?"},
 }
 
 ModelInstancePropPrototype = Props:prototype{

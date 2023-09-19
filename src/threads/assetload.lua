@@ -36,8 +36,8 @@ local function __loadModel( base_dir , fname )
 	local fpath = base_dir .. fname
 
 	local atts = model_attributes[fname] or {}
-	local winding    = attributes["model_vertex_winding"] or "ccw"
-	local preserve_cw = winding == "ccw"
+	local winding    = atts["model_vertex_winding"] or "ccw"
+	local preserve_cw = winding == "cw"
 
 	local objs, err_str = readIQM(fpath, false, preserve_cw)
 
@@ -174,9 +174,7 @@ while true do
 		local filename = request[3]
 
 		local data = load_funcs[asset_type]( base_dir , filename )
-		print("Thread finished ", unpack(data))
 		finished_channel:push(data)
-		print("Thread sent", filename)
 	else
 		love.timer.sleep(0.0020)
 	end

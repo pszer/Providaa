@@ -1,4 +1,5 @@
 require "texturemanager"
+require "assetloader"
 require "render"
 
 require "props.facialfeaturesprops"
@@ -76,10 +77,11 @@ function EyesData:fromCfg(eyes_name)
 end
 
 function EyesData:openFilename(fname, props)
-	local source_image = Textures.rawLoadTexture(fname)
+	--local source_image = Textures.rawLoadTexture(fname)
+	local source_image = Loader:getTextureReference(fname)
 
 	if not source_image then
-		print(string.format("EyesData:openFilename(): image file \"%s\" not found", fname))
+		error(string.format("EyesData:openFilename(): image file \"%s\" not found", fname))
 		return nil
 	end
 
@@ -90,7 +92,7 @@ function EyesData:openFilename(fname, props)
 	local w,h = dim[1],dim[2]
 
 	if source_w / dim[1] ~= 2 or source_h % dim[2] ~= 0 then
-		print(string.format("EyesData:openFilename(): %s incorrect eye component dimensions (%d,%d) (%d,%d)",fname,
+		error(string.format("EyesData:openFilename(): %s incorrect eye component dimensions (%d,%d) (%d,%d)",fname,
 		  dim[1], dim[2], source_w, source_h))
 		return nil
 	end

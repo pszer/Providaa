@@ -68,10 +68,10 @@ end
 function AnimFace:pushComposite()
 	self.first_composite = false
 	local texture = self:composite()
-	self.props.animface_decor_reference:getModel():getMesh().mesh:setTexture(texture)
+	self.props.animface_decor_reference:getModel():getMesh():setTexture(texture)
 end
 
 function AnimFace:pushTexture()
 	local texture = self:getTexture()
-	self.props.animface_decor_reference:getModel():getMesh().mesh:setTexture(texture)
+	self.props.animface_decor_reference:getModel():getMesh():setTexture(texture)
 end

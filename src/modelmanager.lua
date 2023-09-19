@@ -1,5 +1,6 @@
 require "model"
 require "texturemanager"
+require "assetloader"
 
 local model_attributes = require 'cfg.model_attributes'
 local iqm = require 'iqm-exm'
@@ -28,7 +29,8 @@ function Models.loadModel(fname)
 
 	local attributes = model_attributes[fname] or {}
 	local texture    = attributes["model_texture_fname"]
-	local model = Models.openFilename(fname, texture, true)
+	--local model = Models.openFilename(fname, texture, true)
+	local model = Model:fromLoader(fname)
 	if model then Models.loaded[fname] = model end
 	return model
 end
@@ -40,92 +42,4 @@ function Models.loadModels()
 	for i,v in pairs(model_attributes) do
 		Models.loadModel(i)
 	end
-end
-
-function Models.openFilename(fname, texture_fname, load_anims)
-	local fpath = "models/" .. fname
-
-	local attributes = model_attributes[fname] or {}
-	local winding    = attributes["model_vertex_winding"] or "ccw"
-
-	local objs = Models.readIQM(fpath)
-
-	if not objs then
-		print("Models.openFilename(): model " .. fname .. " does not exist")
-	end
-
-	local bounds = nil
-	local bounds_copy = nil
-	if objs.bounds then
-		bounds = objs.bounds.base
-		bounds_copy = { ["min"]={unpack(bounds.min)}, ["max"]={unpack(bounds.max)} }
-	end
-
-	local texture = Textures.loadTexture(texture_fname)
-
-	local mesh = Mesh.newFromMesh(objs.mesh, texture)
-	local anims = nil
-	local skeleton = nil
-	local has_anims = false
-
-	if load_anims and objs.has_anims then
-		print(string.format("%s has animations, loading",fname))
-		anims = Models.openAnimations(fname)
-		skeleton = anims.skeleton
-		has_anims = true
-	else
-		print(string.format("%s doesn`t have animations",fname))
-	end
-
-	local model = Model:new{
-		["model_name"] = fname,
-		["model_texture_fname"] = texture_fname,
-		["model_vertex_winding"] = winding,
-		["model_bounding_box"] = bounds,
-		["model_bounding_box_unfixed"] = bounds_copy,
-		["model_mesh"] = mesh,
-		["model_skeleton"] = skeleton,
-		["model_animations"] = anims,
-		["model_animated"] = has_anims,
-	}
-
-	if load_anims and objs.has_anims then
-		model:generateBaseFrames()
-		model:generateAnimationFrames()
-	end
-
-	model:generateDirectionFixingMatrix()
-	model:correctBoundingBox()
-
-	return model
-end
-
-function Models.openAnimations(fname)
-	local fpath = "models/" .. fname
-	local anims = Models.readIQMAnimations(fpath)
-	if not anims then
-		local fpath = "anims/" .. fname
-		anims = Models.readIQMAnimations(fpath)
-	end
-	return anims
-end
-
-function Models.readIQM(fname)
-	local finfo = love.filesystem.getInfo(fname)
-	if not finfo or finfo.type ~= "file" then return nil end
-
-	local objs = iqm.load(fname)
-	if not objs then return nil end
-
-	return objs
-end
-
-function Models.readIQMAnimations(fname)
-	local finfo = love.filesystem.getInfo(fname)
-	if not finfo or finfo.type ~= "file" then return nil end
-
-	local anims = iqm.load_anims(fname)
-	if not anims then return nil end
-
-	return anims
 end

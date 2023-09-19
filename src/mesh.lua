@@ -148,6 +148,8 @@ function Mesh:drawAsEnvironment(shader)
 		shadersend(shader,"u_skinning", 0)
 
 		love.graphics.draw(self.mesh)
+
+		shadersend(shader,"texture_animated", false)
 	end
 end
 

@@ -23,16 +23,14 @@ function faceFromCfg(name)
 	if not face_props then
 		error(string.format("faceDecorFromCfg: %s not found in FACE_ATTRIBUTES (cfg/face)", name)) end
 
-	local decor = ModelDecor:new(decor_props)
-	local decor_model = Models.queryModel(decor.props.decor_model_name)
+	local decor_model = Models.queryModel(decor_props.decor_model_name)
 	if not decor_model then
 		error(string.format("faceDecorFromCfg: model %s not found for face decor %s in FACE_DECOR_ATTRIBUTES (cfg/face)",
-			decor.props.decor_model_name, name))
+			tostring(decor_props.decor_model_name), name))
 	end
+	local decor = ModelDecor:newInstance(decor_model, decor_props)
 
-	print(decor.props.decor_position)
-
-	decor.props.decor_reference = decor_model
+	--decor.props.decor_reference = decor_model
 
 	local eyes_data = EyesData:fromCfg(face_props.animface_eyesdata_name)
 	if not eyes_data then
