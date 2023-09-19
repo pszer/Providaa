@@ -37,7 +37,7 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 			if dir_this_frame[1] ~= 0 or dir_this_frame[3] ~= 0 then
 				local angle = atan3( dir_this_frame[1] , dir_this_frame[3] )
 				local acc = state.state_walking_rot_acc
-				local diff = differenceRadians(angle, acc) + 1.0
+				local diff = differenceRadians(angle, acc)*0.3 + 1.0
 
 				local rot_speed = state.state_walking_rot_speed 
 				local new_angle = slerpRadians(state.state_walking_rot_acc, angle, math.min(dt*rot_speed * diff*diff, 1.0))
@@ -74,13 +74,13 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	end },
 
 	{"state_walking_speed", "number", 80, nil,  "max walk speed, stated in world units per second"},
-	{"state_walking_accel", "number", 400, nil ,  "walk speed acceleration, stated in world units per second"},
+	{"state_walking_accel", "number", 200, nil ,  "walk speed acceleration, stated in world units per second"},
 	{"state_walking_anim_speed", "number", 1.15, nil,  "scalar for walk speed animation"},
 
 	{"state_walking_deaccel", "boolean", true, nil, "deaccelerates if set to true"},
 	{"state_walking_deaccel_scale", "number", -4.5, nil, "the smaller, the faster the deacceleration"},
 
-	{"state_walking_rot_speed", "number", 0.5, nil},
+	{"state_walking_rot_speed", "number", 1.5, nil},
 	{"state_walking_rot_acc", "number", 0, nil},
 	{"state_walking_dir_this_frame", "table", nil, PropDefaultTable{0,0,0}}
 
