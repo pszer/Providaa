@@ -32,6 +32,12 @@ function love.load( args )
 	Loader:openSound("clap.wav")
 	Loader:finishQueue()
 
+	blue_tex = Loader:getAssetReference("texture", "blue.png")
+	blue_tex = Loader:getAssetReference("texture", "blue.png")
+	Loader:deref("texture", "blue.png")
+	Loader:deref("texture", "blue.png")
+	print("blue_tex",blue_tex, Loader:getReferenceCount("texture", "blue.png"))
+
 	Textures.loadTextures()
 	Textures.generateMissingTexture()
 	Models.loadModels()

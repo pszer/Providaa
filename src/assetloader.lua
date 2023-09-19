@@ -95,16 +95,22 @@ end
 function Loader:deref(asset_table, filename)
 	assert(asset_table, filename)
 
+	local asset_table = asset_table
+	if type(asset_table) == "string" then
+		asset_table = self.type_str_to_asset_table[asset_table]
+	end
+
 	local asset = asset_table[filename]
 	if not asset then
 		error(string.format("Loader:deref(): %s/%s is not loaded", asset_table.__dir, tostring(filename))) end
 
-	local ref_count = asset_table.__ref_counts[filename]
+	local ref_counts = asset_table.__ref_counts
+	local ref_count = ref_counts[filename]
 	if ref_count <= 0 then
 		error(string.format("Loader:deref(): %s/%s still has %d references",
 		asset_table.__dir, tostring(filename), ref_count)) end
 
-	asset_table.__ref_counts[filename] = asset_table.__ref_counts[filename] - 1
+	ref_counts[filename] = ref_counts[filename] - 1
 end
 
 function Loader:ref(asset_table, filename)
@@ -114,7 +120,9 @@ function Loader:ref(asset_table, filename)
 	if not asset then
 		error(string.format("Loader:ref(): %s/%s is not loaded", asset_table.__dir, tostring(filename))) end
 
-	asset_table.__ref_counts[filename] = asset_table.__ref_counts[filename] + 1
+	local ref_counts = asset_table.__ref_counts
+	ref_counts[filename] = ref_counts[filename] + 1
+	return ref_counts[filename]
 end
 
 function Loader:sendRequest( type , base_dir , filename )
@@ -159,6 +167,7 @@ function Loader:popRequest( demand , timeout )
 	end
 
 	asset_table[filename] = self:finaliseAsset( asset_type , filename , asset )
+	asset_table.__ref_counts[filename] = 0
 	return true
 end
 
@@ -245,4 +254,20 @@ function Loader:getAssetReference(type, filename)
 	end
 
 	self:ref(assets, filename)
+	return loaded
+end
+
+function Loader:getModelReference(filename)
+	return Loader:getAssetReference("model", filename) end
+function Loader:getTextureReference(filename)
+	return Loader:getAssetReference("texture", filename) end
+function Loader:getSoundReference(filename)
+	return Loader:getAssetReference("sound", filename) end
+function Loader:getMusicReference(filename)
+	return Loader:getAssetReference("music", filename) end
+function Loader:getTTFReference(filename)
+	return Loader:getAssetReference("ttf", filename) end
+
+function Loader:getReferenceCount(type, filename)
+	return self.type_str_to_asset_table[type].__ref_counts[filename]
 end

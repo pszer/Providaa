@@ -43,6 +43,10 @@ function Mesh:new(tex, ...)
 	return this
 end
 
+function Mesh:release()
+	
+end
+
 function Mesh.newFromMesh(mesh, tex)
 	local this = {
 		mesh = mesh,

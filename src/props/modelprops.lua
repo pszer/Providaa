@@ -16,8 +16,8 @@ ModelPropPrototype = Props:prototype{
 	{"model_rotation", "table", nil, PropDefaultTable{0,0,0,"rot"}, "model's world rotation"},       -- unused
 	{"model_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale"},                      -- unused
 
-	{"model_up_vector" , "table", { 0 , -1 ,  0 }, nil, "model`s upward pointing vector",  "readonly"},
-	{"model_dir_vector", "table", { 0 ,  0 , -1 }, nil,  "model`s forward pointing vector", "readonly"},
+	{"model_up_vector" , "table", nil, PropDefaultTable{ 0 , -1 ,  0 }, "model`s upward pointing vector",  "readonly"},
+	{"model_dir_vector", "table", nil, PropDefaultTable{ 0 ,  0 , -1 }, "model`s forward pointing vector", "readonly"},
 	{"model_vertex_winding", "string", "ccw", PropIsOneOf{"ccw","cw"},  "vertex winding for this model`s mesh", "readonly"},
 
 	{"model_bounding_box_unfixed", "table", nil, PropDefaultTable{min={0,0,0},max={0,0,0}}, [[model's bounding box, given by two min/max vectors,

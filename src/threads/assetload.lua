@@ -13,11 +13,11 @@ local finished_channel = love.thread.getChannel( "loader_finished" )
 
 local function __loadModel( base_dir , fname )
 
-	local function readIQM(fname)
+	local function readIQM(fname, save_data, preserve_cw)
 		local finfo = love.filesystem.getInfo(fname)
 		if not finfo or finfo.type ~= "file" then return nil, string.format("couldn't open model file \"%s\"", fname) end
 
-		local objs = iqm.load_threadsafe(fname)
+		local objs = iqm.load_threadsafe(fname, save_data, preserve_cw)
 		if not objs then return nil, string.format("invalid IQM file \"%s\"", fname) end
 
 		return objs, ""
@@ -35,10 +35,11 @@ local function __loadModel( base_dir , fname )
 
 	local fpath = base_dir .. fname
 
-	local attributes = model_attributes[fname] or {}
+	local atts = model_attributes[fname] or {}
 	local winding    = attributes["model_vertex_winding"] or "ccw"
+	local preserve_cw = winding == "ccw"
 
-	local objs, err_str = readIQM(fpath)
+	local objs, err_str = readIQM(fpath, false, preserve_cw)
 
 	if not objs then
 		return {"model" , fname , nil, err_str} end

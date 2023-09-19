@@ -10,6 +10,7 @@ require "modelaccessory"
 require "texturemanager"
 require "rotation"
 require "animator"
+require "assetloader"
 
 Model = {__type = "model"}
 Model.__index = Model
@@ -41,6 +42,74 @@ function Model:new(props)
 	end
 
 	return this
+end
+
+function Model:fromLoader( filename )
+	assert_type(filename, "string")
+	local model_attributes = require 'cfg.model_attributes'
+	local attributes   = model_attributes[fname] or {}
+
+	local texture_name = attributes["model_texture_fname"]
+	local winding      = attributes["model_vertex_winding"]
+
+	if not texture_name then
+		error(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
+			filename))
+	end
+
+	local objs = Loader:getModelReference( filename )
+	assert(objs)
+
+	local bounds = nil
+	local bounds_copy = nil
+	if objs.bounds then
+		bounds = objs.bounds.base
+		bounds_copy = { ["min"]={unpack(bounds.min)}, ["max"]={unpack(bounds.max)} }
+	end
+
+	local texture = Loader:getTextureReference( texture_name )
+	assert(texture)
+	local mesh = objs.mesh
+	mesh:setTexture(texture)
+
+	local anims = nil
+	local skeleton = nil
+	local has_anims = false
+
+	if objs.has_anims then
+		anims = objs.anims
+		skeleton = anims.skeleton
+		has_anims = true
+	end
+
+	local model = Model:new{
+		["model_name"] = filename,
+		["model_texture_fname"] = texture_name,
+		["model_vertex_winding"] = winding,
+		["model_bounding_box"] = bounds,
+		["model_bounding_box_unfixed"] = bounds_copy,
+		["model_mesh"] = mesh,
+		["model_skeleton"] = skeleton,
+		["model_animations"] = anims,
+		["model_animated"] = has_anims,
+	}
+
+	if objs.has_anims then
+		model:generateBaseFrames()
+		model:generateAnimationFrames()
+	end
+
+	model:generateDirectionFixingMatrix()
+	model:correctBoundingBox()
+
+	return model
+end
+
+function Model:release( )
+	local name = self.props.model_name
+	local tex_name = self.props.model_texture_fname
+	Loader:deref("model", name)
+	Loader:deref("texture", tex_name)
 end
 
 function Model:getMesh()
