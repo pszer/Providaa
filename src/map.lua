@@ -239,6 +239,7 @@ function Map.generateMapMesh( map )
 
 		tex_count = tex_count + 1
 		textures[tex_count] = Loader:getTextureReference(tex_name)
+		tex_names[tex_count] = tex_name
 		id_to_tex[i] = tex_count
 	end
 
@@ -579,7 +580,7 @@ function Map.getWallVerts(x,z, wall, wall_side)
 	return __tempverts[1], __tempverts[2], __tempverts[3], __tempverts[4]
 end
 
-function Map.getWallMeshes(map, walls, wallset, walltiles)
+--[[function Map.getWallMeshes(map, walls, wallset, walltiles)
 	local meshes = {}
 
 	for i,v in pairs(wallset) do
@@ -633,7 +634,7 @@ function Map.generateTileMesh(map, z,x, tile, texture)
 	v3 = {x3,y3,z3, u[3], v[3]}
 	v4 = {x4,y4,z4, u[4], v[4]}
 	return {v1,v2,v3,v4}
-end
+end]]
 
 local __tempavec = cpml.vec3.new()
 local __tempbvec = cpml.vec3.new()

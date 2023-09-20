@@ -149,7 +149,7 @@ end
 local __tempvec3 = cpml.vec3.new(0,0,0)
 local __tempvec3_2 = cpml.vec3.new(0,0,0)
 local __tempvec3_up = cpml.vec3.new(0,-1,0)
-local __tempvec3_up2 = cpml.vec3.new(0,0,-1)
+local __tempvec3_up2 = cpml.vec3.new(0,0,1)
 --TEMP_PROJ = {}
 --TEMP_VIEW = {}
 function Light:generatePointLightSpaceMatrix()

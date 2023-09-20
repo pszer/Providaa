@@ -42,25 +42,23 @@ function Prov:load()
 
 	self.scene:loadMap(testmap)
 
-	map_mesh, map_uvs = Map.generateMapMesh( testmap )
-
 	self.scene.props.scene_lights = {
 		Light:new{
 			["light_pos"] = {0,0,0,0},
 			["light_dir"] = {-0.8,2.7,-1.5},
-			["light_col"] = {277.95/255, 277.95/255, 242/255, 1.0},
+			["light_col"] = {277.95/255, 277.95/255, 242/255, 14.0},
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {300,-30,-300+2048,1},
-			["light_col"] = {277.95/255, 255/255, 224/255,5000},
+			["light_pos"] = {300-20,-30,-300+2048,1},
+			["light_col"] = {277.95/255, 255/255, 224/255,2000},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
-		Light:new{
-			["light_pos"] = {800,-130,-300+2048,1},
+		--[[Light:new{
+			["light_pos"] = {800,-130,-250+2048,1},
 			["light_col"] = {277.95/255,255/255,224/255,2000},		
 			["light_size"] = 500,
 			["light_static"] = true

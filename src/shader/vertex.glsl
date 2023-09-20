@@ -388,9 +388,9 @@ vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 
 float attenuate_light(float dist, float light_size) {
 	float quad_comp   = 1.0/(light_size*light_size);
-	float linear_comp = 100.0/light_size;
-	float attenuate = 1.01/(1.0 + linear_comp*dist + quad_comp*dist*dist);
-	return max(0.0, attenuate - 0.01);
+	float linear_comp = 150.0/light_size;
+	float attenuate = 1.005/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	return max(0.0, attenuate - 0.005);
 }
 
 vec3 calc_point_light_col_full(int point_light_id, vec3 normal ) {
@@ -466,12 +466,12 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	//shadow -= s;
 
 	float cosTheta = clamp( dot( normal, frag_to_light ), 0,1 );
-	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.9, 1);
+	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.25, 1);
 	//float adjusted_bias = 0.0125*tan(acos(cosTheta));
 	//float adjusted_bias = bias;
 
 	//float adjusted_bias = bias * max( curr_depth / 500 , 1.0 ) * tan(acos(cosTheta));
-	float adjusted_bias = bias * max( curr_depth / 1000 , 1.0 ) * bias_angled;
+	float adjusted_bias = bias * max( curr_depth / 1000 , 1.0 ) * bias_angled ;
 	//float adjusted_bias = bias * max( curr_depth / 50 , 1.0 );
 
 	const int samples = 7;
@@ -516,7 +516,7 @@ void effect( ) {
 	// EVIL SHIT - no cubemap arrays, no glsl 4.0+ variable indexing.
 	//
 	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, frag_normal);}}
-	float point_bias = 1.5;
+	float point_bias = 0.5;
 	DO_POINT_LIGHT(0);
 	DO_POINT_LIGHT(1);
 	DO_POINT_LIGHT(2);

@@ -125,7 +125,7 @@ end
 
 function Model:ref()
 	self.ref_count = self.ref_count + 1
-	print(string.format("Model:ref(): %s ref_count %d", self.props.model_name, self.ref_count))
+	--print(string.format("Model:ref(): %s ref_count %d", self.props.model_name, self.ref_count))
 end
 
 function Model:deref()
@@ -133,7 +133,7 @@ function Model:deref()
 		error(string.format("Model:deref(): ref count is <=0, (%s)", self.props.model_name))
 	end
 	self.ref_count = self.ref_count - 1
-	print(string.format("Model:deref(): %s ref_count %d", self.props.model_name, self.ref_count))
+	--print(string.format("Model:deref(): %s ref_count %d", self.props.model_name, self.ref_count))
 end
 
 ModelInstance = {__type = "modelinstance"}
