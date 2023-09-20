@@ -27,7 +27,7 @@ function Scene:new(props)
 		map_mesh = nil,
 
 		resend_map_mesh_uv = true,
-		resend_static_lightmap_info = true
+		resend_static_lightmap_info = true,
 
 		--animthreads = AnimThreads:new(4)
 	}
@@ -274,12 +274,10 @@ function Scene:dirDynamicShadowPass( shader , light )
 	local dims_min, dims_max = light:getLightSpaceMatrixGlobalDimensionsMinMax()
 	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
-	--love.graphics.setMeshCullMode("front")
 	prof.push("dyn_models")
 	self:drawModels(false, false, in_view)
 	prof.pop("dyn_models")
 
-	--love.graphics.setMeshCullMode("front")
 	prof.push("dyn_grid")
 	self:drawGridMapForShadowMapping()
 	prof.pop("dyn_grid")
@@ -296,10 +294,7 @@ function Scene:dirStaticShadowPass( shader , light )
 	local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
 	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
-	--love.graphics.setMeshCullMode("front")
 	self:drawStaticModels(in_view)
-
-	--love.graphics.setMeshCullMode("front")
 	self:drawGridMapForShadowMapping()
 end
 
@@ -324,12 +319,7 @@ function Scene:pointStaticShadowPass( shader , light )
 		Renderer.setupCanvasForPointShadowMapping(light, i, true)
 		shadersend(shader, "u_lightspace", "column", matrix(mats[i]))
 
-		--love.graphics.setMeshCullMode("front")
-		--self:drawStaticModels()
-		--self:drawModels(false, false)
 		self:drawStaticModels()
-
-		--love.graphics.setMeshCullMode("front")
 		self:drawGridMapForShadowMapping()
 	end
 end
@@ -356,16 +346,25 @@ function Scene:shadowPass( )
 	prof.push("static_shadow_map")
 	for i,light in ipairs(props.scene_lights) do
 		local isdir = light:isDirectional()
-		local ispoint = light:isPoint()
-		if (isdir and light.props.light_static_depthmap_redraw_flag) or
-		   (isdir and self.force_redraw_static_shadow)
-		then
+		local ispoint  = light:isPoint()
+		local isstatic = light:isStatic()
+
+		local dir_redraw          = isdir and light.props.light_static_depthmap_redraw_flag
+		local dir_force_redraw    = isdir and self.force_redraw_static_shadow
+		local static_point        = ispoint and isstatic
+		local static_point_redraw = static_point and light.props.light_static_depthmap_redraw_flag
+		local point_force_redraw  = static_point and self.force_redraw_static_shadow
+
+
+		if dir_redraw or dir_force_redraw then
 			self.resend_static_lightmap_info = true
 			light.props.light_static_depthmap_redraw_flag = false
+
 			self:dirStaticShadowPass( shader , light )
-		elseif ispoint and light:isStatic() and light.props.light_static_depthmap_redraw_flag then
+		elseif static_point_redraw or point_force_redraw then
 			self.resend_static_lightmap_info = true
 			light.props.light_static_depthmap_redraw_flag = false
+
 			self:pointStaticShadowPass( shader , light )
 		else
 			--print(ispoint , light:isStatic() , light.props.light_static_depthmap_redraw_flag )
