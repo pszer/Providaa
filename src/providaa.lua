@@ -57,21 +57,21 @@ function Prov:load()
 			["light_static"] = true
 		},
 
-		--[[Light:new{
+		Light:new{
 			["light_pos"] = {800,-130,-250+2048,1},
-			["light_col"] = {277.95/255,255/255,224/255,2000},		
-			["light_size"] = 500,
-			["light_static"] = true
-		},
-
-		--[[Light:new{
-			["light_pos"] = {1600,-30,-280,1},
-			["light_col"] = {255/255,235/255,224/255,10},
-			["light_size"] = 500,
+			["light_col"] = {277.95/255,255/255,224/255,1000},		
+			["light_size"] = 250,
 			["light_static"] = true
 		},
 
 		Light:new{
+			["light_pos"] = {1200,-120,-200+2048,1},
+			["light_col"] = {500/255,235/255,224/255,1000},
+			["light_size"] = 250,
+			["light_static"] = true
+		},
+
+		--[[Light:new{
 			["light_pos"] = {2400,-30,-280,1},
 			["light_col"] = {255/255,235/255,224/255,10},
 			["light_size"] = 500,

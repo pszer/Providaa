@@ -219,7 +219,7 @@ vec3 diffuse_lighting_2( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 0.1;
+	float specular_strength = 0.05;
 
 	vec3 view_dir = normalize( view_pos - frag_w_position );
 	vec3 light_dir_n = normalize( light_dir);
@@ -387,10 +387,11 @@ vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 }
 
 float attenuate_light(float dist, float light_size) {
-	float quad_comp   = 1.0/(light_size*light_size);
-	float linear_comp = 150.0/light_size;
-	float attenuate = 1.005/(1.0 + linear_comp*dist + quad_comp*dist*dist);
-	return max(0.0, attenuate - 0.005);
+	float quad_comp   = 10.0/(light_size*light_size);
+	float linear_comp = 100.0/light_size;
+	float attenuate = 1.0/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	return attenuate;
+	//return max(0.0, attenuate - 0.005);
 }
 
 vec3 calc_point_light_col_full(int point_light_id, vec3 normal ) {
