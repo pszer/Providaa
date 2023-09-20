@@ -466,17 +466,17 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	//shadow -= s;
 
 	float cosTheta = clamp( dot( normal, frag_to_light ), 0,1 );
-	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.1 , 20);
+	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.9, 1);
 	//float adjusted_bias = 0.0125*tan(acos(cosTheta));
 	//float adjusted_bias = bias;
 
 	//float adjusted_bias = bias * max( curr_depth / 500 , 1.0 ) * tan(acos(cosTheta));
-	float adjusted_bias = bias * max( curr_depth / 100 , 1.0 ) * bias_angled;
+	float adjusted_bias = bias * max( curr_depth / 1000 , 1.0 ) * bias_angled;
 	//float adjusted_bias = bias * max( curr_depth / 50 , 1.0 );
 
-	const int samples = 4;
+	const int samples = 7;
 	float shadow = 1.0;
-	float disk_radius = (1.0 + (curr_depth / far_plane)) / 3.0;
+	float disk_radius = (1.0 + (curr_depth / far_plane)) * 1.0;
 	for(int i = 0; i < samples; ++i) {
 		//int index = int(20.0*random(floor(frag_w_position.xyz*10.0), i))%20;
 		int index = i;
@@ -516,7 +516,7 @@ void effect( ) {
 	// EVIL SHIT - no cubemap arrays, no glsl 4.0+ variable indexing.
 	//
 	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, frag_normal);}}
-	float point_bias = 0.3;
+	float point_bias = 1.5;
 	DO_POINT_LIGHT(0);
 	DO_POINT_LIGHT(1);
 	DO_POINT_LIGHT(2);
@@ -529,14 +529,9 @@ void effect( ) {
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
-	//coords = coords / texscale;
-
 	vec4 texcolor;
-	//if (!u_uses_tileatlas) {
-		texcolor = Texel(MainTex, coords);
-	//}// else {
+	texcolor = Texel(MainTex, coords);
 
-	//}
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	// TODO make the fog colour work properly with HDR

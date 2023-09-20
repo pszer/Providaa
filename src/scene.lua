@@ -39,8 +39,8 @@ end
 function Scene:loadMap(map)
 	self.map_mesh = Map.generateMapMesh(map)
 
-	local props = self.props
-	local gridsets, wallsets
+	--local props = self.props
+	--local gridsets, wallsets
 
 	--[[props.scene_grid, props.scene_walls, props.scene_wall_tiles, gridsets, wallsets =
 		Map.loadMap(map)

@@ -38,8 +38,8 @@ function love.load( args )
 	Loader:deref("texture", "blue.png")
 	print("blue_tex",blue_tex, Loader:getReferenceCount("texture", "blue.png"))
 
-	Textures.loadTextures()
-	Textures.generateMissingTexture()
+	--Textures.loadTextures()
+	--Textures.generateMissingTexture()
 	--Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
