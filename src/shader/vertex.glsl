@@ -148,11 +148,6 @@ uniform float fog_start;
 uniform float fog_end;
 uniform vec3  fog_colour;
 
-uniform bool texture_animated;
-uniform int  texture_animated_dimx;
-uniform int  texture_animated_frame;
-uniform int  texture_animated_framecount;
-
 uniform vec3 view_pos;
 uniform vec3 light_dir;
 uniform vec4 light_col;
@@ -231,14 +226,6 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 }
 
 vec2 calc_tex_coords( vec2 uv_coords ) {
-	/*if (!texture_animated) {
-		return uv_coords + texoffset;
-	} else {
-		vec2 step = vec2(1.0,1.0) / float(texture_animated_dimx);
-
-		vec2 texpos = vec2(mod(texture_animated_frame,texture_animated_dimx), texture_animated_frame / texture_animated_dimx);
-		return mod(uv_coords + texoffset,vec2(1,1))*step + texpos*step;
-	}*/
 	if (u_uses_tileatlas) {
 		vec2 t_off = texoffset;
 		vec2 t_scale = texscale;

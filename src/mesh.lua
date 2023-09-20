@@ -1,5 +1,44 @@
 -- custom mesh class for love2d meshes
 --
+-- 
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+-- unused legacy code, can be safely removed
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
 
 local cpml = require 'cpml'
 local matrix = require 'matrix'
@@ -123,7 +162,7 @@ function Mesh.mergeMeshes(texture, list, vertexlist, attribute_atype)
 	return mesh
 end
 
-function Mesh:updateTexture()
+--[[function Mesh:updateTexture()
 	if self.texture then
 		if self.texture:animationChangesThisTick() and UPDATE_ANIMATION then
 			local t = self.texture:getImage()
@@ -132,9 +171,9 @@ function Mesh:updateTexture()
 			end
 		end
 	end
-end
+end]]
 
-function Mesh:drawAsEnvironment(shader)
+--[[function Mesh:drawAsEnvironment(shader)
 	shader = shader or love.graphics.getShader()
 	if self.mesh then
 		local tex = self.texture
@@ -173,7 +212,7 @@ function Mesh:drawModel(shader)
 		love.graphics.draw(self.mesh)
 		prof.pop("mesh_drawmodel")
 	end
-end
+end]]
 
 function Mesh:scaleTexture(scalex, scaley)
 	scaley = scaley or scalex
