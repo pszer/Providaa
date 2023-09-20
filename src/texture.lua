@@ -1,4 +1,24 @@
 -- functions for loading and getting textures
+--
+--
+--
+--
+--
+--
+--
+--
+--
+-- unused legacy code, can be safely removed
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
 
 require "props.textureprops"
 require "string"

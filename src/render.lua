@@ -200,7 +200,7 @@ function Renderer.renderScaled(canvas, hdr)
 		love.graphics.setCanvas()
 		love.graphics.origin()
 		love.graphics.scale(RESOLUTION_RATIO)
-		love.graphics.draw(canvas)
+		love.graphics.draw(canvas,wpad,hpad)
 
 		--Renderer.drawOutlineBuffer(Renderer.scene_postprocess_viewport, Renderer.scene_outline_viewport, 1)
 

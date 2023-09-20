@@ -30,13 +30,13 @@ function Textures.loadTexture(fname)
 	return tex
 end
 
-function Textures.loadTextures()
+--[[function Textures.loadTextures()
 	love.graphics.setDefaultFilter( "nearest", "nearest" )
 	print("loading from cfg/texture_attributes")
 	for i,v in pairs(tex_attributes) do
 		Textures.loadTexture(i)
 	end
-end
+end]]
 
 -- completely releases texture
 --[[function Textures.releaseTexture(fname)

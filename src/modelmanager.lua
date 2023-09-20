@@ -38,12 +38,12 @@ end
 
 -- loads all models in cfg/model_attributes
 -- not a good idea
-function Models.loadModels()
+--[[function Models.loadModels()
 	print("loading from cfg/model_attributes (Model.loadModels() should not be used!)")
 	for i,v in pairs(model_attributes) do
 		Models.loadModel(i)
 	end
-end
+end--]]
 
 -- releases all currently loaded models apart from entries given in it's set
 -- argument
