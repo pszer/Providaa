@@ -50,6 +50,7 @@ function Prov:load()
 			["light_static"] = true
 		},
 
+		--[[
 		Light:new{
 			["light_pos"] = {300-20,-30,-300+2048,1},
 			["light_col"] = {277.95/255, 255/255, 224/255,2000},

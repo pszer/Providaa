@@ -22,11 +22,12 @@ function Scene:new(props)
 		static_models = {},
 		dynamic_models = {},
 
-		pushed_static_lights = false,
-		
 		force_redraw_static_shadow = false,
 
-		map_mesh = nil
+		map_mesh = nil,
+
+		resend_map_mesh_uv = true,
+		resend_static_lightmap_info = true
 
 		--animthreads = AnimThreads:new(4)
 	}
@@ -38,16 +39,6 @@ end
 
 function Scene:loadMap(map)
 	self.map_mesh = Map.generateMapMesh(map)
-
-	--local props = self.props
-	--local gridsets, wallsets
-
-	--[[props.scene_grid, props.scene_walls, props.scene_wall_tiles, gridsets, wallsets =
-		Map.loadMap(map)
-	props.scene_width = map.width
-	props.scene_height = map.height
-
-	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)--]]
 	self:fitNewModelPartitionSpace()
 end
 
@@ -126,32 +117,6 @@ function Scene:getStaticModelInstances()
 function Scene:getDynamicModelInstances()
 	return self.dynamic_models end
 
---[[function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
-	local props = self.props
-
-	local gridmeshes = Map.getGridMeshes(map, props.scene_grid, gridsets)
-	local wallmeshes = Map.getWallMeshes(map, props.scene_walls, wallsets, props.scene_wall_tiles)
-
-	for i,mesh in ipairs(wallmeshes) do
-		table.insert(props.scene_meshes,mesh) end
-	for i,mesh in ipairs(gridmeshes) do
-		table.insert(props.scene_meshes,mesh) end
-
-	self:generateGenericMesh(map, props.scene_meshes)
-
-	props.scene_grid:applyAttributes()
-	WallTile.applyAttributes(props.scene_wall_tiles, props.scene_width, props.scene_height)
-end
-
-function Scene:generateGenericMesh(map, scene_meshes)
-	local props = self.props
-	local bottom_mesh = Map.generateBottomMesh(map)
-	local meshes = {bottom_mesh, unpack(scene_meshes)}
-	--local meshes = scene_meshes
-
-	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.loadTexture("nil.png"), meshes)
-end--]]
-
 function Scene:pushFog(sh)
 	sh:send("fog_start", self.props.scene_fog_start)
 	sh:send("fog_end", self.props.scene_fog_end)
@@ -173,7 +138,10 @@ function Scene:drawGridMap()
 	shadersend(shader,"texture_animated", false)
 
 	shadersend(shader,"u_uses_tileatlas", true)
-	shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs))
+	if self.resend_map_mesh_uv then
+		shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs))
+		resend_map_mesh_uv = false
+	end
 	shadersend(shader,"u_model", "column", __id)
 	shadersend(shader,"u_normal_model", "column", __id)
 
@@ -273,7 +241,11 @@ function Scene:draw(cam)
 	prof.push("shaderpushes")
 	local sh = Renderer.setupCanvasFor3D()
 	prof.push("pushshadowmaps")
-	self:pushShadowMaps(sh)
+	if self.resend_static_lightmap_info then
+		self:pushShadowMaps(sh)
+	else
+		self:pushDynamicShadowMaps(sh)
+	end
 	prof.pop("pushshadowmaps")
 	self:pushFog(sh)
 	self:pushAmbience(sh)
@@ -314,7 +286,6 @@ function Scene:dirDynamicShadowPass( shader , light )
 end
 
 function Scene:dirStaticShadowPass( shader , light )
-	light.props.light_static_depthmap_redraw_flag = false
 	light:clearStaticDepthMap(false)
 	Renderer.setupCanvasForDirShadowMapping(light, "static", true)
 
@@ -389,8 +360,12 @@ function Scene:shadowPass( )
 		if (isdir and light.props.light_static_depthmap_redraw_flag) or
 		   (isdir and self.force_redraw_static_shadow)
 		then
+			self.resend_static_lightmap_info = true
+			light.props.light_static_depthmap_redraw_flag = false
 			self:dirStaticShadowPass( shader , light )
 		elseif ispoint and light:isStatic() and light.props.light_static_depthmap_redraw_flag then
+			self.resend_static_lightmap_info = true
+			light.props.light_static_depthmap_redraw_flag = false
 			self:pointStaticShadowPass( shader , light )
 		else
 			--print(ispoint , light:isStatic() , light.props.light_static_depthmap_redraw_flag )
@@ -422,17 +397,8 @@ function Scene:pushShadowMaps(shader)
 	local dir_light_dir
 	local dir_light_col
 
-	--local point_shadow_maps = {}
-	--
 	local point_light_count = 0
 	local point_light_shadowmap_count = 0
-
-	--local point_light_pos = {}
-	--local point_light_col = {}
-	--local point_light_has_shadow_map = {}
-	--local point_light_shadow_maps = {}
-	--local point_light_far_planes = {}
-	--local point_light_shadow_map_index = {}
 
 	for i,light in ipairs(lights) do
 		local light_type = light:getLightType()
@@ -468,17 +434,12 @@ function Scene:pushShadowMaps(shader)
 					local cubemap = light:getCubeMap()
 					local farplane = light.props.light_cube_lightspace_far_plane
 
-					--point_light_shadow_map_index[point_light_count] = point_light_shadowmap_count - 1
-					--point_light_shadow_maps[point_light_shadowmap_count] = cubemap
-					--point_light_far_planes[point_light_shadowmap_count] = farplane
 					point_light_shadow_maps[point_light_count] = cubemap
 					point_light_far_planes[point_light_count] = farplane
 					point_light_has_shadow_map[point_light_count] = true
 				else
-					local farplane = light.props.light_cube_lightspace_far_plane
-					point_light_shadow_map_index[point_light_count] = -1
 					point_light_shadow_maps[point_light_count] = Renderer.nil_cubemap
-					point_light_far_planes[point_light_count] = farplane
+					point_light_far_planes[point_light_count] = 1
 					point_light_has_shadow_map[point_light_count] = false
 				end
 
@@ -508,7 +469,68 @@ function Scene:pushShadowMaps(shader)
 		shadersend(shader, "point_light_far_planes", unpack(point_light_far_planes))
 	end
 
-	self.pushed_static_lights = true
+	print("static send")
+	self.resend_static_lightmap_info = false
+end
+
+function Scene:pushDynamicShadowMaps(shader)
+	local lights = self.props.scene_lights
+	local light_count = #lights
+	local shader = shader or love.graphics.getShader()
+
+	local dir_light_found = false
+	local dir_lightspace_mat
+	local dir_shadow_map
+	local dir_light_dir
+	local dir_light_col
+
+	local point_light_count = 0
+
+	for i,light in ipairs(lights) do
+		local light_type = light:getLightType()
+
+		if light_type == "directional" then
+			if not dir_light_found then
+				dir_light_found = true
+				dir_lightspace_mat = light:getLightSpaceMatrix()
+				dir_shadow_map = light:getDepthMap()
+				dir_light_dir = light:getLightDirection()
+				dir_light_col = light:getLightColour()
+			else
+				print("pushShadowMaps(): multiple directional lights, ignoring")
+			end
+		elseif light_type == "point" then
+			point_light_count = point_light_count + 1
+
+			if point_light_count > point_light_max then
+				print(string.format("pushShadowMaps(): point light count exceeds maximum limit of %s", point_light_max))
+			else
+				local col = light:getLightColour()
+				local pos = light:getLightPosition()
+				local size = light:getLightSize()
+
+				point_light_pos[point_light_count][1] = pos[1]
+				point_light_pos[point_light_count][2] = pos[2]
+				point_light_pos[point_light_count][3] = pos[3]
+				point_light_pos[point_light_count][4] = size
+				point_light_col[point_light_count] = col
+			end
+		end
+	end
+
+	shadersend(shader, "u_dir_lightspace", "column", matrix(dir_lightspace_mat))
+	shadersend(shader, "dir_shadow_map", dir_shadow_map)
+	shadersend(shader, "dir_light_dir", dir_light_dir)
+	shadersend(shader, "dir_light_col", dir_light_col)
+
+	shadersend(shader, "u_point_light_count", point_light_count)
+	if point_light_count > 0 then
+		shadersend(shader, "point_light_pos", unpack(point_light_pos))
+		shadersend(shader, "point_light_col", unpack(point_light_col))
+		--shadersend(shader, "point_light_has_shadow_map", unpack(point_light_has_shadow_map))
+		--shadersend(shader, "point_light_shadow_maps", unpack(point_light_shadow_maps))
+		--shadersend(shader, "point_light_far_planes", unpack(point_light_far_planes))
+	end
 end
 
 -- returns true if skybox drawn
@@ -607,6 +629,7 @@ function Scene:updateModelPartitionSpace()
 end
 
 function Scene:redrawStaticMaps()
+	self.resend_static_lightmap_info = true
 	for i,v in ipairs(self.props.scene_lights) do
 		v:redrawStaticMap()
 	end

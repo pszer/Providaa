@@ -36,6 +36,13 @@
 --       [1] = {tile_type="land",tile_texture="dirt.png",tile_walkable=true}
 --     },
 --
+--     each textured tile in the tile_set has an optional animated texture parameter
+--     anim_tex = {
+--       [1] = {textures = "dirt.png", "dirt2.png",
+--              sequence = {1,2},
+--              delay    = 30}
+--     },
+--
 --     each entry in the wall_set is a texture to use when generating walls 
 --     wall_set = {
 --       [0] = nil

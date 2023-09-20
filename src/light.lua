@@ -85,55 +85,6 @@ function Light:allocateDepthMap(size, staticsize)
 	end
 end
 
--- deprecated, use other LightSpaceMatrix functions
---local __tempmat4 = cpml.mat4.new()
---local __tempvec3up = cpml.vec3.new(0,-1,0)
---local __tempvec3_1 = cpml.vec3.new()
---local __tempvec3_2 = cpml.vec3.new()
---[[function Light:generateLightSpaceMatrix()
-	if not self:isStatic() or not self:isDirectional() then return end
-
-	local props = self.props
-	if props.light_static and self.props.light_lightspace_matrix then
-		return props.light_lightspace_matrix
-	end
-
-	local pos = self.props.light_pos
-	local dir = self.props.light_dir
-
-	local light_proj = nil
-	if pos[4] == 0 then -- if directional light
-		light_proj = cpml.mat4.from_ortho(-1500,1500,1500,-1500,1.0,3000)
-	else -- if point light
-		light_proj = nil -- implement for point light
-	end
-
-	--local light_view = cpml.mat4()
-	local light_view = __tempmat4
-
-	--local pos_v = cpml.vec3(pos)
-	--local dir_v = cpml.vec3(dir)
-	local pos_v = __tempvec3_1
-	local pos_plus_dir_v = __tempvec3_2
-
-	pos_v.x = pos[1]
-	pos_v.y = pos[2]
-	pos_v.z = pos[3]
-
-	pos_plus_dir_v.x = pos[1] + dir[1]
-	pos_plus_dir_v.y = pos[2] + dir[2]
-	pos_plus_dir_v.z = pos[3] + dir[3]
-
-
-	light_view = light_view:look_at(pos_v,
-	                                pos_v + dir_v,
-									__tempvec3up)
-
-	--props.light_lightspace_matrix = light_proj * light_view
-	props.light_lightspace_matrix:mul(light_proj , light_view)
-	return props.light_lightspace_matrix
-end--]]
-
 function Light:generateMatrices(cam)
 	if not self:isStatic() then
 		return
@@ -211,9 +162,11 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		local proj = cam:calculatePerspectiveMatrix(nil, 350)
 		local mat, dim, g_dim, view = self:calculateLightSpaceMatrixFromFrustrum(
 			cam:generateFrustrumCornersWorldSpace(proj))
+
 		--self.props.light_lightspace_matrix = mat
 		--self.props.light_lightspace_matrix_dimensions = dim
 		--self.props.light_lightspace_matrix_global_dimensions = g_dim
+		--
 		iclone(self.props.light_lightspace_matrix, mat)
 		iclone(self.props.light_lightspace_matrix_dimensions, dim)
 		iclone(self.props.light_lightspace_matrix_global_dimensions, g_dim)
@@ -224,23 +177,24 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		-- whenever the camera's frustrum goes
 		-- outside this lightspace matrix we generate a new one and render the shadowmap again.
 		-- this way
-		local proj = cam:calculatePerspectiveMatrix(nil, cam.props.cam_far_plane * 0.66)
+		local proj = cam:calculatePerspectiveMatrix(nil, cam.props.cam_far_plane * 1.0)
 		local corners, centre = cam:generateFrustrumCornersWorldSpace(proj)
 		
 		if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
+
 			local static_mat, static_map_dim, static_global_dim, static_view = self:calculateLightSpaceMatrixFromFrustrum(
 				corners, centre, 700)
 
-			--self.props.light_static_lightspace_matrix = static_mat
 			iclone(self.props.light_static_lightspace_matrix, static_mat)
 			iclone(self.props.light_static_lightspace_matrix_dimensions, static_map_dim)
 			iclone(self.props.light_static_lightspace_matrix_global_dimensions, static_global_dim)
 			iclone(self.static_lightspace_view_mat, static_view)
-			--self.props.light_static_lightspace_matrix_dimensions = static_map_dim
-			--self.props.light_static_lightspace_matrix_global_dimensions = static_global_dim
+
 			self.props.light_static_depthmap_redraw_flag = true
+			self.static_lightspace_generated = true
 		end
 	elseif self:isPoint() then
+
 		if not self:isStatic() then return end
 	end
 end
@@ -248,9 +202,7 @@ end
 function Light:testNeedForNewStaticLightmapMatrix(corners, dimensions)
 	if not self:isDirectional() then return false end
 	if not self.static_lightspace_generated then return true end
-	self.static_lightspace_generated = true
 
-	--local view_mat = dimensions.view_matrix
 	local view_mat = self.static_lightspace_view_mat
 	local min_x,max_x = dimensions[1], dimensions[2]
 	local min_y,max_y = dimensions[3], dimensions[4]
@@ -258,12 +210,9 @@ function Light:testNeedForNewStaticLightmapMatrix(corners, dimensions)
 
 	for i,v in ipairs(corners) do
 		local xyzw = {v[1],v[2],v[3],1.0}
-		--print(unpack(xyzw))
-		--print(view_mat)
 		local trf  = {}
 		trf = cpml.mat4.mul_vec4(trf, view_mat, xyzw)
 		local x,y,z = trf[1],trf[2],trf[3]
-		--print("["..tostring(i).."]",x,y,z, min_x,max_x,min_y,max_y,min_z,max_z)
 		local inside =
 		 min_x < x and max_x > x and
 		 min_y < y and max_y > y and
