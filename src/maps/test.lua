@@ -8,7 +8,7 @@ return {
 	tile_set = {
 		[0] = {tile_type="void"},
 		[1] = {tile_type="land",tile_texture="dirt.png",tile_walkable=true},
-		[2] = {tile_type="land",tile_texture="water.png",tile_walkable=false}
+		[2] = {tile_type="land",tile_texture="water1.png",tile_walkable=false}
 	},
 
 	wall_set = {

@@ -23,7 +23,7 @@ CameraPropPrototype = Props:prototype{
 	--{"cam_roll",  "number", 0, nil, "camera roll angle"},
 
 	{"cam_fov", "number", 75.0, nil, "camera fov"},
-	{"cam_far_plane", "number", 2100.0, nil, "camera far plane distance"},
+	{"cam_far_plane", "number", 1750.0, nil, "camera far plane distance"},
 
 	{"cam_perspective_matrix", nil, nil, nil, "perspective matrix"},
 	{"cam_view_matrix", nil, nil, nil, "view position matrix"},

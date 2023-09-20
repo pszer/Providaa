@@ -26,6 +26,8 @@ function Scene:new(props)
 		
 		force_redraw_static_shadow = false,
 
+		map_mesh = nil
+
 		--animthreads = AnimThreads:new(4)
 	}
 
@@ -35,15 +37,17 @@ function Scene:new(props)
 end
 
 function Scene:loadMap(map)
+	self.map_mesh = Map.generateMapMesh(map)
+
 	local props = self.props
 	local gridsets, wallsets
 
-	props.scene_grid, props.scene_walls, props.scene_wall_tiles, gridsets, wallsets =
+	--[[props.scene_grid, props.scene_walls, props.scene_wall_tiles, gridsets, wallsets =
 		Map.loadMap(map)
 	props.scene_width = map.width
 	props.scene_height = map.height
 
-	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)
+	self:generateMeshes(map, props.scene_grid, props.scene_walls, gridsets, wallsets)--]]
 	self:fitNewModelPartitionSpace()
 end
 
@@ -122,7 +126,7 @@ function Scene:getStaticModelInstances()
 function Scene:getDynamicModelInstances()
 	return self.dynamic_models end
 
-function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
+--[[function Scene:generateMeshes(map, grid, walls, gridsets, wallsets)
 	local props = self.props
 
 	local gridmeshes = Map.getGridMeshes(map, props.scene_grid, gridsets)
@@ -146,7 +150,7 @@ function Scene:generateGenericMesh(map, scene_meshes)
 	--local meshes = scene_meshes
 
 	props.scene_generic_mesh = Mesh.mergeMeshes(Textures.loadTexture("nil.png"), meshes)
-end
+end--]]
 
 function Scene:pushFog(sh)
 	sh:send("fog_start", self.props.scene_fog_start)
@@ -159,16 +163,33 @@ function Scene:pushAmbience(sh)
 	sh:send("ambient_col", self.props.scene_ambient_col)
 end
 
+local __id = cpml.mat4.new()
 function Scene:drawGridMap()
-	local meshes = self.props.scene_meshes
-	for i,v in ipairs(meshes) do
-		v:drawAsEnvironment()
-	end
+	--local meshes = self.props.scene_meshes
+	--for i,v in ipairs(meshes) do
+	--	v:drawAsEnvironment()
+	--end
+	local shader = love.graphics.getShader()
+	shadersend(shader,"texture_animated", false)
+
+	shadersend(shader,"u_uses_tileatlas", true)
+	shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs))
+	shadersend(shader,"u_model", "column", __id)
+	shadersend(shader,"u_normal_model", "column", __id)
+
+	shadersend(shader,"u_skinning", 0)
+	love.graphics.draw(self.map_mesh.mesh)
+	shadersend(shader,"u_uses_tileatlas", false)
 end
 
 function Scene:drawGridMapForShadowMapping()
 	local props = self.props
-	props.scene_generic_mesh:drawGeneric()
+	--props.scene_generic_mesh:drawGeneric()
+	local shader = love.graphics.getShader()
+	shadersend(shader,"u_model", "column", __id)
+	shadersend(shader,"u_normal_model", "column", __id)
+	--shadersend(shader,"u_uses_tileatlas", false)
+	love.graphics.draw(self.map_mesh.simple_mesh)
 end
 
 function Scene:drawModels(update_anims, is_main_pass, model_subset)

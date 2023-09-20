@@ -41,6 +41,9 @@ function Prov:load()
 		{"move_left","move_right","move_up","move_down","action","back"}))
 
 	self.scene:loadMap(testmap)
+
+	map_mesh, map_uvs = Map.generateMapMesh( testmap )
+
 	self.scene.props.scene_lights = {
 		Light:new{
 			["light_pos"] = {0,0,0,0},
@@ -49,15 +52,15 @@ function Prov:load()
 			["light_static"] = true
 		},
 
-		--[[Light:new{
-			["light_pos"] = {300,-30,-280,1},
+		Light:new{
+			["light_pos"] = {300,-30,-280+2048,1},
 			["light_col"] = {277.95/255, 255/255, 224/255,2000},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {800,-30,-280,1},
+			["light_pos"] = {800,-30,-280+2048,1},
 			["light_col"] = {277.95/255,255/255,224/255,2000},		
 			["light_size"] = 500,
 			["light_static"] = true
@@ -104,21 +107,21 @@ function Prov:load()
 	sphere = Models.loadModel("Sphere.iqm")
 	crate = Models.loadModel("shittycrate.iqm")
 
-	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240}, model_i_static = true})
-	crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240}, model_i_static = true})
-	crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240}, model_i_static = true})
-	crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240}, model_i_static = true})
-	crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240}, model_i_static = true})
-	crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900}, model_i_static = true})
-	crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240}, model_i_static = true})
-	crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240}, model_i_static = true})
+	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240+2048}, model_i_static = true})
+	crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240+2048}, model_i_static = true})
+	crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240+2048}, model_i_static = true})
+	crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240+2048}, model_i_static = true})
+	crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240+2048}, model_i_static = true})
+	crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900+2048}, model_i_static = true})
+	crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240+2048}, model_i_static = true})
+	crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240+2048}, model_i_static = true})
 	--pianko_inst = ModelInstance:newInstance(pianko)
 
 	insts = {}
 
-	table.insert(insts, ModelInfo.new({300,-60,-256},{0,0,0},1))
-	table.insert(insts, ModelInfo.new({256,-300,-700},{0,1,1},1))
-	table.insert(insts, ModelInfo.new({256,-48,-350},{0,0,0},2))
+	table.insert(insts, ModelInfo.new({300,-60,-256+2048},{0,0,0},1))
+	table.insert(insts, ModelInfo.new({256,-300,-700+2048},{0,1,1},1))
+	table.insert(insts, ModelInfo.new({256,-48,-350+2048},{0,0,0},2))
 
 	crate_inst = ModelInstance:newInstances(crate,
 		insts
@@ -136,19 +139,19 @@ function Prov:load()
 	GameData:setupFromProv(self)
 
 	local playerproto  = require "ent.player"
-	theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {0,-24,0}})
-	local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30,-24,0}})
-	local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60,-24,0}})
-	local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90,-24,0}})
-	local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120,-24,0}})
-	local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150,-24,0}})
-	local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30,-24,0}})
-	local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60,-24,0}})
-	local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90,-24,0}})
-	local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120,-24,0}})
-	local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150,-24,0}})
+	theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {0.0,0.0,1.0,"dir"}, ent_position = {300,-24,1900}})
+	--[[local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30+300,-24,1900}})
+	local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60+300,-24,1900}})
+	local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90+300,-24,1900}})
+	local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120+300,-24,1900}})
+	local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150+300,-24,1900}})
+	local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30+300,-24,1900}})
+	local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60+300,-24,1900}})
+	local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90+300,-24,1900}})
+	local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120+300,-24,1900}})
+	local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150+300,-24,1900}})--]]
 	theent:enableStateByName("state_walking")
-	theent2:enableStateByName("state_walking")
+	--[[theent2:enableStateByName("state_walking")
 	theent3:enableStateByName("state_walking")
 	theent4:enableStateByName("state_walking")
 	theent5:enableStateByName("state_walking")
@@ -157,21 +160,15 @@ function Prov:load()
 	theent8:enableStateByName("state_walking")
 	theent9:enableStateByName("state_walking")
 	theent10:enableStateByName("state_walking")
-	theent11:enableStateByName("state_walking")
+	theent11:enableStateByName("state_walking")--]]
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(theent, {0,-5,75}, {0.5,0.55,0.5})
+		camcontrol:followEntityFixed(theent, {0,-15,95}, {0.5,0.55,0.5})
 	)
 
-	theent.props.ent_model.props.model_i_animator2:playAnimationByName("Stand", 0.0, 1.0, true)
-	theent.props.ent_model.props.model_i_animator1:playAnimationByName("Walk", 0.0, 1.0, true)
-
-	--theanimator = Animator:new(theent.props.ent_model)
-	--theanimator = Animator:new(5)
-	--
-	--thewalk = theanimator:getAnimationByName("Walk")
-	--theanimator:staticAnimationByName("Walk", 0)
+	--theent.props.ent_model.props.model_i_animator2:playAnimationByName("Stand", 0.0, 1.0, true)
+	--theent.props.ent_model.props.model_i_animator1:playAnimationByName("Walk", 0.0, 1.0, true)
 
 	-- only load once
 	self.load = function() end

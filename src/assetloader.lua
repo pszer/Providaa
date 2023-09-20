@@ -40,7 +40,7 @@ function Loader:addAsset(asset_table, asset, filename)
 
 	local already_loaded = asset_table[filename]
 	if already_loaded then
-		error(string.format("Loader:addAsset(): %s/%s already loaded", asset_table.__dir, tostring(filename))) end
+		error(string.format("Loader:addAsset(): %s%s already loaded", asset_table.__dir, tostring(filename))) end
 
 	asset_table[filename] = asset
 	asset_table.__ref_counts[filename] = 0
@@ -51,11 +51,11 @@ function Loader:removeAsset(asset_table, filename)
 
 	local asset = asset_table[filename]
 	if not asset then
-		error(string.format("Loader:removeAsset(): %s/%s is not loaded", asset_table.__dir, tostring(filename))) end
+		error(string.format("Loader:removeAsset(): %s%s is not loaded", asset_table.__dir, tostring(filename))) end
 
 	local ref_count = asset_table.__ref_counts[filename]
 	if ref_count > 0 then
-		error(string.format("Loader:removeAsset(): %s/%s still has %d references, have you forgot to Loader:deref() ?",
+		error(string.format("Loader:removeAsset(): %s%s still has %d references, have you forgot to Loader:deref() ?",
 		asset_table.__dir, tostring(filename), ref_count)) end
 
 	local release_func_name = asset_table.__release
@@ -84,7 +84,7 @@ function Loader:cleanupAssets(asset_table)
 
 					print(string.format("Loader:cleaupAssets(): removing %s%s", asset_table.__dir, name))
 				else
-					print(string.format("Loader:cleaupAssets(): %s/%s has %d references", asset_table.__dir, name, ref_count))
+					print(string.format("Loader:cleaupAssets(): %s%s has %d references", asset_table.__dir, name, ref_count))
 				end
 			end
 		end
@@ -106,12 +106,12 @@ function Loader:deref(asset_table, filename)
 
 	local asset = asset_table[filename]
 	if not asset then
-		error(string.format("Loader:deref(): %s/%s is not loaded", asset_table.__dir, tostring(filename))) end
+		error(string.format("Loader:deref(): %s%s is not loaded", asset_table.__dir, tostring(filename))) end
 
 	local ref_counts = asset_table.__ref_counts
 	local ref_count = ref_counts[filename]
 	if ref_count <= 0 then
-		error(string.format("Loader:deref(): %s/%s still has %d references",
+		error(string.format("Loader:deref(): %s%s still has %d references",
 		asset_table.__dir, tostring(filename), ref_count)) end
 
 	ref_counts[filename] = ref_counts[filename] - 1
@@ -122,7 +122,7 @@ function Loader:ref(asset_table, filename)
 
 	local asset = asset_table[filename]
 	if not asset then
-		error(string.format("Loader:ref(): %s/%s is not loaded", asset_table.__dir, tostring(filename))) end
+		error(string.format("Loader:ref(): %s%s is not loaded", asset_table.__dir, tostring(filename))) end
 
 	local ref_counts = asset_table.__ref_counts
 	ref_counts[filename] = ref_counts[filename] + 1
@@ -254,7 +254,7 @@ function Loader:getAssetReference(type, filename)
 
 	local loaded = assets[filename]
 	if not loaded then
-		error(string.format("Loader:getAssetReference(): failed to load and get asset %s/%s", base_dir, filename))
+		error(string.format("Loader:getAssetReference(): failed to load and get asset %s%s", base_dir, filename))
 	end
 
 	self:ref(assets, filename)

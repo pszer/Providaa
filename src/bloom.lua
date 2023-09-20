@@ -4,7 +4,7 @@ BloomBuffer = {__type = "bloombuffer"}
 BloomBuffer.__index = BloomBuffer
 
 BloomRenderer = {__type = "bloomrenderer",
-                 chain_length = 6}
+                 chain_length = 5}
 BloomRenderer.__index = BloomRenderer
 
 function BloomBuffer:new(w, h, chain_length)

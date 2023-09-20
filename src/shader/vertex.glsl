@@ -10,8 +10,6 @@ varying vec3 frag_w_position;
 varying vec4 dir_frag_light_pos;
 varying vec4 dir_static_frag_light_pos;
 varying vec3 frag_normal;
-varying vec2 texscale;
-varying vec2 texoffset;
 
 uniform int u_point_light_count;
 uniform float u_shadow_imult;
@@ -21,7 +19,15 @@ uniform mat4 u_dir_static_lightspace;
 // used to set the brightness of fog
 uniform float skybox_brightness;
 
+uniform bool  u_uses_tileatlas;
+uniform Image u_tileatlas;
+uniform vec4  u_tileatlas_uv[64];
+
 #ifdef VERTEX
+
+flat out vec2 texscale;
+flat out vec2 texoffset;
+flat out int  tex_uv_index;
 
 uniform mat4 u_view;
 uniform mat4 u_rot;
@@ -46,6 +52,7 @@ attribute vec4 InstanceColumn4;
 
 attribute vec2 TextureScale;
 attribute vec2 TextureOffset;
+attribute float TextureUvIndex;
 
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
@@ -119,16 +126,23 @@ vec4 position(mat4 transform, vec4 vertex) {
 	dir_static_frag_light_pos = (u_dir_static_lightspace * model_v) ;
 
 	// apply texture offset/scaling
-	texscale = TextureScale;
-	if (texscale.x == 0) { texscale.x = 1; }
-	if (texscale.y == 0) { texscale.y = 1; }
-	texoffset = TextureOffset;
+	if (u_uses_tileatlas) {
+		texscale = TextureScale;
+		if (texscale.x == 0) { texscale.x = 1; }
+		if (texscale.y == 0) { texscale.y = 1; }
+		texoffset = TextureOffset;
+		tex_uv_index = int(TextureUvIndex);
+	}
 
 	return u_proj * view_v;
 }
 #endif
 
 #ifdef PIXEL
+
+flat in vec2 texscale;
+flat in vec2 texoffset;
+flat in int  tex_uv_index;
 
 uniform float fog_start;
 uniform float fog_end;
@@ -217,13 +231,28 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 }
 
 vec2 calc_tex_coords( vec2 uv_coords ) {
-	if (!texture_animated) {
+	/*if (!texture_animated) {
 		return uv_coords + texoffset;
 	} else {
 		vec2 step = vec2(1.0,1.0) / float(texture_animated_dimx);
 
 		vec2 texpos = vec2(mod(texture_animated_frame,texture_animated_dimx), texture_animated_frame / texture_animated_dimx);
 		return mod(uv_coords + texoffset,vec2(1,1))*step + texpos*step;
+	}*/
+	if (u_uses_tileatlas) {
+		vec2 t_off = texoffset;
+		vec2 t_scale = texscale;
+		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
+
+		uv_coords.x = mod(uv_coords.x/t_scale.x + t_off.x, 1.0);
+		uv_coords.y = mod(uv_coords.y/t_scale.y + t_off.y, 1.0);
+		
+		return vec2(
+			uv_info.x + uv_info.z * uv_coords.x,
+			uv_info.y + uv_info.w * uv_coords.y
+		);
+	} else {
+		return uv_coords;
 	}
 }
 
@@ -484,7 +513,7 @@ void effect( ) {
 	light += dir_light_result;
 
 	//
-	// STUPID EVIL SHIT OH MY GOD - NO CUBEMAP ARRAYS, NO GLSL 4.0+ VARIABLE INDEXING.
+	// EVIL SHIT - no cubemap arrays, no glsl 4.0+ variable indexing.
 	//
 	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, frag_normal);}}
 	float point_bias = 0.3;
@@ -500,9 +529,14 @@ void effect( ) {
 
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
-	coords = coords / texscale;
+	//coords = coords / texscale;
 
-	vec4 texcolor = Texel(MainTex, coords);
+	vec4 texcolor;
+	//if (!u_uses_tileatlas) {
+		texcolor = Texel(MainTex, coords);
+	//}// else {
+
+	//}
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	// TODO make the fog colour work properly with HDR
