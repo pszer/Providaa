@@ -50,7 +50,7 @@ function Prov:load()
 			["light_static"] = true
 		},
 
-		--[[
+		
 		Light:new{
 			["light_pos"] = {300-20,-30,-300+2048,1},
 			["light_col"] = {277.95/255, 255/255, 224/255,2000},
@@ -58,7 +58,7 @@ function Prov:load()
 			["light_static"] = true
 		},
 
-		Light:new{
+		--[[Light:new{
 			["light_pos"] = {800,-130,-250+2048,1},
 			["light_col"] = {277.95/255,255/255,224/255,1000},		
 			["light_size"] = 250,
@@ -214,17 +214,12 @@ function Prov:update(dt)
 		self.scene:updateModelAnimationsUnthreaded()
 	--end
 
-	-- this will all need to be done by a FaceAnimator
-	local poselist = {"neutral", "close_phase1", "close_phase2", "close_phase3", "close_phase3", "close_phase2", "close_phase1", "neutral", "neutral", "neutral",
-	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
-	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral",
-	 "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral", "neutral"
-	 }
 	prof.push("push_composite")
-	local pose = poselist[math.floor(love.timer.getTime()*20) % #poselist + 1]
-	--local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
+	local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
 	--animface.props.animface_lefteye_pose = pose
 	--animface.props.animface_righteye_pose = pose
+	animface.props.animface_righteye_dir = {4.5*c,4.5*s,12}
+	animface.props.animface_lefteye_dir  = {4.5*c,4.5*s,12}
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")

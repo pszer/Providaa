@@ -118,14 +118,17 @@ function Map.generateMapMesh( map )
 	local function load_tex(i,tex_name, id_to_tex)
 		local dup_id = is_duplicate(tex_name)
 		if dup_id then
-			id_to_tex[i] = dup_id
-			return
+			if id_to_tex then
+				id_to_tex[i] = dup_id end
+			return dup_id
 		end
 
 		tex_count = tex_count + 1
 		textures[tex_count] = Loader:getTextureReference(tex_name)
 		tex_names[tex_count] = tex_name
-		id_to_tex[i] = tex_count
+		if id_to_tex then
+			id_to_tex[i] = tex_count end
+		return tex_count
 	end
 
 	for i,t in pairs(map.tile_set) do
@@ -141,6 +144,40 @@ function Map.generateMapMesh( map )
 		end
 	end
 
+	local anim_textures_info = {}
+
+	-- we generate the information needed for animated textures
+	-- all textures specified are loaded and correct indices are assigned
+	for i,v in pairs(map.anim_tex) do
+		anim_textures_info[i] = v
+
+		local texs = v.textures
+
+		local seq_length = #v.sequence
+		local tex_count  = #v.textures
+		anim_textures_info[i].seq_length = seq_length
+		anim_textures_info[i].tex_count  = tex_count
+
+		anim_textures_info[i].delay = v.delay or 8
+
+		local seq = anim_textures_info[i].sequence
+		for j,u in ipairs(seq) do
+			if u > tex_count then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = tex_count
+			elseif u < 1 then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = 1
+			end
+		end
+
+		anim_textures_info[i].indices = {}
+		for j,tex_name in ipairs(texs) do
+			local index =load_tex(nil, tex_name, nil)
+			anim_textures_info[i].indices[j] = index
+		end
+	end
+	
 	-- generate atlas
 	local atlas, atlas_uvs = MapMesh:generateTextureAtlas( textures )
 	
@@ -342,7 +379,7 @@ function Map.generateMapMesh( map )
 	local simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
 	simple_mesh:setVertexMap(simple_index_map)
 
-	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh)
+	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info)
 
 end
 

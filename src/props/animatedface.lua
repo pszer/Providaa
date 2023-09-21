@@ -23,6 +23,11 @@ AnimFacePropPrototype = Props:prototype{
 	{"animface_lefteye_pose" , "string", "neutral", nil, "the pose to use for the left eye"},
 
 	{"animface_righteye_dir", "table", nil, PropDefaultTable{0,0,1}, "direction vector of where the right eye is looking"},
-	{"animface_lefteye_dir" , "table", nil, PropDefaultTable{0,0,1}, "direction vector of where the left eye is looking"}
+	{"animface_lefteye_dir" , "table", nil, PropDefaultTable{0,0,1}, "direction vector of where the left eye is looking"},
+
+	{"animface_curr_anim", "string", "neutral", nil, "current animation of the face (in animface_anims)"},
+	--{"animface_loop"  ,"boolean", true, nil, "whether to loop the current face animation"},
+	{"animface_speed" ,"number", 1.0, nil, "face animation speed"},
+	{"animface_anims" , "table", nil, PropDefaultTable{}, "animations"}
 
 }

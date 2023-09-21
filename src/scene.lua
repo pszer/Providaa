@@ -139,7 +139,7 @@ function Scene:drawGridMap()
 
 	shadersend(shader,"u_uses_tileatlas", true)
 	if self.resend_map_mesh_uv then
-		shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs))
+		shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs_buffer))
 		resend_map_mesh_uv = false
 	end
 	shadersend(shader,"u_model", "column", __id)
@@ -194,7 +194,17 @@ function Scene:update()
 	prof.push("update_model_partition_space")
 	self:updateModelPartitionSpace()
 	self:cameraUpdate()
+	self:updateMapMeshUvs()
 	prof.pop("update_model_partition_space")
+end
+
+function Scene:updateMapMeshUvs()
+	local map_mesh = self.map_mesh
+	if map_mesh then 
+		local flag = map_mesh:updateUvs()
+		--print("swag", flag)
+		self.resend_map_mesh_uv = flag
+	end
 end
 
 function Scene:updateModelMatrices()
@@ -468,7 +478,6 @@ function Scene:pushShadowMaps(shader)
 		shadersend(shader, "point_light_far_planes", unpack(point_light_far_planes))
 	end
 
-	print("static send")
 	self.resend_static_lightmap_info = false
 end
 
@@ -586,6 +595,7 @@ function Scene:updateModelAnimatedFaces()
 	for i,model in ipairs(self.dynamic_models) do
 		local decors = model.props.model_i_decorations
 		for i,decor in ipairs(decors) do
+			decor:updateFaceAnimation()
 			decor:compositeFace()
 		end
 	end

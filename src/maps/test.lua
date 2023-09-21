@@ -14,8 +14,8 @@ return {
 	anim_tex = {
 		[2] = {
 			textures = {"water1.png","water2.png","water3.png","water4.png"},
-			sequence = {1,2,3,4,4,3,2,1},
-			delay    = 8
+			sequence = {1,2,3,4,3,2},
+			delay    = 10
 		}
 	},
 

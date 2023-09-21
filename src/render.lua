@@ -18,6 +18,7 @@ Renderer = {
 	contour_shader = nil,
 	hdr_shader     = nil,
 	mask_shader    = nil,
+	facecomp_shader= nil,
 	dt_exposure_shader = nil,
 
 	skybox_model = nil,
@@ -71,7 +72,8 @@ function Renderer.loadShaders()
 	Renderer.outline_shader = love.graphics.newShader("shader/outline.glsl")
 	Renderer.blur_shader    = love.graphics.newShader("shader/blur.glsl")
 	Renderer.mask_shader    = love.graphics.newShader("shader/mask.glsl")
-	Renderer.dt_exposure_shader    = love.graphics.newShader("shader/dt_exposure.glsl")
+	Renderer.facecomp_shader= love.graphics.newShader("shader/facecomposite.glsl")
+	Renderer.dt_exposure_shader  = love.graphics.newShader("shader/dt_exposure.glsl")
 end
 
 function Renderer.createCanvas()
@@ -183,15 +185,10 @@ function Renderer.renderScaled(canvas, hdr)
 
 		love.graphics.setShader(Renderer.hdr_shader)
 
-		--Renderer.hdr_shader:send("hdr_enabled", true)
 		Renderer.hdr_shader:send("exposure_min", exposure_min)
 		Renderer.hdr_shader:send("exposure_max", exposure_max)
 		Renderer.hdr_shader:send("exposure_nudge", exposure_nudge)
 		Renderer.hdr_shader:send("bloom_blur", bloom)
-		--Renderer.hdr_shader:send("exposure", exposure)
-		--Renderer.hdr_shader:send("luminance", Renderer.scene_avglum_buffer)
-		--Renderer.hdr_shader:send("luminance_mipmap_count", Renderer.avglum_mipmap_count)
-		--Renderer.hdr_shader:send("gamma", gamma_value)
 		Renderer.hdr_shader:send("gradual_luminance", Renderer.scene_dt_exposure_buffer)
 		
 		--love.graphics.setCanvas(Renderer.scene_postprocess_viewport)
@@ -201,8 +198,6 @@ function Renderer.renderScaled(canvas, hdr)
 		love.graphics.origin()
 		love.graphics.scale(RESOLUTION_RATIO)
 		love.graphics.draw(canvas,wpad,hpad)
-
-		--Renderer.drawOutlineBuffer(Renderer.scene_postprocess_viewport, Renderer.scene_outline_viewport, 1)
 
 		--love.graphics.origin()
 		--love.graphics.setShader()

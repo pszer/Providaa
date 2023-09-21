@@ -24,27 +24,10 @@ function love.load( args )
 	testchannel:push(cpml.mat4.new(1))
 
 	Renderer.load()
-
 	Loader:initThread()
-	Loader:openTTF("LibreBaskerville-Regular.ttf")
-	Loader:openTexture("blue.png")
-	Loader:openModel("pianko/pianko.iqm")
-	Loader:openSound("clap.wav")
-	Loader:finishQueue()
-
-	blue_tex = Loader:getAssetReference("texture", "blue.png")
-	blue_tex = Loader:getAssetReference("texture", "blue.png")
-	Loader:deref("texture", "blue.png")
-	Loader:deref("texture", "blue.png")
-	print("blue_tex",blue_tex, Loader:getReferenceCount("texture", "blue.png"))
-
-	--Textures.loadTextures()
-	--Textures.generateMissingTexture()
-	--Models.loadModels()
 
 	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
 	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
-	--SPLASH_SCREEN.onDone = function() SET_GAMESTATE(EYETESTMODE) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
 
