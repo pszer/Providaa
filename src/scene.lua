@@ -39,6 +39,8 @@ end
 
 function Scene:loadMap(map)
 	self.map_mesh = Map.generateMapMesh(map)
+	local models = Map.generateModelInstances(map)
+	self:addModelInstance(models)
 	self:fitNewModelPartitionSpace()
 end
 

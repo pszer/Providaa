@@ -118,13 +118,13 @@ function Prov:load()
 
 	insts = {}
 
-	table.insert(insts, ModelInfo.new({300,-60,-256+2048},{0,0,0},1))
-	table.insert(insts, ModelInfo.new({256,-300,-700+2048},{0,1,1},1))
-	table.insert(insts, ModelInfo.new({256,-48,-350+2048},{0,0,0},2))
+	--table.insert(insts, ModelInfo.new({300,-60,-256+2048},{0,0,0},1))
+	--table.insert(insts, ModelInfo.new({256,-300,-700+2048},{0,1,1},1))
+	--table.insert(insts, ModelInfo.new({256,-48,-350+2048},{0,0,0},2))
 
-	crate_inst = ModelInstance:newInstances(crate,
-		insts
-	)
+	--crate_inst = ModelInstance:newInstances(crate,
+	--	insts
+	--)
 
 	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
 	self.scene:addModelInstance{ sphere, crate_i , crate_i2 ,crate_i3 ,crate_i4 ,crate_i5 ,crate_i6 ,crate_i7 , crate_i8 , crate_inst }
@@ -215,11 +215,11 @@ function Prov:update(dt)
 	--end
 
 	prof.push("push_composite")
-	local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
+	--local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
 	--animface.props.animface_lefteye_pose = pose
 	--animface.props.animface_righteye_pose = pose
-	animface.props.animface_righteye_dir = {4.5*c,4.5*s,12}
-	animface.props.animface_lefteye_dir  = {4.5*c,4.5*s,12}
+	--animface.props.animface_righteye_dir = {4.5*c,4.5*s,12}
+	--animface.props.animface_lefteye_dir  = {4.5*c,4.5*s,12}
 	prof.pop("push_composite")
 
 	prof.push("update_ent_partition_space")

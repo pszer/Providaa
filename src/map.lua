@@ -94,10 +94,11 @@
 --
 -- }
 
-require "texture"
+--require "texture"
 require "grid"
 require "wall"
 require "mapmesh"
+require "model"
 
 local cpml = require 'cpml'
 
@@ -672,23 +673,24 @@ function Map.generateModelInstances(map)
 
 	local default_rot, default_scale = {0,0,0,"rot"}, {1,1,1}
 	for model_name , indices in pairs(models) do
-		local model = Loader:getModelReference(model_name)
+		--local model = Loader:getModelReference(model_name)
+		local model = Model:fromLoader(model_name)
 
 		for i,v in ipairs(indices) do
 			local mod_info = model_defs[v]
 
-			local mod_pos    = v.pos
-			local mod_orient = v.orient or default_rot
-			local mod_scale  = v.scale  or default_scale
+			local mod_pos    = mod_info.pos
+			local mod_orient = mod_info.orient or default_rot
+			local mod_scale  = mod_info.scale  or default_scale
 			local final_pos
 			local final_rot
 			local final_scale = {mod_scale[1],mod_scale[2],mod_scale[3]}
 
-			if #mod_pos = 3 then
-				final_pos = {mod_pos[1],mod_pos[2],mod_pos[3]}
+			if #mod_pos == 3 then
+				final_pos = {mod_pos[1] * TILE_SIZE, mod_pos[2] * TILE_HEIGHT, mod_pos[3] * TILE_SIZE}
 			else
 				local y = Map.getHeightsInterp(map, mod_pos[1], mod_pos[3])
-				final_pos = {mod_pos[1], y, mod_pos[3]}
+				final_pos = {mod_pos[1] * TILE_SIZE, y * TILE_HEIGHT, mod_pos[3] * TILE_SIZE}
 			end
 
 			if mod_orient[4] == "rot" then
@@ -707,10 +709,11 @@ function Map.generateModelInstances(map)
 				final_rot = {0,0,0,"rot"}
 			end
 
-			indices[i] = {model_i_position = final_pos,
-			              model_i_rotation = final_rot,
-						  model_i_scale = final_scale,
-						  model_i_static = true}
+			indices[i] = ModelInfo.new(final_pos, final_rot, final_scale)
+			--indices[i] = {model_i_position = final_pos,
+			 --             model_i_rotation = final_rot,
+			--			  model_i_scale = final_scale,
+			--			  model_i_static = true}
 		end
 
 		local model_inst = nil
@@ -718,6 +721,7 @@ function Map.generateModelInstances(map)
 		-- if the model appears several times, we use a gpu instancing variant of
 		-- ModelInstance
 		if count == 1 then
+			indices[1].model_i_static = true
 			model_inst = ModelInstance:newInstance(model, indices[1])
 		else
 			model_inst = ModelInstance:newInstances(model, indices)
@@ -772,15 +776,15 @@ function Map.malformedCheck(map)
 		local mod_scale  = v.scale
 
 		if not mod_name then
-			return string.format("Map %s model index %d is missing a model name", name, i)
+			return string.format("Map %s model index %d is missing a model name", name, i) end
 		if not mod_pos then
-			return string.format("Map %s model index %d with model %s is missing a model position", name, i, mod_name)
-		if #mod_pos ~= 2 or #mod_pos ~= 3 then
-			return string.format("Map %s model index %d with model %s has a malformed position", name, i, mod_name)
+			return string.format("Map %s model index %d with model %s is missing a model position", name, i, mod_name) end
+		if #mod_pos ~= 2 and #mod_pos ~= 3 then
+			return string.format("Map %s model index %d with model %s has a malformed position", name, i, mod_name) end
 		if mod_orient and #mod_orient ~= 4 then
-			return string.format("Map %s model index %d with model %s has a malformed orientation", name, i, mod_name)
+			return string.format("Map %s model index %d with model %s has a malformed orientation", name, i, mod_name) end
 		if mod_scale and #mod_scale ~= 3 then
-			return string.format("Map %s model index %d with model %s has a malformed scale", name, i, mod_name)
+			return string.format("Map %s model index %d with model %s has a malformed scale", name, i, mod_name) end
 	end
 
 	if #height_map ~= h then
