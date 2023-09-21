@@ -53,16 +53,20 @@ EyesData.__index = EyesData
 function EyesData:new(props)
 	local this = {
 		props = EyesDataPropPrototype(props),
-
-		buffer = nil,
-		buffer2 = nil
 	}
 
 	setmetatable(this,EyesData)
-	this:allocateCanvases()
 	this:generateComponentTextures()
 
 	return this
+end
+
+function EyesData:release()
+	print("yessir")
+	local source = self:sourceImage()
+	if source then
+		Loader:deref("texture", self.props.eyes_filename) end
+	self:releaseComponentTextures()
 end
 
 function EyesData:fromCfg(eyes_name)
@@ -132,10 +136,7 @@ end
 function EyesData:allocateCanvases()
 	local props = self.props
 	local dim = props.eyes_dimensions
-	--props.eyes_left_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
-	--props.eyes_right_canvas = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
-	self.buffer = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
-	--self.buffer2 = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
+	--self.buffer = love.graphics.newCanvas(dim[1],dim[2],{format="rgba8"})
 end
 
 -- workin with quads ever is an absolute pain in the ass
@@ -164,12 +165,14 @@ function EyesData:generateComponentTextures()
 	end
 end
 
-function EyesData:release()
-	local props = self.props
-	props.eyes_source:release()
-	props.eyes_left_canvas:release()
-	props.eyes_right_canvas:release()
-	self.stencil_buffer:release()
+function EyesData:releaseComponentTextures()
+	for i,v in ipairs(self.props.eyes_poses) do
+		if v.base then v.base:release() end
+		if v.sclera then v.sclera:release() end
+	end
+	local iris,highlight = self.props.eyes_iris, self.props.eyes_highlight
+	if iris then iris:release() end
+	if highlight then highlight:release() end
 end
 
 function EyesData:getDimensions()
@@ -224,7 +227,7 @@ end
 -- which_eye  : "left" or "right"
 -- eye_look_v : direction vector where eye is looking, (0,0,1) is neutral
 -- eye_radius : radius of eye in pixels, used to get a correct iris look translation
-function EyesData:composite(pose, which_eye, eye_look_v, eye_radius, posx, posy, dest)
+--[[function EyesData:composite(pose, which_eye, eye_look_v, eye_radius, posx, posy, dest)
 	local source    = self:sourceImage()
 	local iris      = self:getIris(pose)
 	local highlight = self:getHightlight(pose)
@@ -287,7 +290,7 @@ function EyesData:composite(pose, which_eye, eye_look_v, eye_radius, posx, posy,
 	--love.graphics.setCanvas()
 	--love.graphics.setShader()
 	--return canvas
-end
+end--]]
 
 -- which_eye  : "left" or "right"
 -- eye_look_v : direction vector where eye is looking, (0,0,1) is neutral

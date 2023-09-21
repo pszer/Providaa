@@ -30,7 +30,6 @@ function Models.loadModel(fname)
 
 	local attributes = model_attributes[fname] or {}
 	local texture    = attributes["model_texture_fname"]
-	--local model = Models.openFilename(fname, texture, true)
 	local model = Model:fromLoader(fname)
 	if model then Models.loaded[fname] = model end
 	return model
@@ -61,6 +60,7 @@ function Models.releaseModelsOutsideSet( set )
 	for name,model in pairs(Models.loaded) do
 		if not in_set(set, model) then
 			model:release()
+			Models.loaded[name] = nil
 		end
 	end
 end

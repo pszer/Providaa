@@ -14,9 +14,32 @@ local function __print_info()
 	print(string.format("Save directory: %s", love.filesystem.getSaveDirectory()))
 end
 
-local cpml = require 'cpml'
+function __parse_args( commandline_args )
+	local params = {}
+	for i,v in ipairs(commandline_args) do
+		local eq_pos = string.find(v, '=')
+		if eq_pos then
+			local com_pos = {}
+			for arg in string.gmatch(string.sub(v,eq_pos+1,-1), "[^,%s]+") do
+				table.insert(com_pos, arg)
+			end
+		end
+		params[v] = com_pos
+	end
+	return params
+end
 
 function love.load( args )
+	local gamestate_on_launch = Prov
+	local params = __parse_args(args)
+
+	local arg_coms = {
+	 ["mapedit"] = function(args)
+	 	local mapname = args[1]
+		assert(mapname,"launch command mapedit expects a map name")
+		end
+	}
+
 	__print_info()
 	getRefreshRate()
 
@@ -24,7 +47,7 @@ function love.load( args )
 	Loader:initThread()
 
 	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
-	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(Prov) end
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(gamestate_on_launch) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
 
@@ -60,14 +83,6 @@ function love.run()
 		update_dt_acc = update_dt_acc + dt
 
 		prof.push("frame")
-		-- Call update and draw
-		--[[local count = 0
-		while update_dt_acc > UPDATE_DT do
-			count = count + 1
-			if count > max_updates_in_frame then break end
-			update_dt_acc = update_dt_acc - UPDATE_DT
-			if love.update then love.update(UPDATE_DT) end -- will pass 0 if love.timer is disabled
-		end--]]
 		if love.update then love.update( dt ) end -- will pass 0 if love.timer is disabled
 
 		if love.graphics and love.graphics.isActive() then
@@ -82,15 +97,6 @@ function love.run()
 		end
 		prof.pop("frame")
 
-		-- im fuckin around too much here
-		--[[local diff = (1/400 - dt)
-		if diff > 0.0 then
-			sleep_acc = sleep_acc + diff
-		end
-		if love.timer and sleep_acc>0.001 then
-			love.timer.sleep(0.001)
-			sleep_acc = sleep_acc - 0.001
-		end]]
 		sleep_acc = sleep_acc + dt
 		if sleep_acc > 0.003 then
 			sleep_acc = 0

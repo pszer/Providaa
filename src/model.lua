@@ -124,11 +124,13 @@ function Model:getMesh()
 end
 
 function Model:ref()
+	print(string.format("model:ref() ++ %s", self.props.model_name))
 	self.ref_count = self.ref_count + 1
 	--print(string.format("Model:ref(): %s ref_count %d", self.props.model_name, self.ref_count))
 end
 
 function Model:deref()
+	print(string.format("model:ref() -- %s", self.props.model_name))
 	if self.ref_count <= 0 then
 		error(string.format("Model:deref(): ref count is <=0, (%s)", self.props.model_name))
 	end

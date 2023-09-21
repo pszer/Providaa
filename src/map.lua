@@ -675,7 +675,7 @@ function Map.generateModelInstances(map)
 	local default_rot, default_scale = {0,0,0,"rot"}, {1,1,1}
 	for model_name , indices in pairs(models) do
 		--local model = Loader:getModelReference(model_name)
-		local model = Model:fromLoader(model_name)
+		local model = Models.loadModel(model_name)
 
 		for i,v in ipairs(indices) do
 			local mod_info = model_defs[v]
@@ -711,10 +711,6 @@ function Map.generateModelInstances(map)
 			end
 
 			indices[i] = ModelInfo.new(final_pos, final_rot, final_scale)
-			--indices[i] = {model_i_position = final_pos,
-			 --             model_i_rotation = final_rot,
-			--			  model_i_scale = final_scale,
-			--			  model_i_static = true}
 		end
 
 		local model_inst = nil
@@ -730,8 +726,6 @@ function Map.generateModelInstances(map)
 
 		insts_count = insts_count+1
 		insts[insts_count] = model_inst
-		Loader:deref("model", model_name)
-		--model:deref()
 	end
 
 	return insts

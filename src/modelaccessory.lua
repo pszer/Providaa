@@ -38,6 +38,9 @@ end
 function ModelDecor:releaseModel()
 	local model = self.props.decor_reference
 	model:deref()
+
+	local animface = self.props.decor_animated_face
+	if animface then animface:release() end
 end
 
 local __tempvec3 = cpml.vec3.new()

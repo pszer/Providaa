@@ -30,8 +30,8 @@ EyesDataPropPrototype = Props:prototype{
 
 	{"eyes_pose_map", "table", nil, PropDefaultTable{}, "map's eye pose name to index in eyes_poses"},
 
-	{"eyes_right_canvas", nil, nil, nil, "canvas where right eye is composited together"},
-	{"eyes_left_canvas" , nil, nil, nil, "canvas where left eye is composited together"},
+	--{"eyes_right_canvas", nil, nil, nil, "canvas where right eye is composited together"},
+	--{"eyes_left_canvas" , nil, nil, nil, "canvas where left eye is composited together"},
 
 	{"eyes_radius", "number", 12, nil,   "approximate radius of the eye"}
 

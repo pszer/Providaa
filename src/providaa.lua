@@ -102,72 +102,17 @@ function Prov:load()
 	}
 	self.scene.props.scene_skybox_hdr_brightness = 20.0
 
-	--pianko = Models.loadModel("pianko/pianko.iqm")
-	--sphere = Models.loadModel("Sphere.iqm")
-	--crate = Models.loadModel("shittycrate.iqm")
-
-	--crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240+2048}, model_i_static = true})
-	--crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240+2048}, model_i_static = true})
-	--crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240+2048}, model_i_static = true})
-	--crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240+2048}, model_i_static = true})
-	--crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240+2048}, model_i_static = true})
-	--crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900+2048}, model_i_static = true})
-	--crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240+2048}, model_i_static = true})
-	--crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240+2048}, model_i_static = true})
-	--pianko_inst = ModelInstance:newInstance(pianko)
-
-	--insts = {}
-
-	--table.insert(insts, ModelInfo.new({300,-60,-256+2048},{0,0,0},1))
-	--table.insert(insts, ModelInfo.new({256,-300,-700+2048},{0,1,1},1))
-	--table.insert(insts, ModelInfo.new({256,-48,-350+2048},{0,0,0},2))
-
-	--crate_inst = ModelInstance:newInstances(crate,
-	--	insts
-	--)
-
-	--sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
-	--self.scene:addModelInstance{ sphere, crate_i , crate_i2 ,crate_i3 ,crate_i4 ,crate_i5 ,crate_i6 ,crate_i7 , crate_i8 , crate_inst }
-
 	self:fitNewEntityPartitionSpace()
-
-	--local frame1,frame2,parents,interp = pianko:getAnimationFramesDataForThread("Walk",2.5)
-	--animthread:addToQueue(instance, frame1, frame2, parents, interp)
-	--animthread:process()
-	--
 	GameData:setupFromProv(self)
 
 	local playerproto  = require "ent.player"
 	theent = self:addEntityFromPrototype(playerproto, {ent_rotation = {0.0,0.0,1.0,"dir"}, ent_position = {300,-24,1900}})
-	--[[local theent2 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-30+300,-24,1900}})
-	local theent3 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-60+300,-24,1900}})
-	local theent4 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-90+300,-24,1900}})
-	local theent5 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-120+300,-24,1900}})
-	local theent6 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {-150+300,-24,1900}})
-	local theent7 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {30+300,-24,1900}})
-	local theent8 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {60+300,-24,1900}})
-	local theent9 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {90+300,-24,1900}})
-	local theent10 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {120+300,-24,1900}})
-	local theent11 = self:addEntityFromPrototype(playerproto, {ent_rotation = {-1.0,0,-1.0,"dir"}, ent_position = {150+300,-24,1900}})--]]
 	theent:enableStateByName("state_walking")
-	--[[theent2:enableStateByName("state_walking")
-	theent3:enableStateByName("state_walking")
-	theent4:enableStateByName("state_walking")
-	theent5:enableStateByName("state_walking")
-	theent6:enableStateByName("state_walking")
-	theent7:enableStateByName("state_walking")
-	theent8:enableStateByName("state_walking")
-	theent9:enableStateByName("state_walking")
-	theent10:enableStateByName("state_walking")
-	theent11:enableStateByName("state_walking")--]]
 
 	local cam = self.scene:getCamera()
 	cam:setController(
 		camcontrol:followEntityFixed(theent, {0,-15,95}, {0.5,0.55,0.5})
 	)
-
-	--theent.props.ent_model.props.model_i_animator2:playAnimationByName("Stand", 0.0, 1.0, true)
-	--theent.props.ent_model.props.model_i_animator1:playAnimationByName("Walk", 0.0, 1.0, true)
 
 	-- only load once
 	self.load = function() end
@@ -179,13 +124,6 @@ function Prov:update(dt)
 	if tickChanged() then
 		self:onTickChange()
 	end
-
-	local c = math.cos(getTick()*1/60)
-	c = c*c*c*c*c
-	local s = math.sin(getTick()*1.5/60)
-	s = s*s*s*s*s
-	--animface.props.animface_righteye_dir = {3*c,3*s,12}
-	--animface.props.animface_lefteye_dir  = {3*c,3*s,12}
 
 	if scancodeIsDown("p", CTRL.GAME) then
 		self.scene:__removeAllModels()
@@ -214,21 +152,13 @@ function Prov:update(dt)
 		self.scene:updateModelAnimationsUnthreaded()
 	--end
 
-	prof.push("push_composite")
-	--local animface = theent.props.ent_model.props.model_i_decorations[1].props.decor_animated_face
-	--animface.props.animface_lefteye_pose = pose
-	--animface.props.animface_righteye_pose = pose
-	--animface.props.animface_righteye_dir = {4.5*c,4.5*s,12}
-	--animface.props.animface_lefteye_dir  = {4.5*c,4.5*s,12}
-	prof.pop("push_composite")
-
 	prof.push("update_ent_partition_space")
 	self:updateEntityPartitionSpace()
 	prof.pop("update_ent_partition_space")
 
-	if gfxSetting("multithread_animation") then
-		self.scene:finishModelAnimationsThreaded()
-	end
+	--if gfxSetting("multithread_animation") then
+	--	self.scene:finishModelAnimationsThreaded()
+	--end
 
 	self:deleteFlaggedEntities()
 end
@@ -244,10 +174,6 @@ function Prov:draw()
 end
 
 function Prov:onTickChange()
-	local meshes = self.scene.props.scene_meshes
-	for _,mesh in ipairs(meshes) do
-		mesh:updateTexture()
-	end
 end
 
 function Prov:makeUniqueEntityIdentifier(name)

@@ -111,9 +111,10 @@ function Loader:deref(asset_table, filename)
 	local ref_counts = asset_table.__ref_counts
 	local ref_count = ref_counts[filename]
 	if ref_count <= 0 then
-		error(string.format("Loader:deref(): %s%s still has %d references",
+		error(string.format("Loader:deref(): %s%s has %d references, reference underflow",
 		asset_table.__dir, tostring(filename), ref_count)) end
 
+	print(string.format("Loader:deref(): %s%s refcount %d -> %d", asset_table.__dir, filename, ref_counts[filename], ref_counts[filename]-1))
 	ref_counts[filename] = ref_counts[filename] - 1
 end
 

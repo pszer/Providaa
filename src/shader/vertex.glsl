@@ -21,7 +21,7 @@ uniform float skybox_brightness;
 
 uniform bool  u_uses_tileatlas;
 uniform Image u_tileatlas;
-uniform vec4  u_tileatlas_uv[64];
+uniform vec4  u_tileatlas_uv[128];
 
 #ifdef VERTEX
 
