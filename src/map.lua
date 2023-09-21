@@ -27,16 +27,14 @@
 --      {{y1,y2,y3,y4}  ,{y1,y2,y3,y4}, ...}
 --     },
 --
---
---
---
 --     each entry in the tile_set is a list of properties for a Tile object
 --     tile_set = {
 --       [0] = {tile_type="void"},
 --       [1] = {tile_type="land",tile_texture="dirt.png",tile_walkable=true}
 --     },
 --
---     each textured tile in the tile_set has an optional animated texture parameter
+--     textures can be given animations, in this example any tile/wall with a
+--     "dirt.png" (the first texture listed in the textures paramater) texture will have this animation applied to them
 --     anim_tex = {
 --       [1] = {textures = "dirt.png", "dirt2.png",
 --              sequence = {1,2},
@@ -49,9 +47,6 @@
 --       [1] = "wall.png"
 --       [2] = "wall2.png"
 --     },
---
---
---
 --
 --     maps each tile to a tile defined in tile_set
 --     tile_map = {
@@ -77,6 +72,24 @@
 --		{0,0,0,0,0,0,0,0,...}
 --		...
 --		{0,0,0,0,0,0,0,0,...}
+--     },
+--
+--
+--     all the static models in a map
+--     each entry is of the form
+--     {name="model.iqm", pos={6,6,6}, orient={0,0,0,"rot"}, scale={1,1,1}}
+--     the orientation and scale parameters are optional and default to no rotation and no scaling
+--
+--     the position is given in tile coordinates, the actual world position will be (x*TILE_SIZE, y*TILE_HEIGHT, z*TILE_SIZE)
+--     the position can have either 3 components or 2 components, 3 components specify (x,y,z) and 2 components specify only (x,?,z), the
+--     model's y position is then determined by the height of the tile at (x,z)
+--
+--     when specifying a models orientation using a "rot" type rotation, the angles are in degrees
+--
+--     models =
+--     {
+--      {name="model.iqm", pos={6,6,6}, orient={0,0,-1,"dir"}, scale={1,1,1}},
+--      {name="model2.iqm", pos={7,8}, orient={0,1.5,0,"rot"}, scale={1,1,1}},
 --     }
 --
 -- }
@@ -88,10 +101,18 @@ require "mapmesh"
 
 local cpml = require 'cpml'
 
-Map = {}
+Map = { base_dir = "maps/" }
 Map.__index = Map
 
 local testmap = require "maps.test"
+
+function Map.getMap(filename)
+	assert_type(filename, "string")
+	local map = loadfile(Map.base_dir .. filename)
+	assert(map, string.format("Map.getMap(): map %s%s doesn't exist", Map.base_dir, filename))
+	map.name = filename
+	return map
+end
 
 function Map.generateMapMesh( map )
 	local maperror = Map.malformedCheck(map)
@@ -385,7 +406,7 @@ end
 
 function Map.getHeights(map, x,z)
 	if x < 1 or x > map.width or z < 1 or z > map.height then
-		return nil
+		return {0,0,0,0}
 	end
 
 	local y = {}
@@ -396,6 +417,19 @@ function Map.getHeights(map, x,z)
 		y[1],y[2],y[3],y[4] = tileh,tileh,tileh,tileh
 	end
 	return y
+end
+
+function Map.getHeightsInterp(map, x,z)
+	local int = math.floor
+	local int_x, int_z = int(x), int(z)
+	local h = Map.getHeights(map, int_x,int_z)
+
+	local xi,yi = x-int_x , y-int_y
+
+	return (1.0-xi)*(1.0-yi) * h[1] +
+	            xi *(1.0-yi) * h[2] +
+				xi *     yi  * h[3] +
+		   (1.0-xi)*     yi  * h[4]
 end
 
 function Map.getWalls(map, x,z)
@@ -620,6 +654,83 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 	return i,i
 end
 
+local DEG_TO_RADIANS = math.pi/180.0
+function Map.generateModelInstances(map)
+	local model_defs = map.models
+
+	local models = {}
+	for i,v in ipairs(model_defs) do
+		local mod_name = v.name
+		if not models[mod_name] then
+			models[mod_name] = {}
+		end
+		table.insert(models[mod_name], i)
+	end
+
+	local insts_count = 0
+	local insts = {}
+
+	local default_rot, default_scale = {0,0,0,"rot"}, {1,1,1}
+	for model_name , indices in pairs(models) do
+		local model = Loader:getModelReference(model_name)
+
+		for i,v in ipairs(indices) do
+			local mod_info = model_defs[v]
+
+			local mod_pos    = v.pos
+			local mod_orient = v.orient or default_rot
+			local mod_scale  = v.scale  or default_scale
+			local final_pos
+			local final_rot
+			local final_scale = {mod_scale[1],mod_scale[2],mod_scale[3]}
+
+			if #mod_pos = 3 then
+				final_pos = {mod_pos[1],mod_pos[2],mod_pos[3]}
+			else
+				local y = Map.getHeightsInterp(map, mod_pos[1], mod_pos[3])
+				final_pos = {mod_pos[1], y, mod_pos[3]}
+			end
+
+			if mod_orient[4] == "rot" then
+				final_rot = {
+				mod_orient[1] * DEG_TO_RADIANS,
+				mod_orient[2] * DEG_TO_RADIANS,
+				mod_orient[3] * DEG_TO_RADIANS,
+				"rot"}
+			elseif mod_orient[4] == "dir" then
+				if mod_orient[1] == 0 and mod_orient[2] == 0 and mod_orient[3] == 0 then
+					final_rot = {0,0,-1,"dir"}
+				else
+					final_rot = {mod_orient[1],mod_orient[2],mod_orient[3],"dir"}
+				end
+			else
+				final_rot = {0,0,0,"rot"}
+			end
+
+			indices[i] = {model_i_position = final_pos,
+			              model_i_rotation = final_rot,
+						  model_i_scale = final_scale,
+						  model_i_static = true}
+		end
+
+		local model_inst = nil
+		local count = #indices
+		-- if the model appears several times, we use a gpu instancing variant of
+		-- ModelInstance
+		if count == 1 then
+			model_inst = ModelInstance:newInstance(model, indices[1])
+		else
+			model_inst = ModelInstance:newInstances(model, indices)
+		end
+
+		insts_count = insts_count+1
+		insts[insts_count] = model_inst
+		Loader:deref("model", model_name)
+	end
+
+	return insts
+end
+
 -- verifies if map format is correct
 -- returns nil if fine, otherwise returns an error string
 function Map.malformedCheck(map)
@@ -650,6 +761,28 @@ function Map.malformedCheck(map)
 	if not tile_map then
 		return string.format("Map %s is missing a tile map", name) end
 
+	local models   = map.models
+	if not models then
+		return string.format("Map %s is missing a model table, add an empty [\"models\"]={} if not needed", name) end
+
+	for i,v in ipairs(models) do
+		local mod_name   = v.name
+		local mod_pos    = v.pos
+		local mod_orient = v.orient
+		local mod_scale  = v.scale
+
+		if not mod_name then
+			return string.format("Map %s model index %d is missing a model name", name, i)
+		if not mod_pos then
+			return string.format("Map %s model index %d with model %s is missing a model position", name, i, mod_name)
+		if #mod_pos ~= 2 or #mod_pos ~= 3 then
+			return string.format("Map %s model index %d with model %s has a malformed position", name, i, mod_name)
+		if mod_orient and #mod_orient ~= 4 then
+			return string.format("Map %s model index %d with model %s has a malformed orientation", name, i, mod_name)
+		if mod_scale and #mod_scale ~= 3 then
+			return string.format("Map %s model index %d with model %s has a malformed scale", name, i, mod_name)
+	end
+
 	if #height_map ~= h then
 		return string.format("Map %s has mismatching height and height_map array size (height=%d, #height_map=%d)", name, h, #height_map) end
 	if #tile_map ~= h then
@@ -673,6 +806,22 @@ function Map.malformedCheck(map)
 				return string.format("Map %s: tile (z=%d,x=%d) uses undefined tile [%s]", name, z,x, tostring(tile))
 			end
 		end
+	end
+
+	local anim_tex = map.anim_tex
+	if not anim_tex then
+		return string.format("Map %s is missing an animated textures table, add an empty [\"anim_tex\"]={} if not needed", name) end
+
+	for i,info in pairs(anim_tex) do
+		local texs  = info.textures
+		local seq   = info.sequence
+		local delay = info.delay
+		if not texs then
+			return string.format("Map %s animated texture %s is missing a texture list", name, tostring(i)) end
+		if not seq then
+			return string.format("Map %s animated texture %s is missing a sequence definition", name, tostring(i)) end
+		if not delay then
+			return string.format("Map %s animated texture %s is missing the delay parameter", name, tostring(i)) end
 	end
 
 	return nil
