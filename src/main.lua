@@ -20,9 +20,6 @@ function love.load( args )
 	__print_info()
 	getRefreshRate()
 
-	local testchannel = love.thread.newChannel()
-	testchannel:push(cpml.mat4.new(1))
-
 	Renderer.load()
 	Loader:initThread()
 
@@ -121,13 +118,8 @@ function __limitFPS( limit , dt )
 		local start_time = love.timer.getTime()
 		if diff > 0.0 then
 			love.timer.sleep(diff)
-			--print("slept")
-		else
-			--print("not slept")
 		end
 		local time_slept = love.timer.getTime() - start_time
-
-		--print("fps should be", 1/(dt+time_slept))
 	end
 end
 
@@ -135,8 +127,6 @@ function love.update(dt)
 	prof.push("update")
 
 	stepTick(dt)
-
-	--if getTick()%60==0 then print(collectgarbage("count")) end 
 
 	prof.push("gamestate_update")
 	GAMESTATE:update(dt)

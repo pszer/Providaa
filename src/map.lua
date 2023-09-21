@@ -665,6 +665,7 @@ function Map.generateModelInstances(map)
 		if not models[mod_name] then
 			models[mod_name] = {}
 		end
+		Loader:openModel(mod_name)
 		table.insert(models[mod_name], i)
 	end
 
@@ -730,6 +731,7 @@ function Map.generateModelInstances(map)
 		insts_count = insts_count+1
 		insts[insts_count] = model_inst
 		Loader:deref("model", model_name)
+		--model:deref()
 	end
 
 	return insts

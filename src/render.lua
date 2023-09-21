@@ -79,6 +79,18 @@ end
 function Renderer.createCanvas()
 	local w,h = get_resolution()
 
+	local function release_if_exists(canv) if canv then canv:release() end end
+
+	release_if_exists(Renderer.scene_viewport)
+	release_if_exists(Renderer.scene_postprocess_viewport)
+	release_if_exists(Renderer.scene_bloom_viewport)
+	release_if_exists(Renderer.scene_buffer[1])
+	release_if_exists(Renderer.scene_buffer[2])
+	release_if_exists(Renderer.scene_avglum_buffer)
+	release_if_exists(Renderer.scene_dt_exposure_buffer)
+	release_if_exists(Renderer.scene_outline_viewport)
+	release_if_exists(Renderer.scene_outline_depthbuffer)
+
 	Renderer.scene_viewport                   = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_postprocess_viewport       = love.graphics.newCanvas (w,h, {format = "rgba16f"})
 	Renderer.scene_bloom_viewport             = love.graphics.newCanvas (w,h, {format = "rgba16f"})
@@ -348,14 +360,7 @@ function Renderer.stepGradualExposure( dt , speed )
 	shader:send("dt", dt * speed )
 
 	love.graphics.origin()
-	--local mode,alphamode = love.graphics.getBlendMode()
-	--love.graphics.setBlendMode("alpha")
 	love.graphics.draw(Renderer.scene_avglum_buffer, 0,0,0, 1/Renderer.avglum_buffer_size)
-	--love.graphics.draw(Re)
-	--love.graphics.setBlendMode(mode, alphamode)
-
-	--love.graphics.setCanvas()
-	--love.graphics.setShader()
 end
 
 function Renderer.resetLuminance(avglum_buffer)

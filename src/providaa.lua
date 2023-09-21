@@ -103,20 +103,20 @@ function Prov:load()
 	self.scene.props.scene_skybox_hdr_brightness = 20.0
 
 	--pianko = Models.loadModel("pianko/pianko.iqm")
-	sphere = Models.loadModel("Sphere.iqm")
-	crate = Models.loadModel("shittycrate.iqm")
+	--sphere = Models.loadModel("Sphere.iqm")
+	--crate = Models.loadModel("shittycrate.iqm")
 
-	crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240+2048}, model_i_static = true})
-	crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240+2048}, model_i_static = true})
-	crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240+2048}, model_i_static = true})
-	crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240+2048}, model_i_static = true})
-	crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240+2048}, model_i_static = true})
-	crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900+2048}, model_i_static = true})
-	crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240+2048}, model_i_static = true})
-	crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240+2048}, model_i_static = true})
+	--crate_i = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-240+2048}, model_i_static = true})
+	--crate_i2 = ModelInstance:newInstance(crate, {model_i_position = {800,-24,-240+2048}, model_i_static = true})
+	--crate_i3 = ModelInstance:newInstance(crate, {model_i_position = {1600,-24,-240+2048}, model_i_static = true})
+	--crate_i4 = ModelInstance:newInstance(crate, {model_i_position = {600,-24,-240+2048}, model_i_static = true})
+	--crate_i5 = ModelInstance:newInstance(crate, {model_i_position = {1200,-24,-240+2048}, model_i_static = true})
+	--crate_i6 = ModelInstance:newInstance(crate, {model_i_position = {300,-24,-900+2048}, model_i_static = true})
+	--crate_i7 = ModelInstance:newInstance(crate, {model_i_position = {100,-24,-240+2048}, model_i_static = true})
+	--crate_i8 = ModelInstance:newInstance(crate, {model_i_position = {200,-24,-240+2048}, model_i_static = true})
 	--pianko_inst = ModelInstance:newInstance(pianko)
 
-	insts = {}
+	--insts = {}
 
 	--table.insert(insts, ModelInfo.new({300,-60,-256+2048},{0,0,0},1))
 	--table.insert(insts, ModelInfo.new({256,-300,-700+2048},{0,1,1},1))
@@ -126,8 +126,8 @@ function Prov:load()
 	--	insts
 	--)
 
-	sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
-	self.scene:addModelInstance{ sphere, crate_i , crate_i2 ,crate_i3 ,crate_i4 ,crate_i5 ,crate_i6 ,crate_i7 , crate_i8 , crate_inst }
+	--sphere = ModelInstance:newInstance(sphere, {model_i_position = {300,-48,-300}, model_i_static = true})
+	--self.scene:addModelInstance{ sphere, crate_i , crate_i2 ,crate_i3 ,crate_i4 ,crate_i5 ,crate_i6 ,crate_i7 , crate_i8 , crate_inst }
 
 	self:fitNewEntityPartitionSpace()
 
