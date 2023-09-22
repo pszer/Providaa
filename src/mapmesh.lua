@@ -27,7 +27,7 @@ MapMesh = {__type="mapmesh",
 }
 MapMesh.__index = MapMesh
 
-function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info)
+function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info, tile_vert_m, wall_vert_m)
 
 	assert(mesh and mesh_atts and tex and uvs)
 
@@ -43,7 +43,10 @@ function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info)
 
 		animated_tex_info = anim_tex_info or {},
 
-		simple_mesh = simple_mesh
+		simple_mesh = simple_mesh,
+
+		tile_vert_map = tile_vert_m,
+		wall_vert_map = wall_vert_m
 
 	}
 

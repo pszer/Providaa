@@ -216,7 +216,7 @@ function Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, texture
 end
 
 -- returns vert_count, index_count, attr_count
-function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex, optimise)
+function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex, optimise, tile_vert_map)
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
@@ -246,6 +246,10 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_c
 			end
 			local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
 
+			if tile_vert_map then
+				tile_vert_map[z][x] = vert_count+1
+			end
+
 			local vert = {gv1,gv2,gv3,gv4}
 			for i=1,4 do
 				verts[vert_count+i] = vert[i]
@@ -274,7 +278,8 @@ end
 function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
                                             vert_count, index_count, attr_count,
 											wallset_id_to_tex, textures,
-											gen_all_walls, nil_texture_id)
+											gen_all_walls, nil_texture_id,
+											wall_vert_map)
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
@@ -329,6 +334,10 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 
 				local vert = {wv1,wv2,wv3,wv4}
 				local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+
+				if wall_vert_map then
+					wall_vert_map[z][x][side] = vert_count+1
+				end
 
 				for i=1,4 do
 					verts[vert_count+i] = vert[i]
@@ -483,7 +492,7 @@ function Map.generateMapMesh( map , params )
 	local gen_nil_texture = params.gen_nil_texture
 	local nil_texture_id  = -1
 
-	--local gen_index_data  = params.gen_index_data
+	local gen_index_map  = params.gen_index_map
 
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_walls enabled, but no gen_nil_texture supplied. give either a filename/texture")
@@ -544,6 +553,22 @@ function Map.generateMapMesh( map , params )
 	local simple_index_map = {}
 	local simple_index_count = 0
 
+	local tile_vert_map, wall_vert_map = nil,nil
+	if gen_index_map then	
+		tile_vert_map = {}
+		wall_vert_map = {}
+
+		for z=1,map.width do
+			tile_vert_map[z] = {}
+			wall_vert_map[z] = {}
+			for x=1,map.height do
+				wall_vert_map[z][x] = {
+					--west=1,south=2,east=3,north=4
+				}
+			end
+		end
+	end
+
 	local int = math.floor
 	local I = 1
 
@@ -552,11 +577,13 @@ function Map.generateMapMesh( map , params )
 	vert_count, index_count, attr_count =
 		Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   tileset_id_to_tex, optimise)
+										   tileset_id_to_tex, optimise,
+										   tile_vert_map)
 	vert_count, index_count, attr_count =
 		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   wallset_id_to_tex, textures, gen_all_walls, gen_nil_texture, nil_texture_id)
+										   wallset_id_to_tex, textures, gen_all_walls, nil_texture_id,
+										   wall_vert_map)
 
 	if gen_simple then
 		simple_vert_count, simple_index_count =
@@ -584,7 +611,7 @@ function Map.generateMapMesh( map , params )
 		simple_mesh:setVertexMap(simple_index_map)
 	end
 
-	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info)
+	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info, tile_vert_map, wall_vert_map)
 
 end
 

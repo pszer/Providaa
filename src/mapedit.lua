@@ -59,7 +59,8 @@ function ProvMapEdit:loadMap(map_name)
 		print(string.format("ProvMapEdit:load(): loading %s", fullpath))
 	end
 
-	local map_mesh = Map.generateMapMesh( map_file , { dont_optimise=true, dont_gen_simple=true } )
+	local map_mesh = Map.generateMapMesh( map_file ,
+		{ dont_optimise=true, dont_gen_simple=true , gen_all_walls = true, gen_nil_texture = "nil.png", gen_index_map = true} )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -104,7 +105,8 @@ end
 
 function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
-	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up","cam_rotate","cam_reset"})
+	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
+										   "cam_rotate","cam_reset","edit_select","edit_deselect","edit_undo","edit_redo"})
 	CONTROL_LOCK.MAPEDIT_VIEW.open()
 
 	local forward_v  = {0 , 0,-1,0}
@@ -175,10 +177,17 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
 		self:newCamera()
 	end))
+
+	local viewport_select = Hook:new(function ()
+		local x,y = love.mouse.getPosition()
+		self:objectAtCursor( x,y )
+	end)
+	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 end
 
 -- returns either nil, {tile,x,y}, {wall,x,y,side}, {model_i}
 function ProvMapEdit:objectAtCursor( x, y )
+	print(x,y)
 	local project = cpml.mat4.project
 	local unproject = cpml.mat4.unproject
 
