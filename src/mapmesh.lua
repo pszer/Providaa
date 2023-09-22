@@ -37,7 +37,6 @@ function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info)
 		mesh_atts = mesh_atts,
 		tex  = tex,
 
-		update_uvs_flag = true,
 		uvs = uvs,
 
 		uvs_buffer = {},
@@ -93,4 +92,11 @@ function MapMesh:updateUvs()
 	end
 
 	return true
+end
+
+function MapMesh:pushAtlas(shader, push_img)
+	shadersend(shader,"u_uses_tileatlas", true)
+	if push_img then
+		shadersend(shader,"u_tileatlas_uv", unpack(self.uvs_buffer))
+	end
 end
