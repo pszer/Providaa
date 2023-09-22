@@ -26,7 +26,7 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_map_width" , "number", 0, nil, "active map width"},
 	{"mapedit_map_height", "number", 0, nil, "active map height"},
 
-	{"mapedit_map_heights", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile heights"},
+	{"mapedit_tile_heights", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile heights"},
 	{"mapedit_tile_map", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of tiles to the tileset"},
 	{"mapedit_wall_map", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of walls to the wallset"},
 

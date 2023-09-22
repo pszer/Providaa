@@ -231,6 +231,11 @@ return {
 	models = {
 		{name="shittycrate.iqm", pos={4,1,62}, orient={0, 0, 0, "rot"}, scale={1,1,1}},
 		{name="shittycrate.iqm", pos={6,1,62}, orient={0, 0, 0, "rot"}, scale={1,1,1}}
+	},
+
+	skybox = {
+		texture = "skyday01.png",
+		brightness = 14
 	}
 
 }

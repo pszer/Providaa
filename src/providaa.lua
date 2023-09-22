@@ -36,6 +36,7 @@ Prov = {
 Prov.__index = Prov
 
 function Prov:load()
+	SET_ACTIVE_KEYBINDS(GAME_KEY_SETTINGS)
 	self:addInputHandler("overworld",
 		InputHandler:new(CONTROL_LOCK.GAME,
 		{"move_left","move_right","move_up","move_down","action","back"}))

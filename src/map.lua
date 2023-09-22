@@ -865,6 +865,25 @@ function Map.generateModelInstances(map)
 	return insts
 end
 
+-- returns a skybox_texture, skybox_texture_name, skybox_hdr_brightness
+function Map.generateSkybox(map)
+	local skybox = map.skybox
+	assert(skybox)
+
+	local tex_name = skybox.texture
+	local brightness = skybox.brightness or 1.0
+
+	local tex = Loader:getTextureReference(tex_name)
+	assert(tex)
+
+	local tex_type = tex:getTextureType()
+	if tex_type ~= "cube" then
+		error(string.format("Map.generateSkybox(): map %s, skybox texture %s is not a cubemap.", tostring(map.name), tostring(tex_name)))
+	end
+
+	return tex, tex_name, brightness
+end
+
 -- verifies if map format is correct
 -- returns nil if fine, otherwise returns an error string
 function Map.malformedCheck(map)
@@ -957,6 +976,10 @@ function Map.malformedCheck(map)
 		if not delay then
 			return string.format("Map %s animated texture %s is missing the delay parameter", name, tostring(i)) end
 	end
+
+	local skybox = map.skybox
+	if not skybox then
+		return string.format("Map %s is missing a skybox table", name) end
 
 	return nil
 end

@@ -26,6 +26,7 @@ ScenePropPrototype = Props:prototype{
 	{"scene_ambient_col", "table", {350/255, 255/255, 240/255, 11.5}, nil, "colour of the ambience (shows up in shadows)"},
 	{"scene_light_dir", "table", {-0.3,-0.8,0.5}, nil,             "direction of ambient light source"},
 
-	{"scene_skybox", "string", "skyday01.png", nil,           "scene's skybox, if empty string then no skybox is drawn"},
-	{"scene_skybox_hdr_brightness", "number", 1.0, nil,       "HDR brightness for skybox"}
+	{"scene_skybox_name", "string", "", nil,             "scene's skybox img filename"},
+	{"scene_skybox_tex", nil, nil, nil,                  "scene's skybox img"},
+	{"scene_skybox_hdr_brightness", "number", 1.0, nil,  "HDR brightness for skybox"}
 }

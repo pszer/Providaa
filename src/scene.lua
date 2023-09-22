@@ -41,6 +41,13 @@ function Scene:loadMap(map)
 	self.map_mesh = Map.generateMapMesh(map)
 	local models = Map.generateModelInstances(map)
 	self:addModelInstance(models)
+
+	local skybox_tex, skybox_fname, skybox_brightness = Map.generateSkybox(map)
+	if skybox_tex then
+		self.props.scene_skybox_name = skybox_fname
+		self.props.scene_skybox_tex  = skybox_tex
+		self.props.scene_skybox_hdr_brightness = skybox_brightness
+	end
 	self:fitNewModelPartitionSpace()
 end
 
@@ -547,13 +554,11 @@ end
 -- otherwise nil
 function Scene:drawSkybox(cam)
 	local props = self.props
-	local skybox_tex_fname = props.scene_skybox
-	if skybox_tex_fname == "" then return nil end
 
-	local skybox_img = Textures.loadTexture(props.scene_skybox)
-	if not skybox_img then return nil end
-	if skybox_img.props.texture_type ~= "cube" then
-		print(skybox_img.props.texture_name, " is not a cube image (drawSkybox))",skybox_img.props.texture_type)
+	local skybox_img = props.scene_skybox_tex
+	if not skybox_img then return false end
+	if skybox_img:getTextureType() ~= "cube" then
+		print(string.format("Scene:drawSkybox(): scene_skybox_img is not a cubemap!"))
 		return nil
 	end
 
@@ -561,7 +566,7 @@ function Scene:drawSkybox(cam)
 
 	prof.push("skybox_push")
 	local sh = love.graphics.getShader()
-	shadersend(sh, "skybox", skybox_img:getImage())
+	shadersend(sh, "skybox", skybox_img)
 	shadersend(sh, "skybox_brightness", props.scene_skybox_hdr_brightness)
 	self.props.scene_camera:pushToShader(sh)
 	prof.pop("skybox_push")
@@ -569,9 +574,6 @@ function Scene:drawSkybox(cam)
 	prof.push("skybox_draw")
 	love.graphics.draw(Renderer.skybox_model)
 	prof.pop("skybox_draw")
-
-	--Renderer.dropCanvas()
-
 	return true
 end
 

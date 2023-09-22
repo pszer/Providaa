@@ -17,7 +17,7 @@ VALID_SCANCODES = {
 "power","brightnessdown","brightnessup","displayswitch","kbdillumtoggle","kbdillumdown","kbdillumup","eject",
 "sleep","alterase","sysreq","cancel","clear","prior","return2","separator","out","oper","clearagain","crsel",
 "exsel","kp00","kp000","thsousandsseparator","decimalseparator","currencyunit","currencysubunit","app1","app2","unknown",
--- i wish mouse buttons were treated like keyboard buttons :(
+--
 "mouse1","mouse2","mouse3","mouse4","mouse5"
 }
 
@@ -31,19 +31,35 @@ function IS_VALID_SCANCODE(sc)
 end
 
 -- each key_setting can have two keybinds
-KEY_SETTINGS = {
-	
+GAME_KEY_SETTINGS = {
+
 	["move_left"]  = { "left"  , "a" , default = "left"  },
 	["move_right"] = { "right" , "d" , default = "right" },
 	["move_up"]    = { "up"    , "w" , default = "up"    },
 	["move_down"]  = { "down"  , "s" , default = "down"  },
 	["action"]     = { "z"     , "space" , default = "z" },
 	["back"]       = { "x"     , "lctrl" , default = "x" },
-	["hop"]        = { "space" , nil , default = "space" },
-	["descend"]    = { "lctrl" , nil , default = "lctrl" },
-	["rotate"]     = { "mouse3", nil , default = "mouse3"}
+	["hop"]        = { "space" , nil , default = "space" }
 
 }
+
+MAPEDIT_KEY_SETTINGS = {
+
+	["cam_left"]     = { "left"   , "a" , default = "left"   },
+	["cam_right"]    = { "right"  , "d" , default = "right"  },
+	["cam_forward"]  = { "up"     , "w" , default = "up"     },
+	["cam_backward"] = { "down"   , "s" , default = "down"   },
+	["cam_up"]       = { "space"  , nil , default = "space"  },
+	["cam_down"]     = { "lctrl"  , nil , default = "lctrl"  },
+	["cam_rotate"]   = { "mouse3" , nil , default = "mouse3" }
+
+}
+
+KEY_SETTINGS = GAME_KEY_SETTINGS
+
+function SET_ACTIVE_KEYBINDS(settings)
+	KEY_SETTINGS = settings
+end
 
 function SET_KEYBIND(bind, scancode)
 	if not IS_VALID_SCANCODE(scancode) then
