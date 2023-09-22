@@ -268,8 +268,8 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_c
 	return vert_count, index_count, attr_count
 end
 
-function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple_verts, simple_index_map,
-                                            vert_count, index_count, attr_count, simple_vert_count, simple_index_count,
+function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
+                                            vert_count, index_count, attr_count,
 											wallset_id_to_tex, textures)
 	local int = math.floor
 	local I = 1
@@ -326,6 +326,59 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple
 					attr_verts[attr_count + i] = attr
 				end
 				attr_count = attr_count + 4
+			end
+
+			add_wall_verts(wall, Wall.westi , textures_loaded[1])
+			add_wall_verts(wall, Wall.southi, textures_loaded[2])
+			add_wall_verts(wall, Wall.easti , textures_loaded[3])
+			add_wall_verts(wall, Wall.northi, textures_loaded[4])
+		end
+		I = I + 1
+	end
+
+	return vert_count, index_count, attr_count
+end
+
+function Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map,
+                                                  simple_vert_count, simple_index_count,
+											      wallset_id_to_tex, textures)
+	local int = math.floor
+	local I = 1
+	local rect_I = {1,2,3,3,4,1}
+
+	while I <= map.width * map.height do
+		local x = (I-1) % map.width + 1
+		local z = map.height - int((I-1) / map.width)
+		local tilewalls = Map.getWalls(map, x,z)
+		if tilewalls then
+			local textures_loaded = {}
+			for i = 1,4 do 
+				local wallid = tilewalls[i]
+				if wallid then
+					textures_loaded[i] = wallset_id_to_tex[wallid]
+				end
+			end
+
+			local tile_height  = Map.getHeights ( map , x   , z   )
+			local west_height  = Map.getHeights ( map , x-1 , z   )
+			local south_height = Map.getHeights ( map , x   , z+1 )
+			local east_height  = Map.getHeights ( map , x+1 , z   )
+			local north_height = Map.getHeights ( map , x   , z-1 )
+
+			local wall =
+				Wall:getWallInfo(textures,
+					tile_height,
+					west_height,
+					south_height,
+					east_height,
+					north_height)
+
+			local function add_wall_verts(wall, side, tex_id)
+				local wv1,wv2,wv3,wv4 = Map.getWallVerts(x,z, wall, side)
+
+				if not (wv1 and wv2 and wv3 and wv4) then return end
+
+				local vert = {wv1,wv2,wv3,wv4}
 
 				for i=1,4 do
 					simple_verts[simple_vert_count + i] = vert[i]
@@ -345,7 +398,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple
 		I = I + 1
 	end
 
-	return vert_count, index_count, attr_count
+	return simple_vert_count, simple_index_count
 end
 
 function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map, simple_vert_count, simple_index_count, tileset_id_to_tex)
@@ -447,12 +500,18 @@ function Map.generateMapMesh( map )
 		                                   vert_count, index_count, attr_count,
 										   tileset_id_to_tex)
 	vert_count, index_count, attr_count =
-		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple_verts, simple_index_map,
-		                                   vert_count, index_count, attr_count, simple_vert_count, simple_index_count,
+		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
+		                                   vert_count, index_count, attr_count,
 										   wallset_id_to_tex, textures)
 
 	simple_vert_count, simple_index_count =
-		Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map, simple_vert_count, simple_index_count, tileset_id_to_tex)
+		Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map,
+		                                         simple_vert_count, simple_index_count, tileset_id_to_tex)
+
+	simple_vert_count, simple_index_count =
+		Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map,
+		                                         simple_vert_count, simple_index_count, wallset_id_to_tex,
+		                                         textures)
 
 	local mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
 	mesh:setVertexMap(index_map)
