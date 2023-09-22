@@ -454,9 +454,14 @@ function Renderer.dropCanvas()
 	love.graphics.origin()
 end
 
-function Renderer.clearCanvases()
+function Renderer.dropCanvas()
 	love.graphics.setShader()
 	love.graphics.setCanvas()
+end
+
+function Renderer.clearDepthBuffer()
+	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
+	love.graphics.clear(0,0,0,0)
 end
 
 function Renderer.drawFPS()

@@ -137,7 +137,6 @@ function Scene:drawGridMap()
 	--	v:drawAsEnvironment()
 	--end
 	local shader = love.graphics.getShader()
-	shadersend(shader,"texture_animated", false)
 
 	shadersend(shader,"u_uses_tileatlas", true)
 	if self.resend_map_mesh_uv then
@@ -236,8 +235,9 @@ function Scene:draw(cam)
 	prof.pop("scene_update")
 
 	--Renderer.setupCanvasFor3D()
-	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
-	love.graphics.clear(0,0,0,0)
+	--love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
+	--love.graphics.clear(0,0,0,0)
+	Renderer.clearDepthBuffer()
 
 	prof.push("skybox")
 	self:drawSkybox()

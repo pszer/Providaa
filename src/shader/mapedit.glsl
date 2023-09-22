@@ -10,6 +10,8 @@ uniform bool  u_uses_tileatlas;
 uniform Image u_tileatlas;
 uniform vec4  u_tileatlas_uv[128];
 
+uniform bool u_wireframe_enabled;
+
 #ifdef VERTEX
 
 flat out vec2 texscale;
@@ -42,8 +44,6 @@ attribute float TextureUvIndex;
 
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
-
-uniform float u_contour_outline_offset;
 
 mat4 get_deform_matrix() {
 	return mat4(1.0);
@@ -83,6 +83,11 @@ vec4 position(mat4 transform, vec4 vertex) {
 	frag_position = (u_rot * view_v).xyz;
 	view_v = u_rot * view_v;
 
+	// in wireframe mode, add a small offset to the vertex to stop z-fighting
+	if (u_wireframe_enabled) {
+		view_v.xyz += frag_normal*0.25;
+	}
+
 	// interpolate fragment position in viewspace and worldspace
 	frag_w_position = model_v.xyz;
 
@@ -106,6 +111,8 @@ flat in vec2 texoffset;
 flat in int  tex_uv_index;
 
 uniform Image MainTex;
+
+uniform vec4 u_wireframe_colour;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -147,6 +154,11 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
+	if (u_wireframe_enabled) {
+		love_Canvases[0] = u_wireframe_colour;
+		return;
+	}
+
 	vec3 light = vec3(1.0,1.0,1.0);
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
