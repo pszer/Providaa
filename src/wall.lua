@@ -63,8 +63,11 @@ function Wall:getWallInfo(textures, tile_heights, west_heights, south_heights, e
 	local check_side = function(i,     check_side)
 		if i > 4 then return end
 
-		--if i == 4 then print("we checkin that 4") end
-		if textures[i] == nil or heights_order[i] == nil then
+		if heights_order[i] == nil then
+			check_side(i+1, check_side)
+			return
+		end
+		if textures and textures[i] == nil then
 			check_side(i+1, check_side)
 			return
 		end

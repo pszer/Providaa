@@ -24,6 +24,8 @@ function Camera:new(props)
 	this.props.cam_view_matrix = cpml.mat4.new()
 	this.props.cam_rot_matrix = cpml.mat4.new()
 	this.props.cam_perspective_matrix = cpml.mat4.new()
+	this.props.cam_rotview_matrix = cpml.mat4.new()
+	this.props.cam_viewproj_matrix = cpml.mat4.new()
 
 	this.props.cam_frustrum_corners = {{},{},{},{},{},{},{},{}}
 	this.props.cam_frustrum_centre  = {}
@@ -109,6 +111,15 @@ function Camera:calculatePerspectiveMatrix(aspect_ratio, far_plane)
 		props.cam_fov, aspect_ratio, 0.5, far_plane)
 end
 
+function Camera:getProjectionMatrix()
+	local projm = self.props.cam_perspective_matrix
+	if projm then
+		return projm
+	else
+		return self:generatePerspectiveMatrix()
+	end
+end
+
 -- generates and returns view,rot matrix
 local __tempvec3 = cpml.vec3.new()
 local __tempvec3nil = cpml.vec3.new(0,0,0)
@@ -155,11 +166,18 @@ function Camera:generateViewMatrix()
 	props.cam_view_matrix = m
 	props.cam_rot_matrix  = v
 
-	--local rotview = mat4()
-	--cpml.mat4.mul(rotview, v, m)
-	--props.cam_rotview_matrix = rotview
+	local rotview = props.cam_rotview_matrix
+	cpml.mat4.mul(rotview, v, m)
 
 	return props.cam_view_matrix, props.cam_rot_matrix
+end
+
+function Camera:getViewProjMatrix()
+	local props = self.props
+	local vp = props.cam_viewproj_matrix
+	local v  = props.cam_rotview_matrix
+	local p  = props.cam_perspective_matrix
+	cpml.mat4.mul(vp, p, v)
 end
 
 -- returns corners of camera`s view frustrum in world space,

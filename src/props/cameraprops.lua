@@ -29,6 +29,7 @@ CameraPropPrototype = Props:prototype{
 	{"cam_view_matrix", nil, nil, nil, "view position matrix"},
 	{"cam_rot_matrix", nil, nil, nil, "view rotation matrix"},
 	{"cam_rotview_matrix", nil, nil, nil, "view position matrix"},
+	{"cam_viewproj_matrix", nil, nil, nil, "view*projection matrix"},
 	{"cam_frustrum_corners", nil, nil, nil, "camera`s projection+view frustrum corner coordinates"},
 	{"cam_frustrum_centre" , nil, nil, nil, "camera`s projection+view frustrum centre coordinates"},
 

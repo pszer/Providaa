@@ -18,7 +18,9 @@ ProvMapEdit = {
 
 	viewport_input = nil,
 
-	view_rotate_mode = false
+	view_rotate_mode = false,
+	grabbed_mouse_x = 0,
+	grabbed_mouse_y = 0,
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -112,11 +114,16 @@ function ProvMapEdit:setupInputHandling()
 	local up_v       = { 0,-1,0,0}
 	local down_v     = { 0, 1,0,0}
 
-	local function __move(dir_v)
+	local function __move(dir_v, relative_mode)
 		return function()
 			local dt = love.timer.getDelta()
 			local cam = self.props.mapedit_cam
-			local dir = {cam:getDirectionVector(dir_v)}
+			local dir
+			if relative_mode then
+				dir = {cam:getDirectionVector(dir_v)}
+			else
+				dir = dir_v
+			end
 			local speed = self.props.mapedit_cam_speed
 			local campos = cam:getPosition()
 			cam:setPosition{
@@ -127,19 +134,19 @@ function ProvMapEdit:setupInputHandling()
 	end
 
 	local viewport_move_forward = Hook:new(function ()
-		__move(forward_v)() end)
+		__move(forward_v, true)() end)
 	self.viewport_input:getEvent("cam_forward","held"):addHook(viewport_move_forward)
 
 	local viewport_move_backward = Hook:new(function ()
-		__move(backward_v)() end)
+		__move(backward_v, true)() end)
 	self.viewport_input:getEvent("cam_backward","held"):addHook(viewport_move_backward)
 
 	local viewport_move_left = Hook:new(function ()
-		__move(left_v)() end)
+		__move(left_v, true)() end)
 	self.viewport_input:getEvent("cam_left","held"):addHook(viewport_move_left)
 
 	local viewport_move_right = Hook:new(function ()
-		__move(right_v)() end)
+		__move(right_v, true)() end)
 	self.viewport_input:getEvent("cam_right","held"):addHook(viewport_move_right)
 
 	local viewport_move_up = Hook:new(function ()
@@ -153,17 +160,37 @@ function ProvMapEdit:setupInputHandling()
 	local viewport_rotate_start = Hook:new(function ()
 		love.mouse.setRelativeMode( true )
 		self.view_rotate_mode = true
+		self.grabbed_mouse_x = love.mouse.getX()
+		self.grabbed_mouse_y = love.mouse.getY()
 	end)
 	self.viewport_input:getEvent("cam_rotate","down"):addHook(viewport_rotate_start)
 	local viewport_rotate_finish = Hook:new(function ()
 		love.mouse.setRelativeMode( false )
 		self.view_rotate_mode = false
+		love.mouse.setX(self.grabbed_mouse_x)
+		love.mouse.setY(self.grabbed_mouse_y)
 	end)
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)
 
 	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
 		self:newCamera()
 	end))
+end
+
+-- returns either nil, {tile,x,y}, {wall,x,y,side}, {model_i}
+function ProvMapEdit:objectAtCursor( x, y )
+	local project = cpml.mat4.project
+	local unproject = cpml.mat4.unproject
+
+	local viewproj = self.props.mapedit_cam:getViewProjMatrix()
+
+	-- test against map mesh
+	do
+		-- the map mesh has no model transformation, so mvp=vp
+		local mvp = viewproj
+
+
+	end
 end
 
 function ProvMapEdit:newCamera()

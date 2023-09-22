@@ -49,10 +49,20 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_right"]    = { "right"  , "d"    , default = "right"  },
 	["cam_forward"]  = { "up"     , "w"    , default = "up"     },
 	["cam_backward"] = { "down"   , "s"    , default = "down"   },
-	["cam_up"]       = { "space"  , nil    , default = "space"  },
-	["cam_down"]     = { "lctrl"  , nil    , default = "lctrl"  },
-	["cam_rotate"]   = { "mouse3" , nil    , default = "mouse3" },
-	["cam_reset"]    = { "kp."    , "home" , default = "kp."}
+	["cam_up"]       = { "space"  ,  nil   , default = "space"  },
+	["cam_down"]     = { "lctrl"  ,  nil   , default = "lctrl"  },
+	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
+	["cam_reset"]    = { "kp."    , "home" , default = "kp."},
+
+	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },
+	["edit_deselect"]  = { "mouse2"   , "esc"  , default = "mouse2" },
+	["edit_undo"]      = { "pagedown" ,  nil   , default = "mouse2" },
+	["edit_redo"]      = { "pageup"   ,  nil   , default = "mouse2" },
+
+	["transform_move"]   = { "g"      , nil , default = "g" },
+	["transform_rotate"] = { "r"      , nil , default = "r" },
+	["transform_scale"]  = { "s"      , nil , default = "s" },
+	["transform_cancel"] = { "mouse2" , nil, default = "mouse2" },
 
 }
 

@@ -273,7 +273,8 @@ end
 
 function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
                                             vert_count, index_count, attr_count,
-											wallset_id_to_tex, textures)
+											wallset_id_to_tex, textures,
+											gen_all_walls, nil_texture_id)
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
@@ -288,6 +289,8 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				local wallid = tilewalls[i]
 				if wallid then
 					textures_loaded[i] = wallset_id_to_tex[wallid]
+				else
+					textures_loaded[i] = nil_texture_id
 				end
 			end
 
@@ -297,15 +300,29 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 			local east_height  = Map.getHeights ( map , x+1 , z   )
 			local north_height = Map.getHeights ( map , x   , z-1 )
 
-			local wall =
-				Wall:getWallInfo(textures,
-					tile_height,
-					west_height,
-					south_height,
-					east_height,
-					north_height)
+			local wall = nil
+			if not gen_all_walls then
+				wall = 
+					Wall:getWallInfo(textures,
+						tile_height,
+						west_height,
+						south_height,
+						east_height,
+						north_height)
+			else -- if gen_all_walls, we skip testing if a wall has a texture defined and generate vertices for all walls
+				wall = 
+					Wall:getWallInfo(nil,
+						tile_height,
+						west_height,
+						south_height,
+						east_height,
+						north_height)
+
+			end
 
 			local function add_wall_verts(wall, side, tex_id)
+				if not tex_id then return end
+
 				local wv1,wv2,wv3,wv4 = Map.getWallVerts(x,z, wall, side)
 
 				if not (wv1 and wv2 and wv3 and wv4) then return end
@@ -461,8 +478,12 @@ function Map.generateMapMesh( map , params )
 	local params = params or {}
 	local optimise   = not params.dont_optimise
 	local gen_simple = not params.dont_gen_simple
+
 	local gen_all_walls   = params.gen_all_walls
 	local gen_nil_texture = params.gen_nil_texture
+	local nil_texture_id  = -1
+
+	--local gen_index_data  = params.gen_index_data
 
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_walls enabled, but no gen_nil_texture supplied. give either a filename/texture")
@@ -478,12 +499,20 @@ function Map.generateMapMesh( map , params )
 	if gen_nil_texture then
 		local arg_type = type(gen_nil_texture)
 		if arg_type == "string" then
-
+			local nil_tex = Loader:getTextureReference(gen_nil_texture)
+			assert(nil_tex)
+			tex_count = tex_count+1
+			textures[tex_count] = nil_tex
+			tex_names[tex_count] = gen_nil_texture
 		elseif arg_type == "Texture" then
-
+			tex_count = tex_count+1
+			textures[tex_count] = gen_nil_texture
+			tex_names[tex_count] = ""
 		else
 			error(string.format("Map:generateMapMesh(): gen_nil_texture parameter type is %s, expected a string filename/love2d texture.", arg_type))
 		end
+		
+		nil_texture_id = tex_count
 	end
 
 	tex_count = Map.internalLoadTilesetTextures(map, textures, tex_names, tileset_id_to_tex, wallset_id_to_tex)
@@ -497,7 +526,9 @@ function Map.generateMapMesh( map , params )
 	-- once the textures are added to an atlas, we don't need to keep
 	-- references to the original textures
 	for i,name in ipairs(tex_names) do
-		Loader:deref("texture", name)
+		if name and name ~= "" then
+			Loader:deref("texture", name)
+		end
 	end
 
 	local verts = {}
@@ -525,7 +556,7 @@ function Map.generateMapMesh( map , params )
 	vert_count, index_count, attr_count =
 		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   wallset_id_to_tex, textures)
+										   wallset_id_to_tex, textures, gen_all_walls, gen_nil_texture, nil_texture_id)
 
 	if gen_simple then
 		simple_vert_count, simple_index_count =

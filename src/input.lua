@@ -55,7 +55,8 @@ CONTROL_LOCK = {
 	MENU2        = {8,        0},
 	MENU1        = {9,        0},
 
-	MAPEDIT_VIEW = {100,      0},
+	MAPEDIT_TRANSFORM = { 99,      0},
+	MAPEDIT_VIEW      = {100,      0},
 
 	GAMEPROMPT = {200,      0},
 	GAME       = {201,      0},
