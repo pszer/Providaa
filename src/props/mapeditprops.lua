@@ -14,15 +14,15 @@ MapEditPropPrototype = Props:prototype{
 
 	{"mapedit_command_stack", "table", nil, PropDefaultTable{}, "history of invoked map edit commands"},
 	{"mapedit_command_stack_max", "number", 300, nil,           "max number of commands to remember"},
-	{"mapedit_map_mesh", "mapmesh", nil, nil, "MapMesh object for a map`s static geometry, displayed in map edit view"},
+	{"mapedit_map_mesh", nil, nil, nil, "MapMesh object for a map`s static geometry, displayed in map edit view"},
 
 	{"mapedit_models", "table", nil, PropDefaultTable{}, "table of map's models"},
 
 	{"mapedit_tileset", "table", nil, PropDefaultTable{}, "tileset for active map"},
 	{"mapedit_wallset", "table", nil, PropDefaultTable{}, "wallset for active map"},
 
-	{"mapedit_map_width" , "number", 0, "active map width"},
-	{"mapedit_map_height", "number", 0, "active map height"},
+	{"mapedit_map_width" , "number", 0, nil, "active map width"},
+	{"mapedit_map_height", "number", 0, nil, "active map height"},
 
 	{"mapedit_map_heights", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile heights"},
 	{"mapedit_tile_map", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of tiles to the tileset"},

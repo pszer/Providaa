@@ -224,6 +224,27 @@ function Renderer.renderScaled(canvas, hdr)
 	Renderer.dropCanvas()
 end
 
+function Renderer.renderScaledDefault(canvas)
+	local canvas = canvas or Renderer.scene_viewport
+	local w,h = get_resolution()
+	local W,H = love.graphics.getWidth() / RESOLUTION_RATIO, love.graphics.getHeight() / RESOLUTION_RATIO
+	local wpad, hpad = 0,0
+
+	if RESOLUTION_PADW then
+		wpad = (W-w)/2
+	else
+		hpad = (H-h)/2
+	end
+
+	love.graphics.setShader()
+	love.graphics.setCanvas()
+	love.graphics.origin()
+	love.graphics.scale(RESOLUTION_RATIO)
+	love.graphics.draw(canvas,wpad,hpad)
+
+	Renderer.dropCanvas()
+end
+
 function Renderer.transformCoordsFor3D()
 	local w,h = Renderer.viewport_w, Renderer.viewport_h
 	love.graphics.origin()

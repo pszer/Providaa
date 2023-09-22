@@ -12,20 +12,22 @@ prof = require("jprof")
 
 local function __print_info()
 	print(limit.sysInfoString())
+	print("---------------------------------------------------------")
 	print(string.format("Save directory: %s", love.filesystem.getSaveDirectory()))
+	print("---------------------------------------------------------")
 end
 
 function __parse_args( commandline_args )
 	local params = {}
 	for i,v in ipairs(commandline_args) do
 		local eq_pos = string.find(v, '=')
+		local com_pos = {}
 		if eq_pos then
-			local com_pos = {}
 			for arg in string.gmatch(string.sub(v,eq_pos+1,-1), "[^,%s]+") do
 				table.insert(com_pos, arg)
 			end
+			params[string.sub(v,1,eq_pos-1)] = com_pos
 		end
-		params[v] = com_pos
 	end
 	return params
 end
@@ -35,11 +37,17 @@ function love.load( args )
 	local params = __parse_args(args)
 
 	local arg_coms = {
-	 ["mapedit"] = function(args)
+	 ["lvledit"] = function(args)
 	 	local mapname = args[1]
-		assert(mapname,"launch command mapedit expects a map name")
+		assert(mapname,"launch command lvledit expects a map name")
+		gamestate_on_launch = ProvMapEdit
 		end
 	}
+	for param,args in pairs(params) do
+		local com = arg_coms[param]
+		if not com then error(string.format("unrecognised launch parameter %s",tostring(param))) end
+		com(args)
+	end
 
 	__print_info()
 	getRefreshRate()
@@ -48,7 +56,7 @@ function love.load( args )
 	Loader:initThread()
 
 	SPLASH_SCREEN = o_ten_one{background={0,0,0,1}, delay_before=0.0 }
-	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(gamestate_on_launch) end
+	SPLASH_SCREEN.onDone = function() SET_GAMESTATE(gamestate_on_launch, params) end
 	SET_GAMESTATE(SPLASH_SCREEN)
 end
 
@@ -99,34 +107,10 @@ function love.run()
 		prof.pop("frame")
 
 		sleep_acc = sleep_acc + dt
-		if sleep_acc > 0.004 then
+		if sleep_acc > 0.0025 then
 			sleep_acc = 0
 			if love.timer then love.timer.sleep(0.001) end
 		end
-	end
-end
-
-local FRAMES=0
-local TIMER_START=0
-function __updateFramesCounter()
-	FRAMES=FRAMES+1
-	if (love.timer.getTime() - TIMER_START > 1.0) then
-		TIMER_START = love.timer.getTime()
-		--FPS = FRAMES
-		FRAMES=0
-	end
-end
-
-function __limitFPS( limit , dt )
-	local limit = limit or 0
-	if limit > 0 then
-		local diff = (1/limit) - dt
-
-		local start_time = love.timer.getTime()
-		if diff > 0.0 then
-			love.timer.sleep(diff)
-		end
-		local time_slept = love.timer.getTime() - start_time
 	end
 end
 
@@ -141,8 +125,6 @@ function love.update(dt)
 	updateKeys()
 
 	FPS = love.timer.getFPS()
-	__updateFramesCounter()
-
 	prof.pop("update")
 end
 
@@ -160,6 +142,8 @@ end
 function love.resize( w,h )
 	update_resolution_ratio( w,h )
 	Renderer.createCanvas()
+
+	if GAMESTATE.resize then GAMESTATE:resize(w,h) end
 end
 
 function love.quit()
@@ -178,22 +162,28 @@ function love.keypressed(key, scancode, isrepeat)
 	if key == "f8" then
 		Console.open()
 	end
+	if GAMESTATE.keypressed then GAMESTATE:keypressed(t) end
 end
 
 function love.keyreleased(key, scancode)
 	__keyreleased(key, scancode)
+	if GAMESTATE.keyreleased then GAMESTATE:keyreleased(t) end
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
 	__mousepressed(x, y, button, istouch, presses)
+	if GAMESTATE.mousepressed then GAMESTATE:mousepressed(t) end
 end
 
 function love.mousereleased(x, y, button, istouch, presses)
 	__mousereleased(x, y, button, istouch, presses)
+	if GAMESTATE.mousereleased then GAMESTATE:mousereleased(t) end
 end
 
 function love.textinput(t)
 	if Console.isOpen() then
 		Console.textinput(t)
+	else
+		if GAMESTATE.textinput then GAMESTATE:textinput(t) end
 	end
 end
