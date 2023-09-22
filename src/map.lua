@@ -421,8 +421,6 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 		local tex_id = tileset_id_to_tex[tileid]
 		if tex_id and not tile_in_simple_set[x + z*map.width] then
 			local square_size = Map.getIdenticalSquareTilesCount(map, x,z)
-
-			--print(x,z,x+square_size,z+square_size,square_size)
 			
 			-- add all tiles in the square to the simplified set
 			for Z=0,square_size-1 do

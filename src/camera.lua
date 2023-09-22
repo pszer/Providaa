@@ -251,12 +251,24 @@ function Camera:getFrustrumCornersWorldSpace()
 	return props.cam_frustrum_corners, props.cam_frustrum_centre
 end
 
-function Camera:getDirectionVector()
-	local unit = {0,0,0,0}
+local __temp_dir_v = {0,0,0,0}
+function Camera:getDirectionVector( dir )
+	local dir_v = __temp_dir_v
+	if dir then
+		dir_v[1] = dir[1]
+		dir_v[2] = dir[2]
+		dir_v[3] = dir[3]
+		dir_v[4] = 0.0
+	else
+		dir_v[1] = 0
+		dir_v[2] = 0
+		dir_v[3] = -1
+		dir_v[4] = 0
+	end
 	local rot = self.props.cam_rot_matrix
 	if rot then
-		unit = cpml.mat4.mul_vec4(unit, rot, {0,0,-1,0})
-		return unit[1], unit[2], unit[3]
+		cpml.mat4.mul_vec4(dir_v, rot, dir_v)
+		return dir_v[1], dir_v[2], dir_v[3]
 	else
 		return 0,0,-1
 	end

@@ -289,8 +289,6 @@ function ModelInstance:modelMatrix()
 	__vec3temp.z = pos[3]
 	m:translate(m, __vec3temp )
 
-	--print(m)
-
 	local dirfix = props.model_i_reference:getDirectionFixingMatrix()
 	m = cpml.mat4.mul(m, m, dirfix )
 	--m = m * dirfix 
@@ -466,7 +464,6 @@ end
 
 function ModelInstance:queryModelMatrix()
 	local m,n = self.static_model_matrix, self.static_normal_matrix
-	--print(self.props.model_i_reference.props.model_name, m,n)
 	return self.static_model_matrix, self.static_normal_matrix
 end
 

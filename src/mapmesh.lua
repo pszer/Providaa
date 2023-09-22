@@ -2,6 +2,8 @@ require "assetloader"
 require "tick"
 require "math"
 
+local shadersend = require "shadersend"
+
 MapMesh = {__type="mapmesh",
 
 	atypes = {

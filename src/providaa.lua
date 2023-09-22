@@ -39,6 +39,7 @@ function Prov:load()
 	self:addInputHandler("overworld",
 		InputHandler:new(CONTROL_LOCK.GAME,
 		{"move_left","move_right","move_up","move_down","action","back"}))
+	CONTROL_LOCK.GAME.open()
 
 	self.scene:loadMap(testmap)
 

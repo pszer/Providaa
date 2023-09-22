@@ -214,13 +214,13 @@ vec3 diffuse_lighting_2( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 0.05;
+	float specular_strength = 1.0;
 
 	vec3 view_dir = normalize( view_pos - frag_w_position );
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 16);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }

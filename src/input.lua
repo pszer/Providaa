@@ -56,7 +56,9 @@ CONTROL_LOCK = {
 	MENU1        = {9,        0},
 
 	GAMEPROMPT = {100,      0},
-	GAME       = {101,      1}
+	GAME       = {101,      0},
+
+	MAPEDIT_VIEW = {200,      0},
 }
 
 -- shorter alias

@@ -38,7 +38,8 @@ KEY_SETTINGS = {
 	["move_up"]    = { "up"    , "w" , default = "up"    },
 	["move_down"]  = { "down"  , "s" , default = "down"  },
 	["action"]     = { "z"     , "space" , default = "z" },
-	["back"]       = { "x"     , "lctrl" , default = "x" }
+	["back"]       = { "x"     , "lctrl" , default = "x" },
+	["hop"]        = { "space" , nil , default = "space" },
 
 }
 

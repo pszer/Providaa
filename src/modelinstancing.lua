@@ -54,7 +54,6 @@ function ModelInfo.newMeshFromInfoTable(model, instances)
 
 		m:scale(m,  cpml.vec3(instance.scale))
 
-		print(unpack(instance.rotation))
 		rotateMatrix(m, instance.rotation)
 		--m:rotate(m, instance.rotation[1], cpml.vec3.unit_x)
 		--m:rotate(m, instance.rotation[2], cpml.vec3.unit_y)
