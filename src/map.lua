@@ -531,7 +531,7 @@ function Map.generateMapMesh( map , params )
 
 	local simple_mesh = nil
 	if gen_simple then
-		local simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
+		simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
 		simple_mesh:setVertexMap(simple_index_map)
 	end
 

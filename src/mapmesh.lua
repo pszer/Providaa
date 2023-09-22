@@ -26,7 +26,6 @@ MapMesh = {__type="mapmesh",
 
 }
 MapMesh.__index = MapMesh
-setmetatable(MapMesh, MapMesh)
 
 function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info)
 
