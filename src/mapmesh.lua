@@ -13,7 +13,6 @@ MapMesh = {__type="mapmesh",
 	},
 
 	atts_atypes = {
-		--{"AnimationOffset", "float", 1},
 		{"TextureScale",    "float", 2},
 		{"TextureOffset",   "float", 2},
 		{"TextureUvIndex",  "float", 1}

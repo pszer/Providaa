@@ -216,7 +216,7 @@ function Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, texture
 end
 
 -- returns vert_count, index_count, attr_count
-function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex)
+function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex, optimise)
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
@@ -231,7 +231,10 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_c
 		-- we only add a floor tile to mesh if it actually has a texture
 		local tex_id = tileset_id_to_tex[tileid]
 		if tex_id then
-			local consec_count = Map.getIdenticalConsecutiveTilesCount(map, x,z)
+			local consec_count = 1
+			if optimise then
+				consec_count = Map.getIdenticalConsecutiveTilesCount(map, x,z)
+			end
 
 			local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
 			local gv1,gv2,gv3,gv4 = Map.getTileVerts(x,z,h1,h2,h3,h4)
@@ -448,12 +451,16 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 	return simple_vert_count, simple_index_count
 end
 
-function Map.generateMapMesh( map )
+function Map.generateMapMesh( map , params )
 	local maperror = Map.malformedCheck(map)
 	if maperror then
 		error(maperror)
 		return
 	end
+
+	local params = params or {}
+	local optimise   = not params.dont_optimise
+	local gen_simple = not params.dont_gen_simple
 
 	local textures = {}
 	local tex_names = {}
@@ -496,20 +503,22 @@ function Map.generateMapMesh( map )
 	vert_count, index_count, attr_count =
 		Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   tileset_id_to_tex)
+										   tileset_id_to_tex, optimise)
 	vert_count, index_count, attr_count =
 		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
 										   wallset_id_to_tex, textures)
 
-	simple_vert_count, simple_index_count =
-		Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map,
-		                                         simple_vert_count, simple_index_count, tileset_id_to_tex)
+	if gen_simple then
+		simple_vert_count, simple_index_count =
+			Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map,
+													 simple_vert_count, simple_index_count, tileset_id_to_tex)
 
-	simple_vert_count, simple_index_count =
-		Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map,
-		                                         simple_vert_count, simple_index_count, wallset_id_to_tex,
-		                                         textures)
+		simple_vert_count, simple_index_count =
+			Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map,
+													 simple_vert_count, simple_index_count, wallset_id_to_tex,
+													 textures)
+	end
 
 	local mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
 	mesh:setVertexMap(index_map)
@@ -520,8 +529,11 @@ function Map.generateMapMesh( map )
 	mesh:attachAttribute("TextureOffset", attr_mesh, "pervertex")
 	mesh:attachAttribute("TextureUvIndex", attr_mesh, "pervertex")
 
-	local simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
-	simple_mesh:setVertexMap(simple_index_map)
+	local simple_mesh = nil
+	if gen_simple then
+		local simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
+		simple_mesh:setVertexMap(simple_index_map)
+	end
 
 	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info)
 

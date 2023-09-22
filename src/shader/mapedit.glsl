@@ -85,7 +85,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 
 	// in wireframe mode, add a small offset to the vertex to stop z-fighting
 	if (u_wireframe_enabled) {
-		view_v.xyz += frag_normal*0.25;
+		view_v.xyz += frag_normal*0.2;
 	}
 
 	// interpolate fragment position in viewspace and worldspace
@@ -154,8 +154,12 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
+	float frag_dist = length(frag_position);
+	float wireframe_dist = 600.0;
 	if (u_wireframe_enabled) {
-		love_Canvases[0] = u_wireframe_colour;
+		float dd = (wireframe_dist - frag_dist) / wireframe_dist;
+		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.0/2.0);
+		love_Canvases[0] = vec4(u_wireframe_colour.xyz, u_wireframe_colour.a * mul);
 		return;
 	}
 

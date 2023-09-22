@@ -40,6 +40,8 @@ KEY_SETTINGS = {
 	["action"]     = { "z"     , "space" , default = "z" },
 	["back"]       = { "x"     , "lctrl" , default = "x" },
 	["hop"]        = { "space" , nil , default = "space" },
+	["descend"]    = { "lctrl" , nil , default = "lctrl" },
+	["rotate"]     = { "mouse3", nil , default = "mouse3"}
 
 }
 

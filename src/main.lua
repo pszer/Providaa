@@ -180,6 +180,10 @@ function love.mousereleased(x, y, button, istouch, presses)
 	if GAMESTATE.mousereleased then GAMESTATE:mousereleased(t) end
 end
 
+function love.mousemoved(x,y,dx,dy,istouch)
+	if GAMESTATE.mousemoved then GAMESTATE:mousemoved(x,y,dx,dy,istouch) end
+end
+
 function love.textinput(t)
 	if Console.isOpen() then
 		Console.textinput(t)

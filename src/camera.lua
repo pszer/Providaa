@@ -267,7 +267,7 @@ function Camera:getDirectionVector( dir )
 	end
 	local rot = self.props.cam_rot_matrix
 	if rot then
-		cpml.mat4.mul_vec4(dir_v, rot, dir_v)
+		cpml.mat4.mul_vec4(dir_v, -rot, dir_v)
 		return dir_v[1], dir_v[2], dir_v[3]
 	else
 		return 0,0,-1
