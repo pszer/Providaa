@@ -102,30 +102,24 @@ require "model"
 
 local cpml = require 'cpml'
 
-Map = { base_dir = "maps/" }
+Map = { __dir = "maps/" }
 Map.__index = Map
 
 local testmap = require "maps.test"
 
 function Map.getMap(filename)
 	assert_type(filename, "string")
-	local map = loadfile(Map.base_dir .. filename)
-	assert(map, string.format("Map.getMap(): map %s%s doesn't exist", Map.base_dir, filename))
+	local map = loadfile(Map.__dir .. filename)
+	assert(map, string.format("Map.getMap(): map %s%s doesn't exist", Map.__dir, filename))
 	map.name = filename
 	return map
 end
 
-function Map.generateMapMesh( map )
-	local maperror = Map.malformedCheck(map)
-	if maperror then
-		error(maperror)
-		return
-	end
+-- returns tex_count
+function Map.internalLoadTilesetTextures( map , textures , tex_names , tileset_id_to_tex , wallset_id_to_tex )
+	assert(map and textures and tex_names and tileset_id_to_tex and wallset_id_to_tex)
 
 	local tex_count = 0
-
-	local textures = {}
-	local tex_names = {}
 
 	local function is_duplicate(tex_name)
 		for i,v in ipairs(tex_names) do
@@ -133,9 +127,6 @@ function Map.generateMapMesh( map )
 		end
 		return nil
 	end
-
-	local tileset_id_to_tex = {}
-	local wallset_id_to_tex = {}
 
 	local function load_tex(i,tex_name, id_to_tex)
 		local dup_id = is_duplicate(tex_name)
@@ -166,8 +157,29 @@ function Map.generateMapMesh( map )
 		end
 	end
 
-	local anim_textures_info = {}
+	return tex_count
+end
 
+-- returns updated tex_count
+function Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, textures, tex_names, tex_count)
+	local function is_duplicate(tex_name)
+		for i,v in ipairs(tex_names) do
+			if v == tex_name then return i end
+		end
+		return nil
+	end
+
+	local function load_tex(tex_name)
+		local dup_id = is_duplicate(tex_name)
+		if dup_id then
+			return dup_id
+		end
+
+		tex_count = tex_count + 1
+		textures[tex_count] = Loader:getTextureReference(tex_name)
+		tex_names[tex_count] = tex_name
+		return tex_count
+	end
 	-- we generate the information needed for animated textures
 	-- all textures specified are loaded and correct indices are assigned
 	for i,v in pairs(map.anim_tex) do
@@ -195,36 +207,18 @@ function Map.generateMapMesh( map )
 
 		anim_textures_info[i].indices = {}
 		for j,tex_name in ipairs(texs) do
-			local index =load_tex(nil, tex_name, nil)
+			local index =load_tex(tex_name)
 			anim_textures_info[i].indices[j] = index
 		end
 	end
-	
-	-- generate atlas
-	local atlas, atlas_uvs = MapMesh:generateTextureAtlas( textures )
-	
-	-- once the textures are added to an atlas, we don't need to keep
-	-- references to the original textures
-	for i,name in ipairs(tex_names) do
-		Loader:deref("texture", name)
-	end
 
-	local verts = {}
-	local vert_count = 0
-	local index_map = {}
-	local index_count = 0
+	return tex_count
+end
 
-	local attr_verts  = {}
-	local attr_count = 0
-
-	local simple_verts = {}
-	local simple_vert_count = 0
-	local simple_index_map = {}
-	local simple_index_count = 0
-
+-- returns vert_count, index_count, attr_count
+function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex)
 	local int = math.floor
 	local I = 1
-
 	local rect_I = {1,2,3,3,4,1}
 
 	-- generate floor tile vertices for the mesh
@@ -271,7 +265,16 @@ function Map.generateMapMesh( map )
 		end
 	end
 
-	I = 1
+	return vert_count, index_count, attr_count
+end
+
+function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple_verts, simple_index_map,
+                                            vert_count, index_count, attr_count, simple_vert_count, simple_index_count,
+											wallset_id_to_tex, textures)
+	local int = math.floor
+	local I = 1
+	local rect_I = {1,2,3,3,4,1}
+
 	while I <= map.width * map.height do
 		local x = (I-1) % map.width + 1
 		local z = map.height - int((I-1) / map.width)
@@ -303,11 +306,6 @@ function Map.generateMapMesh( map )
 				local wv1,wv2,wv3,wv4 = Map.getWallVerts(x,z, wall, side)
 
 				if not (wv1 and wv2 and wv3 and wv4) then return end
-
-				--print(unpack(wv1))
-				--print(unpack(wv2))
-				--print(unpack(wv3))
-				--print(unpack(wv4))
 
 				local vert = {wv1,wv2,wv3,wv4}
 				local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
@@ -346,6 +344,14 @@ function Map.generateMapMesh( map )
 		end
 		I = I + 1
 	end
+
+	return vert_count, index_count, attr_count
+end
+
+function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map, simple_vert_count, simple_index_count, tileset_id_to_tex)
+	local int = math.floor
+	local I = 1
+	local rect_I = {1,2,3,3,4,1}
 
 	local tile_in_simple_set = {}
 	-- generated simplified floor tile vertices for the shadow mapping mesh
@@ -388,12 +394,71 @@ function Map.generateMapMesh( map )
 
 		I = I + 1
 	end
+	return simple_vert_count, simple_index_count
+end
+
+function Map.generateMapMesh( map )
+	local maperror = Map.malformedCheck(map)
+	if maperror then
+		error(maperror)
+		return
+	end
+
+	local textures = {}
+	local tex_names = {}
+	local tileset_id_to_tex = {}
+	local wallset_id_to_tex = {}
+
+	local tex_count = 0
+	tex_count = Map.internalLoadTilesetTextures(map, textures, tex_names, tileset_id_to_tex, wallset_id_to_tex)
+
+	local anim_textures_info = {}
+	tex_count = Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, textures, tex_names, tex_count)
+	
+	-- generate atlas
+	local atlas, atlas_uvs = MapMesh:generateTextureAtlas( textures )
+	
+	-- once the textures are added to an atlas, we don't need to keep
+	-- references to the original textures
+	for i,name in ipairs(tex_names) do
+		Loader:deref("texture", name)
+	end
+
+	local verts = {}
+	local vert_count = 0
+	local index_map = {}
+	local index_count = 0
+
+	local attr_verts  = {}
+	local attr_count = 0
+
+	local simple_verts = {}
+	local simple_vert_count = 0
+	local simple_index_map = {}
+	local simple_index_count = 0
+
+	local int = math.floor
+	local I = 1
+
+	local rect_I = {1,2,3,3,4,1}
+
+	vert_count, index_count, attr_count =
+		Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
+		                                   vert_count, index_count, attr_count,
+										   tileset_id_to_tex)
+	vert_count, index_count, attr_count =
+		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts, simple_verts, simple_index_map,
+		                                   vert_count, index_count, attr_count, simple_vert_count, simple_index_count,
+										   wallset_id_to_tex, textures)
+
+	simple_vert_count, simple_index_count =
+		Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map, simple_vert_count, simple_index_count, tileset_id_to_tex)
 
 	local mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
 	mesh:setVertexMap(index_map)
 	mesh:setTexture(atlas)
+
 	local attr_mesh = love.graphics.newMesh(MapMesh.atts_atypes, attr_verts, "triangles", "static")
-	--attr_mesh:setVertexMap(attr_index_map)
 	mesh:attachAttribute("TextureScale", attr_mesh, "pervertex")
 	mesh:attachAttribute("TextureOffset", attr_mesh, "pervertex")
 	mesh:attachAttribute("TextureUvIndex", attr_mesh, "pervertex")
