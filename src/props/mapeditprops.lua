@@ -23,6 +23,10 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_tileset", "table", nil, PropDefaultTable{}, "tileset for active map"},
 	{"mapedit_wallset", "table", nil, PropDefaultTable{}, "wallset for active map"},
 
+	{"mapedit_skybox_enable", "boolean", true, nil, "whether to draw skybox in viewport"},
+	{"mapedit_skybox", "table", nil, PropDefaultTable{}, "maps skybox info"},
+	{"mapedit_skybox_img", nil, nil, nil, "skybox img to use in the viewport"},
+
 	{"mapedit_map_width" , "number", 0, nil, "active map width"},
 	{"mapedit_map_height", "number", 0, nil, "active map height"},
 

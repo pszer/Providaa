@@ -45,13 +45,14 @@ GAME_KEY_SETTINGS = {
 
 MAPEDIT_KEY_SETTINGS = {
 
-	["cam_left"]     = { "left"   , "a" , default = "left"   },
-	["cam_right"]    = { "right"  , "d" , default = "right"  },
-	["cam_forward"]  = { "up"     , "w" , default = "up"     },
-	["cam_backward"] = { "down"   , "s" , default = "down"   },
-	["cam_up"]       = { "space"  , nil , default = "space"  },
-	["cam_down"]     = { "lctrl"  , nil , default = "lctrl"  },
-	["cam_rotate"]   = { "mouse3" , nil , default = "mouse3" }
+	["cam_left"]     = { "left"   , "a"    , default = "left"   },
+	["cam_right"]    = { "right"  , "d"    , default = "right"  },
+	["cam_forward"]  = { "up"     , "w"    , default = "up"     },
+	["cam_backward"] = { "down"   , "s"    , default = "down"   },
+	["cam_up"]       = { "space"  , nil    , default = "space"  },
+	["cam_down"]     = { "lctrl"  , nil    , default = "lctrl"  },
+	["cam_rotate"]   = { "mouse3" , nil    , default = "mouse3" },
+	["cam_reset"]    = { "kp."    , "home" , default = "kp."}
 
 }
 

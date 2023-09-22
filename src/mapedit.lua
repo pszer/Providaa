@@ -64,6 +64,11 @@ function ProvMapEdit:loadMap(map_name)
 		error(string.format("ProvMapEdit:load(): %s failed to load", fullpath))
 	end
 
+	local skybox_img, skybox_fname, skybox_brightness = Map.generateSkybox( map_file )
+	if skybox_img then
+		self.props.mapedit_skybox_img = skybox_img
+	end
+
 	self:copyPropsFromMap(map_file)
 end
 
@@ -92,11 +97,12 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_tile_map, map_file.tile_map)
 	clone(props.mapedit_wall_map, map_file.wall_map)
 	clone(props.mapedit_anim_tex, map_file.anim_tex)
+	clone(props.mapedit_skybox, map_file.skybox)
 end
 
 function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
-	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up","cam_rotate"})
+	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up","cam_rotate","cam_reset"})
 	CONTROL_LOCK.MAPEDIT_VIEW.open()
 
 	local forward_v  = {0 , 0,-1,0}
@@ -154,12 +160,17 @@ function ProvMapEdit:setupInputHandling()
 		self.view_rotate_mode = false
 	end)
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)
+
+	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
+		self:newCamera()
+	end))
 end
 
 function ProvMapEdit:newCamera()
 	self.props.mapedit_cam = Camera:new{
-		["cam_position"] = {self.props.mapedit_map_width*0.5*TILE_SIZE, -320, self.props.mapedit_map_height*0.5*TILE_SIZE},
+		["cam_position"] = {self.props.mapedit_map_width*0.5*TILE_SIZE, -128, self.props.mapedit_map_height*0.5*TILE_SIZE},
 		["cam_bend_enabled"] = false,
+		["cam_far_plane"] = 3000.0,
 		["cam_fov"] = 75.0,
 	}
 end
@@ -174,12 +185,32 @@ function ProvMapEdit:update(dt)
 	if map_mesh then map_mesh:updateUvs() end
 end
 
+function ProvMapEdit:drawSkybox()
+	local skybox_img = self.props.mapedit_skybox_img
+	if not skybox_img then return false end
+
+	Renderer.setupCanvasForSkybox()
+
+	local sh = love.graphics.getShader()
+	shadersend(sh, "skybox", skybox_img)
+	shadersend(sh, "skybox_brightness", 1.0)
+	self.props.mapedit_cam:pushToShader(sh)
+	love.graphics.draw(Renderer.skybox_model)
+
+	return true
+end
+
 local __id = cpml.mat4.new()
 function ProvMapEdit:drawViewport()
 	local map_mesh = self.props.mapedit_map_mesh
 	local shader = self.map_edit_shader
 
 	Renderer.clearDepthBuffer()
+
+	local skybox_drawn = false
+	if self.props.mapedit_skybox_enable then
+		skybox_drawn = self:drawSkybox()
+	end
 
 	love.graphics.origin()
 	love.graphics.setCanvas{Renderer.scene_viewport,
@@ -188,7 +219,9 @@ function ProvMapEdit:drawViewport()
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
-	love.graphics.clear(27/255, 66/255, 140/255,1)	
+	if not skybox_drawn then
+		love.graphics.clear(27/255, 66/255, 140/255,1)
+	end
 
 	love.graphics.setShader(shader)
 	love.graphics.setColor(1,1,1,1)

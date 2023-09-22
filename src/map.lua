@@ -461,6 +461,12 @@ function Map.generateMapMesh( map , params )
 	local params = params or {}
 	local optimise   = not params.dont_optimise
 	local gen_simple = not params.dont_gen_simple
+	local gen_all_walls   = params.gen_all_walls
+	local gen_nil_texture = params.gen_nil_texture
+
+	if gen_all_walls and not gen_nil_texture then
+		error("Map.generateMapMesh(): gen_all_walls enabled, but no gen_nil_texture supplied. give either a filename/texture")
+	end
 
 	local textures = {}
 	local tex_names = {}
@@ -468,6 +474,18 @@ function Map.generateMapMesh( map , params )
 	local wallset_id_to_tex = {}
 
 	local tex_count = 0
+
+	if gen_nil_texture then
+		local arg_type = type(gen_nil_texture)
+		if arg_type == "string" then
+
+		elseif arg_type == "Texture" then
+
+		else
+			error(string.format("Map:generateMapMesh(): gen_nil_texture parameter type is %s, expected a string filename/love2d texture.", arg_type))
+		end
+	end
+
 	tex_count = Map.internalLoadTilesetTextures(map, textures, tex_names, tileset_id_to_tex, wallset_id_to_tex)
 
 	local anim_textures_info = {}
