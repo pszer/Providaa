@@ -303,7 +303,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				local wallid = tilewalls[i]
 				if wallid then
 					textures_loaded[i] = wallset_id_to_tex[wallid]
-				else
+				elseif gen_all_verts then
 					textures_loaded[i] = nil_texture_id
 				end
 			end

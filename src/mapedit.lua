@@ -187,7 +187,7 @@ end
 
 local __tempv1,__tempv2,__tempv3,__tempv4 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
 local __temptri1, __temptri2 = {},{}
--- returns either nil, {tile,x,y}, {wall,x,y,side}, {model_i}
+-- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}
 function ProvMapEdit:objectAtCursor( x, y )
 	local project = cpml.mat4.project
 	local unproject = cpml.mat4.unproject
@@ -207,10 +207,11 @@ function ProvMapEdit:objectAtCursor( x, y )
 	print("ray_v", ray.position)
 	print("ray_dir_v", ray.direction)
 
+	local min_dist = 1/0
+	local mesh_test = nil
 	-- test against map mesh
 	do
 		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-		local mvp = viewproj
 
 		for z=1,h do
 			for x=1,w do
@@ -221,24 +222,32 @@ function ProvMapEdit:objectAtCursor( x, y )
 				V3.x,V3.y,V3.z = v3[1],v3[2],v3[3]
 				V4.x,V4.y,V4.z = v4[1],v4[2],v4[3]
 
-				--V1 = project(V1, mvp, viewport_xywh)
-				--V2 = project(V2, mvp, viewport_xywh)
-				--V3 = project(V3, mvp, viewport_xywh)
-				--V4 = project(V4, mvp, viewport_xywh)
-
 				__temptri1[1], __temptri1[2], __temptri1[3] = V1, V2, V3
 				__temptri2[1], __temptri2[2], __temptri2[3] = V3, V4, V1
-				--local intersect1 = point_triangle(cursor_v, __temptri1)
-				--local intersect2 = intersect1 or point_triangle(cursor_v, __temptri2)
-				--local intersect = intersect1 or intersect2
-				--if intersect then print(x,z) end
-				local intersect1, dist = ray_triangle(ray, __temptri1, false) 
-				local intersect2, dist = ray_triangle(ray, __temptri2, false) 
+
+				local intersect1, dist1 = ray_triangle(ray, __temptri1, false) 
+				local intersect2, dist2 = ray_triangle(ray, __temptri2, false)
+
+				local dist = nil
+				local intersect = intersect1 or intersect2
+				if intersect1 and intersect2 then
+					dist = math.min(dist1,dist2)
+				else
+					dist = dist1 or dist2
+				end
+
+				if dist and dist < min_dist then
+					mesh_test = {"tile",x,z}
+					min_dist = dist
+				end
 
 				if intersect1 or intersect2 then print(x,z) end
 			end
 		end
 	end
+
+	print("objectAtcursor", unpack(mesh_test or {}))
+	return mesh_test
 end
 
 function ProvMapEdit:getTilesIndexInMesh( x,z )
