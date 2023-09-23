@@ -18,7 +18,8 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_command_stack_max", "number", 300, nil,           "max number of commands to remember"},
 	{"mapedit_map_mesh", nil, nil, nil, "MapMesh object for a map`s static geometry, displayed in map edit view"},
 
-	{"mapedit_models", "table", nil, PropDefaultTable{}, "table of map's models"},
+	{"mapedit_models", "table", nil, PropDefaultTable{}, "table of map's model definitions"},
+	{"mapedit_model_insts", "table", nil, PropDefaultTable{}, "table of map's model instances to draw in viewport"},
 
 	{"mapedit_tileset", "table", nil, PropDefaultTable{}, "tileset for active map"},
 	{"mapedit_wallset", "table", nil, PropDefaultTable{}, "wallset for active map"},

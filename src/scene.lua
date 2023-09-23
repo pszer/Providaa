@@ -241,9 +241,6 @@ function Scene:draw(cam)
 	self:update()
 	prof.pop("scene_update")
 
-	--Renderer.setupCanvasFor3D()
-	--love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
-	--love.graphics.clear(0,0,0,0)
 	Renderer.clearDepthBuffer()
 
 	prof.push("skybox")

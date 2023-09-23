@@ -76,7 +76,9 @@ function ProvMapEdit:loadMap(map_name)
 		self.props.mapedit_skybox_img = skybox_img
 	end
 
-	local models = Map.generateModelInstances( map_file, true ) 
+	local models = Map.generateModelInstances( map_file, false )
+	self.props.mapedit_model_insts = models
+	self:updateModelMatrices()
 
 	self:copyPropsFromMap(map_file)
 end
@@ -358,7 +360,7 @@ function ProvMapEdit:drawViewport()
 	love.graphics.setCanvas{Renderer.scene_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
 		depth=true, stencil=false}
-	love.graphics.setDepthMode( "lequal", true  )
+	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
 	if not skybox_drawn then
@@ -397,6 +399,26 @@ function ProvMapEdit:drawViewport()
 		shadersend(shader,"u_wireframe_enabled", false)
 
 		love.graphics.setWireframe( false )
+	end
+
+	love.graphics.setDepthMode( "less", true  )
+	self:drawModelsInViewport(shader)
+end
+
+function ProvMapEdit:drawModelsInViewport(shader)
+	local models = self.props.mapedit_model_insts
+
+	local shader = shader or love.graphics.getShader()
+	love.graphics.setColor(1,1,1,1)
+	for i,v in ipairs(models) do
+		v:draw(shader, false)
+	end
+end
+
+function ProvMapEdit:updateModelMatrices(subset)
+	local subset = subset or self.props.mapedit_model_insts
+	for i,v in ipairs(subset) do
+		v:modelMatrix()
 	end
 end
 
