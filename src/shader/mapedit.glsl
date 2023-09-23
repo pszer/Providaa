@@ -17,6 +17,7 @@ uniform bool u_wireframe_enabled;
 flat out vec2 texscale;
 flat out vec2 texoffset;
 flat out int  tex_uv_index;
+flat out int  highlight_attr;
 
 uniform mat4 u_view;
 uniform mat4 u_rot;
@@ -41,6 +42,8 @@ attribute vec4 InstanceColumn4;
 attribute vec2 TextureScale;
 attribute vec2 TextureOffset;
 attribute float TextureUvIndex;
+
+attribute float HighlightAttribute;
 
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
@@ -100,6 +103,8 @@ vec4 position(mat4 transform, vec4 vertex) {
 		tex_uv_index = int(TextureUvIndex);
 	}
 
+	highlight_attr = int(floor(HighlightAttribute));
+
 	return u_proj * view_v;
 }
 #endif
@@ -109,12 +114,14 @@ vec4 position(mat4 transform, vec4 vertex) {
 flat in vec2 texscale;
 flat in vec2 texoffset;
 flat in int  tex_uv_index;
+flat in int  highlight_attr;
 
 uniform Image MainTex;
 
 uniform vec4 u_wireframe_colour;
 
 uniform bool u_solid_colour_enable;
+uniform bool u_highlight_pass;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -156,6 +163,12 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
+	if (u_highlight_pass && (highlight_attr == 0.0)) {
+		discard;
+	}
+	if (u_solid_colour_enable) {
+		love_Canvases[0] = VaryingColor;
+	}
 	if (u_wireframe_enabled) {
 		float frag_dist = length(frag_position);
 		float wireframe_dist = 600.0;
@@ -163,9 +176,6 @@ void effect( ) {
 		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.5);
 		love_Canvases[0] = vec4(u_wireframe_colour.xyz, u_wireframe_colour.a * mul);
 		return;
-	}
-	if (u_solid_colour_enable) {
-		love_Canvases[0] = VaryingColor;
 	}
 
 	vec3 light = vec3(1.0,1.0,1.0);

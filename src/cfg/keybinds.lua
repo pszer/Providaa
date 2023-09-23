@@ -65,6 +65,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["transform_rotate"] = { "r"      , nil , default = "r" },
 	["transform_scale"]  = { "s"      , nil , default = "s" },
 	["transform_cancel"] = { "mouse2" , nil, default = "mouse2" },
+	["transform_commit"] = { "mouse1" , nil, default = "mouse1" },
 
 }
 
@@ -95,7 +96,7 @@ function keySetting( setting )
 	return s2, nil
 end
 
-function keyChangeSetting( setting , new_scancode , slot )
+function keyChangeSetting( setting , new_scancode , slot , force_unique_keybinds )
 	local slot = slot or 1
 	if slot ~= 1 and slot ~= 2 then slot = 1 end
 
@@ -112,13 +113,16 @@ function keyChangeSetting( setting , new_scancode , slot )
 	end
 
 	-- overwrite settings for other keys with same scancode
-	for i,set in pairs(KEY_SETTINGS) do
-		local overwrite = false
-		if set[1] == new_scancode then set[1] = nil overwrite = true end
-		if set[2] == new_scancode then set[2] = nil overwrite = true end
-		if overwrite then
-			print(string.format("keyChangeSetting: changing keybind \"%s\" to \"%s\", setting \"%s\" already bound to \"%s\", over-writing",
-				setting, new_scancode, i, new_scancode))
+	-- if force_unique_keybinds
+	if force_unique_keybinds then
+		for i,set in pairs(KEY_SETTINGS) do
+			local overwrite = false
+			if set[1] == new_scancode then set[1] = nil overwrite = true end
+			if set[2] == new_scancode then set[2] = nil overwrite = true end
+			if overwrite then
+				print(string.format("keyChangeSetting: changing keybind \"%s\" to \"%s\", setting \"%s\" already bound to \"%s\", over-writing",
+					setting, new_scancode, i, new_scancode))
+			end
 		end
 	end
 

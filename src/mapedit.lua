@@ -27,7 +27,8 @@ ProvMapEdit = {
 	wireframe_col = {19/255,66/255,72/255,0.25},
 	selection_col = {255/255,161/255,66/255,1.0},
 
-	active_selection = {}
+	active_selection = {},
+	highlight_mesh = nil
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -74,6 +75,8 @@ function ProvMapEdit:loadMap(map_name)
 	else
 		error(string.format("ProvMapEdit:load(): %s failed to load", fullpath))
 	end
+	self:generateMeshHighlightAttributes()
+	self:attachHighlightMesh()
 
 	local skybox_img, skybox_fname, skybox_brightness = Map.generateSkybox( map_file )
 	if skybox_img then
@@ -139,6 +142,7 @@ function ProvMapEdit:defineCommands()
 					if table_eq(v,u) then
 						skip[i] = true
 						table.remove(active_selection, j)
+						self:highlightObject(v,0.0)
 						break
 					end
 				end
@@ -156,6 +160,7 @@ function ProvMapEdit:defineCommands()
 
 					if unique then
 						table.insert(active_selection, v)
+						self:highlightObject(v,1.0)
 					end
 				end
 			end
@@ -179,6 +184,7 @@ function ProvMapEdit:defineCommands()
 				if unique then
 					skip[i] = true
 					table.insert(active_selection, v)
+					self:highlightObject(v,1.0)
 				end
 			end
 
@@ -187,6 +193,7 @@ function ProvMapEdit:defineCommands()
 					for j,u in ipairs(active_selection) do
 						if table_eq(v,u) then
 							table.remove(active_selection, j)
+							self:highlightObject(v,0.0)
 							break
 						end
 					end
@@ -221,6 +228,7 @@ function ProvMapEdit:defineCommands()
 
 				if unique then
 					table.insert(active_selection, v)
+					self:highlightObject(v,1.0)
 				end
 			end
 		end, -- command function
@@ -232,6 +240,7 @@ function ProvMapEdit:defineCommands()
 				for j,u in ipairs(active_selection) do
 					if table_eq(v,u) then
 						table.remove(active_selection, j)
+						self:highlightObject(v,0.0)
 						break
 					end
 				end
@@ -244,12 +253,18 @@ function ProvMapEdit:defineCommands()
 		},
 		function(props) -- command function
 			local mapedit = self
+			for i,v in ipairs(mapedit.active_selection) do
+				self:highlightObject(v, 0.0)
+			end
 			mapedit.active_selection = {}
 		end, -- command function
 
 		function(props) -- undo command function
 			local mapedit = self
 			mapedit.active_selection = props.past_selection
+			for i,v in ipairs(mapedit.active_selection) do
+				self:highlightObject(v, 1.0)
+			end
 		end -- undo command function
 		) 
 end
@@ -266,9 +281,12 @@ function ProvMapEdit:commitCommand(command_name, props)
 	local history_length = #command_history
 	-- if the command pointer isn'at the top of the stack (i.e. there have been undo operations)
 	-- we prune any commands after it
+	local pruned=false
 	for i=pointer+1,history_length do
+		pruned=true
 		command_history[i] = nil
 	end
+	if pruned then collectgarbage("step",5000) end
 
 	table.insert(command_history, command)
 
@@ -778,7 +796,7 @@ function ProvMapEdit:drawViewport()
 		love.graphics.setColor(1,1,1,0.9)
 		love.graphics.setMeshCullMode("back")
 		love.graphics.setDepthMode( "less", false  )
-		love.graphics.draw(map_mesh.mesh)
+		self:invokeDrawMesh()
 		love.graphics.setMeshCullMode("front")
 		-- draw visible faces fully opaque
 		love.graphics.setDepthMode( "less", true  )
@@ -791,7 +809,7 @@ function ProvMapEdit:drawViewport()
 		shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 		shadersend(shader,"u_uses_tileatlas", false)
 		love.graphics.setDepthMode( "always", false  )
-		love.graphics.draw(map_mesh.mesh)
+		self:invokeDrawMesh()
 		shadersend(shader,"u_wireframe_enabled", false)
 
 		love.graphics.setWireframe( false )
@@ -802,6 +820,11 @@ function ProvMapEdit:drawViewport()
 	self:drawModelsInViewport(shader)
 
 	self:drawSelectedHighlight()
+end
+
+function ProvMapEdit:invokeDrawMesh()
+	local mesh = self.props.mapedit_map_mesh.mesh
+	love.graphics.draw(mesh)
 end
 
 function ProvMapEdit:drawModelsInViewport(shader)
@@ -832,11 +855,74 @@ function ProvMapEdit:drawSpecificTile(x,z)
 	mesh:setDrawRange(1,vmap_length)
 end
 
+function ProvMapEdit:generateMeshHighlightAttributes( mesh )
+	local mesh = mesh or self.props.mapedit_map_mesh.mesh
+
+	local v_count = mesh:getVertexCount()
+	local highlight_atype = {
+		{"HighlightAttribute", "float", 1}
+	}
+
+	local verts = {}
+	for i=1,v_count do
+		verts[i] = {0.0}
+	end
+
+	self.highlight_mesh = love.graphics.newMesh(highlight_atype, verts, "triangles", "dynamic")
+end
+
+function ProvMapEdit:updateMeshHighlightAttribute(start_index, highlight_val)
+	if highlight_val ~= 0.0 then highlight_val = 1.0 end
+	local h_mesh = self.highlight_mesh
+	if not h_mesh then return end
+	
+	for i=0,3 do
+		h_mesh:setVertexAttribute(start_index+i, 1, highlight_val)
+	end
+end
+
+function ProvMapEdit:attachHighlightMesh()
+	local h_mesh = self.highlight_mesh
+	if not h_mesh then return end
+	local mesh = self.props.mapedit_map_mesh.mesh
+	mesh:attachAttribute("HighlightAttribute", h_mesh, "pervertex")
+end
+function ProvMapEdit:detachHighlightMesh()
+	local mesh = self.props.mapedit_map_mesh.mesh
+	mesh:attachAttribute("HighlightAttribute")
+end
+
+function ProvMapEdit:highlightTile(x,z, highlight_val)
+	local i = self:getTilesIndexInMesh(x,z)
+	if not i then return end
+
+	local highlight_val = highlight_val or 1.0
+	self:updateMeshHighlightAttribute(i, highlight_val)
+end
+
+function ProvMapEdit:highlightWall(x,z, side, highlight_val)
+	local i = self:getWallsIndexInMesh(x,z,side)
+	if not i then return end
+
+	local highlight_val = highlight_val or 1.0
+	self:updateMeshHighlightAttribute(i, highlight_val)
+end
+
+function ProvMapEdit:highlightObject(obj, highlight_val)
+	local obj_type = obj[1]
+	if obj_type == "tile" then
+		self:highlightTile(obj[2], obj[3], highlight_val)
+	elseif obj_type == "wall" then
+		self:highlightWall(obj[2], obj[3], obj[4], highlight_val)
+	end
+end
+
 function ProvMapEdit:drawSelectedHighlight(shader)
 	local shader = shader or love.graphics.getShader()
 	shadersend(shader,"u_model", "column", __id)
 	shadersend(shader,"u_normal_model", "column", __id)
 	shadersend(shader,"u_solid_colour_enable", true)
+	shadersend(shader,"u_highlight_pass", true)
 	shadersend(shader,"u_uses_tileatlas", true)
 
 	local mode, alphamode = love.graphics.getBlendMode()
@@ -844,15 +930,17 @@ function ProvMapEdit:drawSelectedHighlight(shader)
 
 	love.graphics.setColor(self.selection_col)
 	love.graphics.setDepthMode( "always", false  )
-	for i,v in ipairs(self.active_selection) do
-		if v[1] == "tile" then
-			self:drawSpecificTile(v[2],v[3])
-		end
-	end
+	--for i,v in ipairs(self.active_selection) do
+	--	if v[1] == "tile" then
+	--		self:drawSpecificTile(v[2],v[3])
+	--	end
+	--end
+	self:invokeDrawMesh()
 
 	love.graphics.setBlendMode(mode, alphamode)
 	shadersend(shader,"u_uses_tileatlas", false)
 	love.graphics.setDepthMode( "less", true  )
+	shadersend(shader,"u_highlight_pass", false)
 	love.graphics.setColor(1,1,1,1)
 end
 
