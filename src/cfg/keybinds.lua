@@ -54,7 +54,8 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
 	["cam_reset"]    = { "kp."    , "home" , default = "kp."},
 
-	["super"]        = { "lshift" , nil    , default = "lshift"},
+	["super"]           = { "lshift" , nil    , default = "lshift"},
+	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
 
 	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },
 	["edit_deselect"]  = { "mouse2"   , "esc"  , default = "mouse2" },
@@ -63,7 +64,7 @@ MAPEDIT_KEY_SETTINGS = {
 
 	["transform_move"]   = { "g"      , nil , default = "g" },
 	["transform_rotate"] = { "r"      , nil , default = "r" },
-	["transform_scale"]  = { "s"      , nil , default = "s" },
+	["transform_scale"]  = { "p"      , nil , default = "p" },
 	["transform_cancel"] = { "mouse2" , nil, default = "mouse2" },
 	["transform_commit"] = { "mouse1" , nil, default = "mouse1" },
 

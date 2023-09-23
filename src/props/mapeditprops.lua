@@ -10,6 +10,9 @@ MapEditPropPrototype = Props:prototype{
 
 	{"mapedit_filename", nil, nil, nil, "working map's filename"},
 
+	{"mapedit_mode", "string", "viewport", PropIsOneOf{"viewport","transform"}},
+	{"mapedit_transform_mode", "string", "translate", PropIsOneOf{"translate","rotate","scale"}},
+
 	{"mapedit_cam", nil, nil, nil, "camera for map edit view" },
 	{"mapedit_cam_speed", "number", 400, nil, "camera move speed"},
 	{"mapedit_cam_rotspeed", "number", 0.001, nil, "camera rotation speed"},
@@ -28,6 +31,8 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_skybox_enable", "boolean", true, nil, "whether to draw skybox in viewport"},
 	{"mapedit_skybox", "table", nil, PropDefaultTable{}, "maps skybox info"},
 	{"mapedit_skybox_img", nil, nil, nil, "skybox img to use in the viewport"},
+
+	{"mapedit_enable_tex_anim", "boolean", true, nil, "whether or not to play animated texture animations"},
 
 	{"mapedit_map_width" , "number", 0, nil, "active map width"},
 	{"mapedit_map_height", "number", 0, nil, "active map height"},

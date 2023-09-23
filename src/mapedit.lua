@@ -17,6 +17,7 @@ ProvMapEdit = {
 	map_edit_shader = nil,
 
 	viewport_input = nil,
+	transform_input = nil,
 
 	view_rotate_mode = false,
 	grabbed_mouse_x = 0,
@@ -24,7 +25,7 @@ ProvMapEdit = {
 
 	commands = {},
 
-	wireframe_col = {19/255,66/255,72/255,0.25},
+	wireframe_col = {19/255,66/255,72/255,0.8},
 	selection_col = {255/255,161/255,66/255,1.0},
 
 	active_selection = {},
@@ -48,11 +49,13 @@ function ProvMapEdit:load(args)
 
 	self:newCamera()
 	self:setupInputHandling()
+	self:enterViewportMode()
 	self:defineCommands()
 end
 
 function ProvMapEdit:unload()
 	CONTROL_LOCK.MAPEDIT_VIEW.close()
+	CONTROL_LOCK.MAPEDIT_TRANSFORM.close()
 end
 
 function ProvMapEdit:loadMap(map_name)
@@ -69,7 +72,8 @@ function ProvMapEdit:loadMap(map_name)
 	end
 
 	local map_mesh = Map.generateMapMesh( map_file ,
-		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true} )
+		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true,
+		  gen_newvert_buffer = true} )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -129,7 +133,7 @@ function ProvMapEdit:defineCommands()
 
 	coms["invertible_select"] = MapEditCom:define(
 		{
-		 {"select_objects", "table", nil, PropDefaultTable{}}
+		 {"select_objects", "table", nil, PropDefaultTable{}},
 		},
 		function(props) -- command function
 			local mapedit = self
@@ -328,11 +332,14 @@ function ProvMapEdit:commitRedo()
 end
 
 function ProvMapEdit:setupInputHandling()
+	--
+	-- VIEWPORT MODE INPUTS
+	--
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
 										   "cam_rotate","cam_reset","edit_select","edit_deselect","edit_undo","edit_redo",
-										   "super"})
-	CONTROL_LOCK.MAPEDIT_VIEW.open()
+										   "super","toggle_anim_tex",
+										   "transform_move","transform_rotate","transform_scale"})
 
 	local forward_v  = {0 , 0,-1,0}
 	local backward_v = {0 , 0, 1,0}
@@ -362,45 +369,30 @@ function ProvMapEdit:setupInputHandling()
 		end
 	end
 
-	local viewport_move_forward = Hook:new(function ()
-		__move(forward_v, true)() end)
+	-- hooks for moving the camera
+	local viewport_move_forward = Hook:new(function ()__move(forward_v, true)() end)
+	local viewport_move_backward = Hook:new(function ()__move(backward_v, true)() end)
+	local viewport_move_left = Hook:new(function ()__move(left_v, true)() end)
+	local viewport_move_right = Hook:new(function ()__move(right_v, true)() end)
+	local viewport_move_up = Hook:new(function ()__move(up_v)() end)
+	local viewport_move_down = Hook:new(function () __move(down_v)() end)
 	self.viewport_input:getEvent("cam_forward","held"):addHook(viewport_move_forward)
-
-	local viewport_move_backward = Hook:new(function ()
-		__move(backward_v, true)() end)
 	self.viewport_input:getEvent("cam_backward","held"):addHook(viewport_move_backward)
-
-	local viewport_move_left = Hook:new(function ()
-		__move(left_v, true)() end)
 	self.viewport_input:getEvent("cam_left","held"):addHook(viewport_move_left)
-
-	local viewport_move_right = Hook:new(function ()
-		__move(right_v, true)() end)
 	self.viewport_input:getEvent("cam_right","held"):addHook(viewport_move_right)
-
-	local viewport_move_up = Hook:new(function ()
-		__move(up_v)() end)
 	self.viewport_input:getEvent("cam_up","held"):addHook(viewport_move_up)
-
-	local viewport_move_down = Hook:new(function ()
-		__move(down_v)() end)
 	self.viewport_input:getEvent("cam_down","held"):addHook(viewport_move_down)
 
-	local grabbed_mouse_x
-	local grabbed_mouse_y
+	-- hooks for camera rotation
 	local viewport_rotate_start = Hook:new(function ()
-		love.mouse.setRelativeMode( true )
 		self.view_rotate_mode = true
-		grabbed_mouse_x = love.mouse.getX()
-		grabbed_mouse_y = love.mouse.getY()
+		self:captureMouse()
+	end)
+	local viewport_rotate_finish = Hook:new(function ()
+		self.view_rotate_mode = false
+		self:releaseMouse()
 	end)
 	self.viewport_input:getEvent("cam_rotate","down"):addHook(viewport_rotate_start)
-	local viewport_rotate_finish = Hook:new(function ()
-		love.mouse.setRelativeMode( false )
-		self.view_rotate_mode = false
-		love.mouse.setX(grabbed_mouse_x)
-		love.mouse.setY(grabbed_mouse_y)
-	end)
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)
 
 	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
@@ -463,12 +455,75 @@ function ProvMapEdit:setupInputHandling()
 		super_modifier = true end)
 	local disable_super_hook = Hook:new(function ()
 		super_modifier = false end)
+	local toggle_anim_tex = Hook:new(function ()
+		self.props.mapedit_enable_tex_anim = not self.props.mapedit_enable_tex_anim end)
 
 	self.viewport_input:getEvent("edit_undo","down"):addHook(viewport_undo)
 	self.viewport_input:getEvent("edit_redo","down"):addHook(viewport_redo)
 	self.viewport_input:getEvent("super", "down"):addHook(enable_super_hook)
 	self.viewport_input:getEvent("super", "up"):addHook(disable_super_hook)
+	self.viewport_input:getEvent("toggle_anim_tex", "up"):addHook(toggle_anim_tex)
 
+	-- 
+	-- VIEWPORT MODE ----> TRANSFORM MODE INPUTS
+	--
+	local viewport_to_move = Hook:new(function ()
+		self:enterTransformMode("translate")
+		end)
+	local viewport_to_rotate = Hook:new(function ()
+		self:enterTransformMode("rotate")
+		end)
+	local viewport_to_scale = Hook:new(function ()
+		self:enterTransformMode("scale")
+		end)
+	self.viewport_input:getEvent("transform_move", "down"):addHook(viewport_to_move)
+	self.viewport_input:getEvent("transform_rotate", "down"):addHook(viewport_to_rotate)
+	self.viewport_input:getEvent("transform_scale", "down"):addHook(viewport_to_scale)
+
+	--
+	-- TRANSFORM MODE INPUTS
+	--
+	self.transform_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_TRANSFORM,
+	                                       {"transform_move", "transform_scale", "transform_rotate", "transform_cancel", "transform_commit"})
+	local transform_commit = Hook:new(function ()
+		self:enterViewportMode()
+		end)
+	local transform_cancel = Hook:new(function ()
+		self:enterViewportMode()
+		end)
+	self.transform_input:getEvent("transform_commit", "down"):addHook(transform_commit)
+	self.transform_input:getEvent("transform_cancel", "down"):addHook(transform_cancel)
+end
+
+local grabbed_mouse_x=0
+local grabbed_mouse_y=0
+function ProvMapEdit:captureMouse()
+	love.mouse.setRelativeMode( true )
+	grabbed_mouse_x = love.mouse.getX()
+	grabbed_mouse_y = love.mouse.getY()
+end
+function ProvMapEdit:releaseMouse()
+	love.mouse.setRelativeMode( false )
+	love.mouse.setX(grabbed_mouse_x)
+	love.mouse.setY(grabbed_mouse_y)
+end
+
+function ProvMapEdit:enterViewportMode()
+	CONTROL_LOCK.MAPEDIT_VIEW.open()
+	CONTROL_LOCK.MAPEDIT_TRANSFORM.close()
+	self.props.mapedit_mode = "viewport"
+end
+
+function ProvMapEdit:enterTransformMode(transform_mode)
+	assert(transform_mode)
+	CONTROL_LOCK.MAPEDIT_VIEW.close()
+	CONTROL_LOCK.MAPEDIT_TRANSFORM.open()
+	self.props.mapedit_mode = "transform"
+	self.props.mapedit_transform_mode = transform_mode
+end
+
+function ProvMapEdit:getCurrentMode()
+	return self.props.mapedit_mode
 end
 
 -- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}
@@ -721,6 +776,40 @@ function ProvMapEdit:getWallVerts( x,z , side )
 		{x4,y4,z4}
 end
 
+function ProvMapEdit:editTileVerts(x,z, new_heights)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or y<1 or y>h then return end
+
+	-- first, update height info the tile heights table
+	local tile_heights = self.props.mapedit_tile_heights
+	local height_info = {}
+	local nh_arg_type = type(new_heights)
+	-- fill out new heights info
+	if nh_arg_type == "table" then
+		assert(#new_heights == 4)
+		for i=1,4 do
+			height_info[i] = new_heights[i]
+		end
+		tile_heights[z][x] = height_info
+	-- if argument is only 1 number, treat it as the height for all vertices
+	elseif nh_arg_type == "number" then
+		for i=1,4 do
+			height_info = new_heights
+		end
+	else
+		error(string.format("ProvMapEdit:editTileVerts: invalid new_heights argument, expected table/string got %s", nh_arg_type))
+	end
+
+	-- update mesh and surrounding walls
+	local mesh = self.props.mapedit_map_mesh.mesh
+	local index = self:getTilesIndexInMesh(x,z)
+	for i=0,3 do
+		local x,y,z = mesh:getVertexAttribute(index+i, 1)
+		local y = height_info[i+1] * TILE_HEIGHT
+		mesh:setVertexAttribute(index+i, 1, x,y,z)
+	end
+end
+
 function ProvMapEdit:newCamera()
 	self.props.mapedit_cam = Camera:new{
 		["cam_position"] = {self.props.mapedit_map_width*0.5*TILE_SIZE, -128, self.props.mapedit_map_height*0.5*TILE_SIZE},
@@ -733,12 +822,18 @@ end
 function ProvMapEdit:update(dt)
 	local cos,sin=math.cos,math.sin
 	local cam = self.props.mapedit_cam
-	self.viewport_input:poll()
+
+	local mode = self.props.mapedit_mode
+	if mode == "viewport" then
+		self.viewport_input:poll()
+	elseif mode == "transform" then
+		self.transform_input:poll()
+	end
 	cam:update()
 	self:updateModelMatrices()
 
 	local map_mesh = self.props.mapedit_map_mesh
-	if map_mesh then map_mesh:updateUvs() end
+	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
 end
 
 function ProvMapEdit:drawSkybox()
@@ -784,6 +879,9 @@ function ProvMapEdit:drawViewport()
 
 	local cam = self.props.mapedit_cam
 	cam:pushToShader(shader)
+	
+	shadersend(shader,"u_wireframe_colour", self.wireframe_col)
+	shadersend(shader,"u_selection_colour", self.selection_col)
 
 	if map_mesh then
 
@@ -806,7 +904,6 @@ function ProvMapEdit:drawViewport()
 
 		love.graphics.setWireframe( true )
 		shadersend(shader,"u_wireframe_enabled", true)
-		shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 		shadersend(shader,"u_uses_tileatlas", false)
 		love.graphics.setDepthMode( "always", false  )
 		self:invokeDrawMesh()
@@ -816,10 +913,10 @@ function ProvMapEdit:drawViewport()
 
 	end
 
+	self:drawSelectedHighlight()
 	love.graphics.setDepthMode( "less", true  )
 	self:drawModelsInViewport(shader)
 
-	self:drawSelectedHighlight()
 end
 
 function ProvMapEdit:invokeDrawMesh()
@@ -830,10 +927,31 @@ end
 function ProvMapEdit:drawModelsInViewport(shader)
 	local models = self.props.mapedit_model_insts
 
+	local selected_models = {}
+	for i,v in ipairs(self.active_selection) do
+		if v[1] == "model" then
+			selected_models[v[2]] = true
+		end
+	end
+
 	local shader = shader or love.graphics.getShader()
 	love.graphics.setColor(1,1,1,1)
 	for i,v in ipairs(models) do
-		v:draw(shader, false)
+		if not selected_models[v] then
+			v:draw(shader, false)
+		else
+			v:draw(shader, false)
+			shadersend(shader, "u_solid_colour_enable", true)
+			love.graphics.setDepthMode( "always", false  )
+			love.graphics.setColor(self.selection_col)
+			local mode, alphamode = love.graphics.getBlendMode()
+			love.graphics.setBlendMode("screen","premultiplied")
+			v:draw(shader, false)
+			shadersend(shader, "u_solid_colour_enable", false)
+			love.graphics.setDepthMode( "less", true  )
+			love.graphics.setBlendMode(mode, alphamode)
+			love.graphics.setColor(1,1,1,1)
+		end
 	end
 end
 
@@ -951,6 +1069,15 @@ end
 
 local __tempdir = {}
 function ProvMapEdit:mousemoved(x,y, dx,dy)
+	local mode = self:getCurrentMode()
+	if mode == "viewport" then
+		self:viewport_mousemoved(x,y,dx,dy)
+	elseif mode == "transform" then
+		self:transform_mousemoved(x,y,dx,dy)
+	end
+end
+
+function ProvMapEdit:viewport_mousemoved(x,y,dx,dy)
 	if self.view_rotate_mode then
 		local cam = self.props.mapedit_cam
 		local dir = cam:getDirection()
@@ -973,5 +1100,11 @@ function ProvMapEdit:mousemoved(x,y, dx,dy)
 			newdir[1],
 			newdir[2],
 			newdir[3]}
+	end
+end
+
+function ProvMapEdit:transform_mousemoved(x,y,dx,dy)
+	local transform_mode = self.props.mapedit_transform_mode
+	if transform_mode == "translate" then
 	end
 end

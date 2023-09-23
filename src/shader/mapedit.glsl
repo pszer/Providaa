@@ -119,6 +119,7 @@ flat in int  highlight_attr;
 uniform Image MainTex;
 
 uniform vec4 u_wireframe_colour;
+uniform vec4 u_selection_colour;
 
 uniform bool u_solid_colour_enable;
 uniform bool u_highlight_pass;
@@ -170,11 +171,16 @@ void effect( ) {
 		love_Canvases[0] = VaryingColor;
 	}
 	if (u_wireframe_enabled) {
+		vec4 col = u_wireframe_colour;
+		if (highlight_attr != 0.0) {
+			col = u_selection_colour;
+		}
+
 		float frag_dist = length(frag_position);
 		float wireframe_dist = 600.0;
 		float dd = (wireframe_dist - frag_dist) / wireframe_dist;
 		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.5);
-		love_Canvases[0] = vec4(u_wireframe_colour.xyz, u_wireframe_colour.a * mul);
+		love_Canvases[0] = vec4(col.xyz, col.a * mul);
 		return;
 	}
 
