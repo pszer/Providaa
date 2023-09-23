@@ -15,6 +15,7 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_cam_rotspeed", "number", 0.001, nil, "camera rotation speed"},
 
 	{"mapedit_command_stack", "table", nil, PropDefaultTable{}, "history of invoked map edit commands"},
+	{"mapedit_command_pointer", "number", 0, nil,               "point's to current position in command stack"},
 	{"mapedit_command_stack_max", "number", 300, nil,           "max number of commands to remember"},
 	{"mapedit_map_mesh", nil, nil, nil, "MapMesh object for a map`s static geometry, displayed in map edit view"},
 

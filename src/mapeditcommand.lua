@@ -13,11 +13,11 @@ function MapEditCom:define(prototype, action, undo)
 				__undo   = undo,
 
 				commit = function(self)
-					self.__action(props)
+					self.__action(self.props)
 				end,
 
 				undo = function(self)
-					self.__undo(props)
+					self.__undo(self.props)
 				end
 			}
 

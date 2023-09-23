@@ -355,17 +355,6 @@ function ModelInstance:calculateBoundingBox()
 
 	local model_mat = self.static_model_matrix
 
-	-- all 8 vertices of the bounding box
-	--[[local p = {}
-	p[1] = {min[1], min[2], min[3], 1}
-	p[2] = {max[1], min[2], min[3], 1}
-	p[3] = {min[1], max[2], min[3], 1}
-	p[4] = {max[1], max[2], min[3], 1}
-	p[5] = {min[1], min[2], max[3], 1}
-	p[6] = {max[1], min[2], max[3], 1}
-	p[7] = {min[1], max[2], max[3], 1}
-	p[8] = {max[1], max[2], max[3], 1}]]
-
 	local p = __p_temptable
 	-- beautiful
 	p[1][1] = min[1]     p[1][2] = min[2]    p[1][3] = min[3]  p[1][4] = 1
@@ -435,6 +424,17 @@ function ModelInstance:getBoundingBoxPosSize()
 	return min, size
 end
 
+function ModelInstance:getBoundingBoxMinMax()
+	local bbox = self.props.model_i_bounding_box
+	local min = bbox.min
+	local max = bbox.max
+	return min, max
+end
+
+function ModelInstance:getModelReference()
+	return self.props.model_i_reference
+end
+
 function ModelInstance:setPosition(pos)
 	local v = self.props.model_i_position
 	if pos[1]~=v[1]or pos[2]~=v[2] or pos[3]~=v[3] then
@@ -465,6 +465,13 @@ function ModelInstance:setScale(scale)
 		self.model_moved = true
 	end
 end
+
+function ModelInstance:getPosition()
+	return self.props.model_i_position end
+function ModelInstance:getRotation()
+	return self.props.model_i_rotation end
+function ModelInstance:getScale()
+	return self.props.model_i_scale end
 
 function ModelInstance:isStatic()
 	return self.props.model_i_static
