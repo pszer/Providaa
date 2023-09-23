@@ -533,19 +533,14 @@ function ModelInstance:sendToShader(shader)
 	prof.pop("model_send_bone_matricessssss")
 end
 
-function ModelInstance:draw(shader, update_animation, is_main_pass)
+function ModelInstance:draw(shader, is_main_pass)
 	local shader = shader or love.graphics.getShader()
-
-	if update_animation then
-		self:fillOutBoneMatrices("Walk", getTickSmooth())
-	end
 
 	prof.push("model_shader_send")
 	self:sendToShader(shader)
 	prof.pop("model_shader_send")
 
 	local modelprops = self:getModel().props
-	--love.graphics.setFrontFaceWinding(modelprops.model_vertex_winding)
 
 	local props = self.props
 
@@ -558,10 +553,8 @@ function ModelInstance:draw(shader, update_animation, is_main_pass)
 	else
 		shadersend(shader,"texture_animated", false)
 		self:callDrawMesh()
-		--self:drawDecorations(shader)
 	end
 	prof.pop("model_drawwww")
-	--love.graphics.setFrontFaceWinding("ccw")
 end
 
 function ModelInstance:callDrawMesh()

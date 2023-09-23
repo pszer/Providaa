@@ -168,28 +168,28 @@ function Scene:drawGridMapForShadowMapping()
 	love.graphics.draw(self.map_mesh.simple_mesh)
 end
 
-function Scene:drawModels(update_anims, is_main_pass, model_subset)
+function Scene:drawModels(is_main_pass, model_subset)
 	prof.push("draw_models")
 	local models = model_subset or self.props.scene_models
 	--print("models, ", #models)
 	for i,v in ipairs(models) do
-		v:draw(nil, update_anims, is_main_pass)
+		v:draw(nil, is_main_pass)
 	end
 	prof.pop("draw_models")
 end
 
-function Scene:drawStaticModels(model_subset)
+function Scene:drawStaticModels(is_main_pass, model_subset)
 	if model_subset then		
 		for i,v in ipairs(model_subset) do
 			if v:isStatic() then
-				v:draw(nil, nil, nil)
+				v:draw(nil, is_main_pass)
 			end
 		end
 		return
 	end
 
 	for i,v in ipairs(self.static_models) do
-		v:draw(nil, nil, nil)
+		v:draw(nil, is_main_pass)
 	end
 end
 
@@ -276,7 +276,7 @@ function Scene:draw(cam)
 	prof.pop("drawgrid")
 	prof.push("drawmodels")
 	local models = self:getModelsInViewFrustrum()
-	self:drawModels(false, true, models)
+	self:drawModels(true, models)
 	prof.pop("drawmodels")
 
 	Renderer.dropCanvas()
@@ -294,7 +294,7 @@ function Scene:dirDynamicShadowPass( shader , light )
 	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
 	prof.push("dyn_models")
-	self:drawModels(false, false, in_view)
+	self:drawModels(false, in_view)
 	prof.pop("dyn_models")
 
 	prof.push("dyn_grid")
@@ -313,7 +313,7 @@ function Scene:dirStaticShadowPass( shader , light )
 	local dims_min, dims_max = light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
 	local in_view = self:getModelsInViewFrustrum(dims_min, dims_max)
 
-	self:drawStaticModels(in_view)
+	self:drawStaticModels(false, in_view)
 	self:drawGridMapForShadowMapping()
 end
 
@@ -338,7 +338,7 @@ function Scene:pointStaticShadowPass( shader , light )
 		Renderer.setupCanvasForPointShadowMapping(light, i, true)
 		shadersend(shader, "u_lightspace", "column", matrix(mats[i]))
 
-		self:drawStaticModels()
+		self:drawStaticModels(false)
 		self:drawGridMapForShadowMapping()
 	end
 end

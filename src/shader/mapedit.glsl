@@ -158,7 +158,7 @@ void effect( ) {
 	float wireframe_dist = 600.0;
 	if (u_wireframe_enabled) {
 		float dd = (wireframe_dist - frag_dist) / wireframe_dist;
-		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.0/2.0);
+		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.5);
 		love_Canvases[0] = vec4(u_wireframe_colour.xyz, u_wireframe_colour.a * mul);
 		return;
 	}
@@ -166,8 +166,7 @@ void effect( ) {
 	vec3 light = vec3(1.0,1.0,1.0);
 	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
 
-	vec4 texcolor;
-	texcolor = Texel(MainTex, coords);
+	vec4 texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	love_Canvases[0] = pix * VaryingColor;

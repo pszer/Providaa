@@ -22,7 +22,9 @@ ProvMapEdit = {
 	grabbed_mouse_x = 0,
 	grabbed_mouse_y = 0,
 
-	commands = {}
+	commands = {},
+
+	wireframe_col = {255/255,161/255,66/255,0.7}
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -74,6 +76,8 @@ function ProvMapEdit:loadMap(map_name)
 		self.props.mapedit_skybox_img = skybox_img
 	end
 
+	local models = Map.generateModelInstances( map_file, true ) 
+
 	self:copyPropsFromMap(map_file)
 end
 
@@ -103,6 +107,20 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_wall_map, map_file.wall_map)
 	clone(props.mapedit_anim_tex, map_file.anim_tex)
 	clone(props.mapedit_skybox, map_file.skybox)
+end
+
+function ProvMapEdit:defineCommands()
+	coms = self.commands
+
+	coms["select"] = MapEditCom:define(
+	{
+	 {"select_objects", "table", nil, PropDefaultTable{}}
+	},
+	function(props) -- command function
+		local mapedit = self
+	end,
+	function(props) -- undo command function
+	end) 
 end
 
 function ProvMapEdit:setupInputHandling()
@@ -372,7 +390,7 @@ function ProvMapEdit:drawViewport()
 
 		love.graphics.setWireframe( true )
 		shadersend(shader,"u_wireframe_enabled", true)
-		shadersend(shader,"u_wireframe_colour", {1,1,1,0.4})
+		shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 		shadersend(shader,"u_uses_tileatlas", false)
 		love.graphics.setDepthMode( "always", false  )
 		love.graphics.draw(map_mesh.mesh)

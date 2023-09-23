@@ -3,17 +3,25 @@ require "prop"
 MapEditCom = {}
 MapEditCom.__index = MapEditCom
 
-function MapEditCom:define(action, undo, prototype)
+function MapEditCom:define(prototype, action, undo)
 	local p = Props:prototype(prototype)
 	local obj = {
 		new = function(self, props)
 			local this = {
 				props  = p(props),
-				action = action,
-				undo   = undo
+				__action = action,
+				__undo   = undo,
+
+				commit = function(self)
+					self.__action(props)
+				end,
+
+				undo = function(self)
+					self.__undo(props)
+				end
 			}
 
-			return props
+			return this
 		end
 	}
 
