@@ -178,6 +178,7 @@ function Camera:getViewProjMatrix()
 	local v  = props.cam_rotview_matrix
 	local p  = props.cam_perspective_matrix
 	cpml.mat4.mul(vp, p, v)
+	return vp
 end
 
 -- returns corners of camera`s view frustrum in world space,

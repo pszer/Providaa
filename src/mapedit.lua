@@ -60,7 +60,7 @@ function ProvMapEdit:loadMap(map_name)
 	end
 
 	local map_mesh = Map.generateMapMesh( map_file ,
-		{ dont_optimise=true, dont_gen_simple=true , gen_all_walls = true, gen_nil_texture = "nil.png", gen_index_map = true} )
+		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true} )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -185,21 +185,98 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 end
 
+local __tempv1,__tempv2,__tempv3,__tempv4 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
+local __temptri1, __temptri2 = {},{}
 -- returns either nil, {tile,x,y}, {wall,x,y,side}, {model_i}
 function ProvMapEdit:objectAtCursor( x, y )
-	print(x,y)
 	local project = cpml.mat4.project
 	local unproject = cpml.mat4.unproject
+	local point_triangle = cpml.intersect.point_triangle
+	local ray_triangle = cpml.intersect.ray_triangle
 
-	local viewproj = self.props.mapedit_cam:getViewProjMatrix()
+	local cam = self.props.mapedit_cam
+	local viewproj = cam:getViewProjMatrix()
+	local vw,vh = love.window.getMode()
+	local viewport_xywh = {0,0,vw,vh}
+
+	local cursor_v = cpml.vec3.new(x,y,1)
+	local cam_pos = cpml.vec3.new(cam:getPosition())
+	local unproject_v = unproject(cursor_v, viewproj, viewport_xywh)
+	--local ray_dir_v = cpml.vec3.new(cam:getDirection())
+	local ray = {position=cam_pos, direction=cpml.vec3.normalize(unproject_v - cam_pos)}
+	print("ray_v", ray.position)
+	print("ray_dir_v", ray.direction)
 
 	-- test against map mesh
 	do
-		-- the map mesh has no model transformation, so mvp=vp
+		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 		local mvp = viewproj
 
+		for z=1,h do
+			for x=1,w do
+				local v1,v2,v3,v4 = self:getTileVerts(x,z)
+				local V1,V2,V3,V4 = __tempv1, __tempv2, __tempv3, __tempv4
+				V1.x,V1.y,V1.z = v1[1],v1[2],v1[3]
+				V2.x,V2.y,V2.z = v2[1],v2[2],v2[3]
+				V3.x,V3.y,V3.z = v3[1],v3[2],v3[3]
+				V4.x,V4.y,V4.z = v4[1],v4[2],v4[3]
 
+				--V1 = project(V1, mvp, viewport_xywh)
+				--V2 = project(V2, mvp, viewport_xywh)
+				--V3 = project(V3, mvp, viewport_xywh)
+				--V4 = project(V4, mvp, viewport_xywh)
+
+				__temptri1[1], __temptri1[2], __temptri1[3] = V1, V2, V3
+				__temptri2[1], __temptri2[2], __temptri2[3] = V3, V4, V1
+				--local intersect1 = point_triangle(cursor_v, __temptri1)
+				--local intersect2 = intersect1 or point_triangle(cursor_v, __temptri2)
+				--local intersect = intersect1 or intersect2
+				--if intersect then print(x,z) end
+				local intersect1, dist = ray_triangle(ray, __temptri1, false) 
+				local intersect2, dist = ray_triangle(ray, __temptri2, false) 
+
+				if intersect1 or intersect2 then print(x,z) end
+			end
+		end
 	end
+end
+
+function ProvMapEdit:getTilesIndexInMesh( x,z )
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or z<1 or z>h then
+		return nil end
+
+	local vmap = self.props.mapedit_map_mesh.tile_vert_map
+	local index = vmap[z][x]
+	return index
+end
+
+function ProvMapEdit:getTileVerts( x,z )
+	local index = self:getTilesIndexInMesh( x,z )
+	if not index then return nil,nil,nil,nil end
+
+	local mesh = self.props.mapedit_map_mesh.mesh
+	local x1,y1,z1 = mesh:getVertexAttribute( index+0, 1 )
+	local x2,y2,z2 = mesh:getVertexAttribute( index+1, 1 )
+	local x3,y3,z3 = mesh:getVertexAttribute( index+2, 1 )
+	local x4,y4,z4 = mesh:getVertexAttribute( index+3, 1 )
+
+	return
+		{x1,y1,z1},
+		{x2,y2,z2},
+		{x3,y3,z3},
+		{x4,y4,z4}
+end
+
+function ProvMapEdit:getWallsIndexInMesh( x,z , side )
+	local w,h = self.props.map_width, self.props.map_height
+	if x<1 or x>w or z<1 or z>h then
+		return nil end
+
+	assert(side==1 or side==2 or side==3 or side==4)
+	local wmap = self.props.mapedit_map_mesh.wall_vert_map
+	local index = vmap[z][x][side]
+	return index
 end
 
 function ProvMapEdit:newCamera()
@@ -252,7 +329,7 @@ function ProvMapEdit:drawViewport()
 	love.graphics.setCanvas{Renderer.scene_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
 		depth=true, stencil=false}
-	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setDepthMode( "lequal", true  )
 	love.graphics.setMeshCullMode("front")
 
 	if not skybox_drawn then
@@ -271,11 +348,20 @@ function ProvMapEdit:drawViewport()
 		shadersend(shader,"u_normal_model", "column", __id)
 		shadersend(shader,"u_skinning", 0)
 		map_mesh:pushAtlas( shader , true )
+
+		-- draw culled faces with opacity
+		love.graphics.setColor(1,1,1,0.78)
+		love.graphics.setMeshCullMode("back")
 		love.graphics.draw(map_mesh.mesh)
+		love.graphics.setMeshCullMode("front")
+		-- draw visible faces fully opaque
+		love.graphics.setColor(1,1,1,1)
+		love.graphics.draw(map_mesh.mesh)
+
 
 		love.graphics.setWireframe( true )
 		shadersend(shader,"u_wireframe_enabled", true)
-		shadersend(shader,"u_wireframe_colour", {1,1,1,1})
+		shadersend(shader,"u_wireframe_colour", {1,1,1,0.4})
 		shadersend(shader,"u_uses_tileatlas", false)
 		love.graphics.setDepthMode( "always", false  )
 		love.graphics.draw(map_mesh.mesh)

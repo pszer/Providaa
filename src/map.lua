@@ -116,10 +116,10 @@ function Map.getMap(filename)
 end
 
 -- returns tex_count
-function Map.internalLoadTilesetTextures( map , textures , tex_names , tileset_id_to_tex , wallset_id_to_tex )
+function Map.internalLoadTilesetTextures( map , textures , tex_names , tex_count , tileset_id_to_tex , wallset_id_to_tex )
 	assert(map and textures and tex_names and tileset_id_to_tex and wallset_id_to_tex)
 
-	local tex_count = 0
+	tex_count = tex_count
 
 	local function is_duplicate(tex_name)
 		for i,v in ipairs(tex_names) do
@@ -216,10 +216,14 @@ function Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, texture
 end
 
 -- returns vert_count, index_count, attr_count
-function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_count, index_count, attr_count, tileset_id_to_tex, optimise, tile_vert_map)
+function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
+                                            vert_count, index_count, attr_count,
+											tileset_id_to_tex, optimise, gen_all_verts, nil_texture_id, tile_vert_map)
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
+
+	print("gen_all_verts", gen_all_verts)
 
 	-- generate floor tile vertices for the mesh
 	while I <= map.width * map.height do
@@ -230,7 +234,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_c
 
 		-- we only add a floor tile to mesh if it actually has a texture
 		local tex_id = tileset_id_to_tex[tileid]
-		if tex_id then
+		if tex_id or gen_all_verts then
 			local consec_count = 1
 			if optimise then
 				consec_count = Map.getIdenticalConsecutiveTilesCount(map, x,z)
@@ -244,7 +248,12 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts, vert_c
 				gv1,gv2,gv3,gv4 = Map.getLongTileVerts(x,z,h1,h2,h3,h4, consec_count)
 				--gv1,gv2,gv3,gv4 = Map.getTileVerts(x,z,h1,h2,h3,h4)
 			end
-			local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+			local tex_norm_id = nil
+			if tex_id then
+				tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+			else
+				tex_norm_id = (nil_texture_id - 1)
+			end
 
 			if tile_vert_map then
 				tile_vert_map[z][x] = vert_count+1
@@ -278,7 +287,7 @@ end
 function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
                                             vert_count, index_count, attr_count,
 											wallset_id_to_tex, textures,
-											gen_all_walls, nil_texture_id,
+											gen_all_verts, nil_texture_id,
 											wall_vert_map)
 	local int = math.floor
 	local I = 1
@@ -306,7 +315,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 			local north_height = Map.getHeights ( map , x   , z-1 )
 
 			local wall = nil
-			if not gen_all_walls then
+			if not gen_all_verts then
 				wall = 
 					Wall:getWallInfo(textures,
 						tile_height,
@@ -488,14 +497,14 @@ function Map.generateMapMesh( map , params )
 	local optimise   = not params.dont_optimise
 	local gen_simple = not params.dont_gen_simple
 
-	local gen_all_walls   = params.gen_all_walls
+	local gen_all_verts   = params.gen_all_verts
 	local gen_nil_texture = params.gen_nil_texture
 	local nil_texture_id  = -1
 
 	local gen_index_map  = params.gen_index_map
 
 	if gen_all_walls and not gen_nil_texture then
-		error("Map.generateMapMesh(): gen_all_walls enabled, but no gen_nil_texture supplied. give either a filename/texture")
+		error("Map.generateMapMesh(): gen_all_verts enabled, but no gen_nil_texture supplied. give either a filename/texture")
 	end
 
 	local textures = {}
@@ -524,7 +533,7 @@ function Map.generateMapMesh( map , params )
 		nil_texture_id = tex_count
 	end
 
-	tex_count = Map.internalLoadTilesetTextures(map, textures, tex_names, tileset_id_to_tex, wallset_id_to_tex)
+	tex_count = Map.internalLoadTilesetTextures(map, textures, tex_names, tex_count, tileset_id_to_tex, wallset_id_to_tex)
 
 	local anim_textures_info = {}
 	tex_count = Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, textures, tex_names, tex_count)
@@ -577,12 +586,12 @@ function Map.generateMapMesh( map , params )
 	vert_count, index_count, attr_count =
 		Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   tileset_id_to_tex, optimise,
+										   tileset_id_to_tex, optimise, gen_all_verts, nil_texture_id,
 										   tile_vert_map)
 	vert_count, index_count, attr_count =
 		Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
-										   wallset_id_to_tex, textures, gen_all_walls, nil_texture_id,
+										   wallset_id_to_tex, textures, gen_all_verts, nil_texture_id,
 										   wall_vert_map)
 
 	if gen_simple then

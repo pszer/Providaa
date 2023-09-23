@@ -170,7 +170,7 @@ void effect( ) {
 	texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * vec4(light,1.0);
 
-	love_Canvases[0] = pix;
+	love_Canvases[0] = pix * VaryingColor;
 }
 
 #endif
