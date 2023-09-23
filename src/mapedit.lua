@@ -24,7 +24,8 @@ ProvMapEdit = {
 
 	commands = {},
 
-	wireframe_col = {255/255,161/255,66/255,0.7},
+	wireframe_col = {19/255,66/255,72/255,0.25},
+	selection_col = {255/255,161/255,66/255,1.0},
 
 	active_selection = {}
 
@@ -37,7 +38,7 @@ function ProvMapEdit:load(args)
 		self.map_edit_shader = love.graphics.newShader("shader/mapedit.glsl") end
 	
 	local lvledit_arg = args["lvledit"]
-	assert(lvledit_arg and lvledit_arg[1], "ProvMapEdit:load(): no level specified in lvl edit launch argument")
+	assert(lvledit_arg and lvledit_arg[1], "ProvMapEdit:load(): no level specified in lvledit launch argument")
 
 	self.props = MapEditPropPrototype()
 
@@ -123,7 +124,7 @@ function ProvMapEdit:defineCommands()
 		return true
 	end
 
-	coms["select"] = MapEditCom:define(
+	coms["invertible_select"] = MapEditCom:define(
 		{
 		 {"select_objects", "table", nil, PropDefaultTable{}}
 		},
@@ -192,6 +193,65 @@ function ProvMapEdit:defineCommands()
 				end
 			end -- undo command function
 		end) 
+
+	coms["additive_select"] = MapEditCom:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable{}}
+		},
+		function(props) -- command function
+			local mapedit = self
+			local active_selection = mapedit.active_selection
+
+			local obj_count = #props.select_objects
+			for i=obj_count,1,-1 do
+				v = props.select_objects[i]
+				local unique = true
+				for j,u in ipairs(active_selection) do
+					if table_eq(v,u) then
+
+						-- we remove any objects that have already been selected from the
+						-- additive select object list, this action is not reversed in the undo
+						-- operation
+						table.remove(props.select_objects, i)
+
+						unique = false
+						break
+					end
+				end
+
+				if unique then
+					table.insert(active_selection, v)
+				end
+			end
+		end, -- command function
+
+		function(props) -- undo command function
+			local mapedit = self
+			local active_selection = mapedit.active_selection
+			for i,v in ipairs(props.select_objects) do
+				for j,u in ipairs(active_selection) do
+					if table_eq(v,u) then
+						table.remove(active_selection, j)
+						break
+					end
+				end
+			end -- undo command function
+		end)
+
+	coms["deselect_all"] = MapEditCom:define(
+		{
+		 {"past_selection", "table", nil, PropDefaultTable(self.active_selection)}
+		},
+		function(props) -- command function
+			local mapedit = self
+			mapedit.active_selection = {}
+		end, -- command function
+
+		function(props) -- undo command function
+			local mapedit = self
+			mapedit.active_selection = props.past_selection
+		end -- undo command function
+		) 
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -238,10 +298,22 @@ function ProvMapEdit:commitUndo()
 	self.props.mapedit_command_pointer = self.props.mapedit_command_pointer - 1
 end
 
+function ProvMapEdit:commitRedo()
+	local pointer = self.props.mapedit_command_pointer
+	local command_history = self.props.mapedit_command_stack
+	local history_length = #command_history
+
+	if pointer == history_length then return end
+	local command = command_history[pointer+1]
+	command:commit()
+	self.props.mapedit_command_pointer = self.props.mapedit_command_pointer + 1
+end
+
 function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
-										   "cam_rotate","cam_reset","edit_select","edit_deselect","edit_undo","edit_redo"})
+										   "cam_rotate","cam_reset","edit_select","edit_deselect","edit_undo","edit_redo",
+										   "super"})
 	CONTROL_LOCK.MAPEDIT_VIEW.open()
 
 	local forward_v  = {0 , 0,-1,0}
@@ -250,6 +322,8 @@ function ProvMapEdit:setupInputHandling()
 	local right_v    = { 1, 0,0,0}
 	local up_v       = { 0,-1,0,0}
 	local down_v     = { 0, 1,0,0}
+
+	local super_modifier = false
 
 	local function __move(dir_v, relative_mode)
 		return function()
@@ -315,19 +389,68 @@ function ProvMapEdit:setupInputHandling()
 		self:newCamera()
 	end))
 
+	local additive_select_obj = nil
 	local viewport_select = Hook:new(function ()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, true)
 
-		self:commitCommand("select", {select_objects={obj}})
-		print(#self.active_selection)
+		if not super_modifier then
+			self:commitCommand("invertible_select", {select_objects={obj}})
+			additive_select_obj = obj
+			return
+		end
+
+		if not additive_select_obj then
+			if obj[1] == "tile" then
+				additive_select_obj = obj
+			end
+			self:commitCommand("additive_select", {select_objects={obj}})
+			return
+		end
+
+		local x1,z1,x2,z2
+		local min,max = math.min,math.max
+		if obj[1] == "tile" then
+			x1 = min(obj[2], additive_select_obj[2])
+			z1 = min(obj[3], additive_select_obj[3])
+			x2 = max(obj[2], additive_select_obj[2])
+			z2 = max(obj[3], additive_select_obj[3])
+
+			local objs_in_range = {}
+			for x=x1,x2 do
+				for z=z1,z2 do
+					table.insert(objs_in_range, {"tile",x,z})
+				end
+			end
+
+			self:commitCommand("additive_select", {select_objects=objs_in_range})
+			additive_select_obj = nil
+			return
+		end
+
+		additive_select_obj = nil
+		self:commitCommand("additive_select", {select_objects={obj}})
 	end)
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 
+	local viewport_deselect = Hook:new(function ()
+		self:commitCommand("deselect_all", {}) end)
+	self.viewport_input:getEvent("edit_deselect", "down"):addHook(viewport_deselect)
+
 	local viewport_undo = Hook:new(function ()
-		self:commitUndo()
-	end)
+		self:commitUndo() end)
+	local viewport_redo = Hook:new(function ()
+		self:commitRedo() end)
+	local enable_super_hook = Hook:new(function ()
+		super_modifier = true end)
+	local disable_super_hook = Hook:new(function ()
+		super_modifier = false end)
+
 	self.viewport_input:getEvent("edit_undo","down"):addHook(viewport_undo)
+	self.viewport_input:getEvent("edit_redo","down"):addHook(viewport_redo)
+	self.viewport_input:getEvent("super", "down"):addHook(enable_super_hook)
+	self.viewport_input:getEvent("super", "up"):addHook(disable_super_hook)
+
 end
 
 -- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}
@@ -356,7 +479,7 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		for z=1,h do
 			for x=1,w do
 				local intersect, dist = self:testTileAgainstRay(ray, x,z)
-				if intersect then
+				if intersect and dist < min_dist then
 					mesh_test = {"tile",x,z}
 					min_dist = dist
 				end
@@ -368,22 +491,22 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		for z=1,h do
 			for x=1,w do
 				local intersect, dist = self:testWallSideAgainstRay(ray, x,z, 1)
-				if intersect then
+				if intersect and dist < min_dist  then
 					mesh_test = {"wall",x,z,1}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 2)
-				if intersect then
+				if intersect and dist < min_dist  then
 					mesh_test = {"wall",x,z,2}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 3)
-				if intersect then
+				if intersect and dist < min_dist  then
 					mesh_test = {"wall",x,z,3}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 4)
-				if intersect then
+				if intersect and dist < min_dist  then
 					mesh_test = {"wall",x,z,4}
 					min_dist = dist
 				end
@@ -672,10 +795,13 @@ function ProvMapEdit:drawViewport()
 		shadersend(shader,"u_wireframe_enabled", false)
 
 		love.graphics.setWireframe( false )
+
 	end
 
 	love.graphics.setDepthMode( "less", true  )
 	self:drawModelsInViewport(shader)
+
+	self:drawSelectedHighlight()
 end
 
 function ProvMapEdit:drawModelsInViewport(shader)
@@ -693,6 +819,41 @@ function ProvMapEdit:updateModelMatrices(subset)
 	for i,v in ipairs(subset) do
 		v:modelMatrix()
 	end
+end
+
+function ProvMapEdit:drawSpecificTile(x,z)
+	local mesh_start_index = self:getTilesIndexInMesh(x,z)
+	local mesh = self.props.mapedit_map_mesh.mesh
+	local vmap_length = #mesh:getVertexMap()
+
+	local vmap_start_i = 6*((mesh_start_index-1)/4)+1
+	mesh:setDrawRange(vmap_start_i, 6)
+	love.graphics.draw(mesh)
+	mesh:setDrawRange(1,vmap_length)
+end
+
+function ProvMapEdit:drawSelectedHighlight(shader)
+	local shader = shader or love.graphics.getShader()
+	shadersend(shader,"u_model", "column", __id)
+	shadersend(shader,"u_normal_model", "column", __id)
+	shadersend(shader,"u_solid_colour_enable", true)
+	shadersend(shader,"u_uses_tileatlas", true)
+
+	local mode, alphamode = love.graphics.getBlendMode()
+	love.graphics.setBlendMode("screen","premultiplied")
+
+	love.graphics.setColor(self.selection_col)
+	love.graphics.setDepthMode( "always", false  )
+	for i,v in ipairs(self.active_selection) do
+		if v[1] == "tile" then
+			self:drawSpecificTile(v[2],v[3])
+		end
+	end
+
+	love.graphics.setBlendMode(mode, alphamode)
+	shadersend(shader,"u_uses_tileatlas", false)
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setColor(1,1,1,1)
 end
 
 function ProvMapEdit:draw()

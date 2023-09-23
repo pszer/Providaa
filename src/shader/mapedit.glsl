@@ -114,6 +114,8 @@ uniform Image MainTex;
 
 uniform vec4 u_wireframe_colour;
 
+uniform bool u_solid_colour_enable;
+
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
@@ -154,13 +156,16 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
-	float frag_dist = length(frag_position);
-	float wireframe_dist = 600.0;
 	if (u_wireframe_enabled) {
+		float frag_dist = length(frag_position);
+		float wireframe_dist = 600.0;
 		float dd = (wireframe_dist - frag_dist) / wireframe_dist;
 		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.5);
 		love_Canvases[0] = vec4(u_wireframe_colour.xyz, u_wireframe_colour.a * mul);
 		return;
+	}
+	if (u_solid_colour_enable) {
+		love_Canvases[0] = VaryingColor;
 	}
 
 	vec3 light = vec3(1.0,1.0,1.0);

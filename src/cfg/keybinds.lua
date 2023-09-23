@@ -54,6 +54,8 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
 	["cam_reset"]    = { "kp."    , "home" , default = "kp."},
 
+	["super"]        = { "lshift" , nil    , default = "lshift"},
+
 	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },
 	["edit_deselect"]  = { "mouse2"   , "esc"  , default = "mouse2" },
 	["edit_undo"]      = { "pagedown" ,  nil   , default = "mouse2" },
