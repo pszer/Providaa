@@ -29,11 +29,13 @@ function ModelInfo.new(pos, rot, scale)
 		scale_v = {scale, scale, scale}
 	end
 
-	return {
+	local p = {
 		position = pos_v,
 		rotation = rot_v,
-		scale    = scale_v
+		scale    = scale_v,
 	}
+	setmetatable(p, ModelInfo)
+	return p
 end
 
 -- alias

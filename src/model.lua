@@ -192,10 +192,22 @@ function ModelInstance:__new(props)
 end
 
 function ModelInstance:newInstance(model, props)
-	local props = props or {}
-	props.model_i_reference = model
+	local p
+
+	if provtype(props) == "modelinfo" then
+		p = {
+			["model_i_static"]   = true,
+			["model_i_position"] = props.position,
+			["model_i_rotation"] = props.rotation,
+			["model_i_scale"]    = props.scale
+		}
+	else
+		p = props or {}
+	end
+
+	p.model_i_reference = model
 	model:ref()
-	return ModelInstance:__new(props)
+	return ModelInstance:__new(p)
 end
 
 function ModelInstance:newInstances(model, instances)

@@ -40,7 +40,7 @@ Renderer = {
 
 	enable_hdr = true,
 	hdr_exposure = 0.15,
-	hdr_exposure_min = 0.1,
+	hdr_exposure_min = 0.001,
 	hdr_exposure_max = 2.0,
 	hdr_exposure_nudge = 1.08,
 	hdr_exposure_adjust_speed = 2.5,

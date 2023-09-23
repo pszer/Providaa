@@ -875,7 +875,7 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 end
 
 local DEG_TO_RADIANS = math.pi/180.0
-function Map.generateModelInstances(map)
+function Map.generateModelInstances(map, dont_use_instancing)
 	local model_defs = map.models
 
 	local models = {}
@@ -939,12 +939,21 @@ function Map.generateModelInstances(map)
 		if count == 1 then
 			indices[1].model_i_static = true
 			model_inst = ModelInstance:newInstance(model, indices[1])
+			insts_count = insts_count+1
+			insts[insts_count] = model_inst
 		else
-			model_inst = ModelInstance:newInstances(model, indices)
+			if not dont_use_instancing then
+				model_inst = ModelInstance:newInstances(model, indices)
+				insts_count = insts_count+1
+				insts[insts_count] = model_inst
+			else
+				for _,info in ipairs(indices) do
+					local model_inst = ModelInstance:newInstance(model, info)
+					insts_count = insts_count+1
+					insts[insts_count] = model_inst
+				end
+			end
 		end
-
-		insts_count = insts_count+1
-		insts[insts_count] = model_inst
 	end
 
 	return insts

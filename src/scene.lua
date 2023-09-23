@@ -39,7 +39,7 @@ end
 
 function Scene:loadMap(map)
 	self.map_mesh = Map.generateMapMesh(map)
-	local models = Map.generateModelInstances(map)
+	local models = Map.generateModelInstances(map, false)
 	self:addModelInstance(models)
 
 	local skybox_tex, skybox_fname, skybox_brightness = Map.generateSkybox(map)

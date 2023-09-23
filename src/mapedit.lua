@@ -22,6 +22,8 @@ ProvMapEdit = {
 	grabbed_mouse_x = 0,
 	grabbed_mouse_y = 0,
 
+	commands = {}
+
 }
 ProvMapEdit.__index = ProvMapEdit
 
