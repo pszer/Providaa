@@ -52,7 +52,8 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_up"]       = { "space"  ,  nil   , default = "space"  },
 	["cam_down"]     = { "lctrl"  ,  nil   , default = "lctrl"  },
 	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
-	["cam_reset"]    = { "kp."    , "home" , default = "kp."},
+	["cam_reset"]    = { "kp0"    , "home" , default = "kp0"},
+	["cam_centre"]   = { "kp."    , "home" , default = "kp."},
 
 	["super"]           = { "lshift" , nil    , default = "lshift"},
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},

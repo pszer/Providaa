@@ -83,7 +83,9 @@ function Camera:setDirection(dir)
 	if dir[1]==0 and dir[2]==0 and dir[3]==0 then	
 		self.props.cam_direction = { 0 , 0 , -1 }
 	else
-		self.props.cam_direction = {dir[1], dir[2], dir[3]}
+		local x,y,z = dir[1],dir[2],dir[3]
+		local length = math.sqrt(x*x + y*y + z*z)
+		self.props.cam_direction = {x/length, y/length, z/length}
 	end
 	self:directionMode()
 end

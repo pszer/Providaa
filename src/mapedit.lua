@@ -32,7 +32,12 @@ ProvMapEdit = {
 	active_selection = {},
 	highlight_mesh = nil,
 
-	active_transform = nil
+	active_transform = nil,
+
+	-- if non-nil, the camera will fly over to cam_move_to_pos coordinate
+	-- and rotate its direction to cam_rot_to_dir
+	cam_move_to_pos = nil,
+	--cam_rot_to_dir  = nil -- not implemented
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -340,7 +345,7 @@ function ProvMapEdit:setupInputHandling()
 	--
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
-										   "cam_rotate","cam_reset","edit_select","edit_deselect","edit_undo","edit_redo",
+										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
 										   "super","toggle_anim_tex",
 										   "transform_move","transform_rotate","transform_scale"})
 
@@ -400,6 +405,9 @@ function ProvMapEdit:setupInputHandling()
 
 	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
 		self:newCamera()
+	end))
+	self.viewport_input:getEvent("cam_centre","down"):addHook(Hook:new(function()
+		self:centreCamOnSelection()
 	end))
 
 	local additive_select_obj = nil
@@ -841,6 +849,86 @@ function ProvMapEdit:newCamera()
 	}
 end
 
+function ProvMapEdit:centreCamOnSelection()
+	local centre,min,max = self:getSelectionCentreAndMinMax()
+
+	if not centre then
+		return
+	--	local cam = self.props.mapedit_cam
+	--	cam:setPosition {self.props.mapedit_map_width*0.5*TILE_SIZE, -280, self.props.mapedit_map_height*0.5*TILE_SIZE}
+	--	cam:setDirection {0,1,0}
+	end
+
+	local cam = self.props.mapedit_cam
+	local dx,dy,dz = centre[1]-min[1] , centre[2]-min[2] , centre[3]-min[3]
+	local dist = math.sqrt(dx*dx + dy*dy + dz*dz) + 100
+
+	print(dist)
+
+	local cam_dir = cam:getDirection()
+	local new_pos = {
+		centre[1] - cam_dir[1] * dist,
+		centre[2] - cam_dir[2] * dist,
+		centre[3] - cam_dir[3] * dist
+	}
+
+	--cam:setPosition(new_pos)
+	self.cam_move_to_pos = new_pos
+end
+
+function ProvMapEdit:getSelectionCentreAndMinMax()
+	local x,y,z = 0,0,0
+
+	local min_x,min_y,min_z = 1/0,1/0,1/0
+	local max_x,max_y,max_z = -1/0,-1/0,-1/0
+
+	local min = math.min
+	local max = math.max
+
+	local count = 0
+	for i,v in ipairs(self.active_selection) do
+		local obj_type = v[1]
+
+		local mx,my,mz
+		if obj_type == "model" then
+			local model = v[2]
+
+			local min,max = model:getBoundingBoxMinMax()
+
+			mx,my,mz = 
+				(min[1] + max[1]) * 0.5,
+				(min[2] + max[2]) * 0.5,
+				(min[3] + max[3]) * 0.5
+		elseif obj_type == "tile" then
+			local v1,v2,v3,v4 = self:getTileVerts(v[2],v[3])
+			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
+			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
+			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+		elseif obj_type == "wall" then
+			local v1,v2,v3,v4 = self:getWallVerts(v[2],v[3],v[4])
+			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
+			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
+			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+		end
+
+		x,y,z = x + mx, y + my, z + mz
+		count = count + 1
+
+		min_x = min(min_x, mx)
+		min_y = min(min_y, my)
+		min_z = min(min_z, mz)
+		max_x = max(max_x, mx)
+		max_y = max(max_y, my)
+		max_z = max(max_z, mz)
+	end
+
+	if count == 0 then return nil end
+	x = x / count
+	y = y / count
+	z = z / count
+	return {x,y,z}, {min_x,min_y,min_z}, {max_x,max_y,max_z}
+end
+
 local count = 0
 function ProvMapEdit:update(dt)
 	local cos,sin=math.cos,math.sin
@@ -852,6 +940,7 @@ function ProvMapEdit:update(dt)
 	elseif mode == "transform" then
 		self.transform_input:poll()
 	end
+	self:interpCameraToPos(dt)
 	cam:update()
 	self:updateModelMatrices()
 
@@ -865,6 +954,28 @@ function ProvMapEdit:update(dt)
 
 	local map_mesh = self.props.mapedit_map_mesh
 	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
+end
+
+function ProvMapEdit:interpCameraToPos(dt)
+	local cam = self.props.mapedit_cam
+	local pos = self.cam_move_to_pos
+	if not pos then return end
+
+	local cam_pos = cam:getPosition()
+
+	local dx,dy,dz = pos[1]-cam_pos[1],pos[2]-cam_pos[2],pos[3]-cam_pos[3]
+	if dx*dx + dy*dy + dz*dz < 1.0 then
+		self.cam_move_to_pos = nil
+	end
+
+	local min = math.min
+	local dt = min(dt*32.0,1.0)
+
+	local new_pos = {
+		cam_pos[1] + dx*dt,
+		cam_pos[2] + dy*dt,
+		cam_pos[3] + dz*dt}
+	cam:setPosition(new_pos)
 end
 
 function ProvMapEdit:drawSkybox()

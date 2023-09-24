@@ -153,7 +153,91 @@ local function __getTransform_rotate(self, cam)
 
 end
 local function __getTransform_scale(self, cam)
+	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 
+	local mouse_dx = (curr_mouse_x - self.mx) / 66.0
+	local mouse_dy = (curr_mouse_y - self.my) / 66.0
+
+	local pow = math.pow
+	local function scale_map(x)
+		if x < 0 then
+			return pow(2,x)
+		end
+		return x+1
+	end
+
+	local mode = self.axis_mode
+	assert(mode == "xyz" or mode=="x" or mode=="y" or mode=="z")
+
+	local acos = math.acos
+	local sin  = math.sin
+
+	if mode == "xyz" then
+		-- in normal "xyz" mode, the final transformation is
+		-- (mouse_dx * cam_relative_right_vector) + (mouse_dy * cam_relative_up_vector)
+		-- where cam_relative_right_vector is the vector pointing directly right
+		-- from the camera's perspective, likewise for cam_relative_up_vector
+		local tdir_up    = {cam:getDirectionVector(__tempdirup)}
+		local tdir_right = {cam:getDirectionVector(__tempdirright)}
+		local x = scale_map(mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1])
+		local y = scale_map(-(mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2]))
+		local z = scale_map(-(mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3]))
+		return {x,y,z}
+	end
+
+	if mode == "x" then
+		local right_vector = __tempdirright
+		local cam_right_vector = {cam:getDirectionVector(right_vector)}
+
+		local dot_p = right_vector[1]*cam_right_vector[1] +
+                      right_vector[2]*cam_right_vector[2] +
+                      right_vector[3]*cam_right_vector[3]
+		-- both right_vector and cam_right_vector are unit vectors, no need
+		-- to normalise
+		local theta = acos(dot_p)
+
+		local costheta = dot_p
+		local sintheta = sin(theta)
+
+		local x = scale_map(costheta * mouse_dx - sintheta * mouse_dy)
+		return {x,1,1}
+	end
+
+	if mode == "y" then
+		local up_vector = __tempdirup
+		local cam_up_vector = {cam:getDirectionVector(up_vector)}
+
+		local dot_p = up_vector[1]*cam_up_vector[1] +
+                      up_vector[2]*cam_up_vector[2] +
+                      up_vector[3]*cam_up_vector[3]
+		-- both right_vector and cam_right_vector are unit vectors, no need
+		-- to normalise
+		local theta = acos(dot_p)
+
+		local costheta = dot_p
+		local sintheta = sin(theta)
+
+		local y = scale_map(-(costheta * mouse_dy - sintheta * mouse_dx))
+		return {1,y,1}
+	end
+
+	if mode == "z" then
+		local forward_vector = __tempdirforward
+		local cam_right_vector = {cam:getDirectionVector(__tempdirright)}
+
+		local dot_p = forward_vector[1]*cam_right_vector[1] +
+                      forward_vector[2]*cam_right_vector[2] +
+                      forward_vector[3]*cam_right_vector[3]
+		-- both right_vector and cam_right_vector are unit vectors, no need
+		-- to normalise
+		local theta = acos(dot_p)
+
+		local costheta = dot_p
+		local sintheta = sin(theta)
+
+		local z = scale_map( costheta * mouse_dx - sintheta * mouse_dy)
+		return {1,1,z}
+	end
 end
 
 function MapEditTransform:newTranslate()
