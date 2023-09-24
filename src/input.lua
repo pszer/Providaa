@@ -55,6 +55,7 @@ CONTROL_LOCK = {
 	MENU2        = {8,        0},
 	MENU1        = {9,        0},
 
+	MAPEDIT_CONTEXT   = {100,      0},
 	MAPEDIT_DIALOG    = {102,      0},
 	MAPEDIT_PANEL     = {102,      0},
 	MAPEDIT_TRANSFORM = {103,      0},
@@ -62,6 +63,8 @@ CONTROL_LOCK = {
 
 	GAMEPROMPT = {200,      0},
 	GAME       = {201,      0},
+
+	META       = {9999,     2}
 }
 
 -- shorter alias

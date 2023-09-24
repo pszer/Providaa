@@ -295,6 +295,32 @@ function Camera:getDirectionVector( dir )
 	end
 end
 
+local __tempmat4i = cpml.mat4.new()
+function Camera:getInverseDirectionVector( dir )
+	local dir_v = __temp_dir_v
+	if dir then
+		dir_v[1] = dir[1]
+		dir_v[2] = dir[2]
+		dir_v[3] = dir[3]
+		dir_v[4] = 0.0
+	else
+		dir_v[1] = 0
+		dir_v[2] = 0
+		dir_v[3] = -1
+		dir_v[4] = 0
+	end
+	local rot = self.props.cam_rot_matrix
+	if rot then
+		local inv_rot = __tempmat4i
+		inv_rot:invert(-rot)
+		cpml.mat4.mul_vec4(dir_v, inv_rot, dir_v)
+		--cpml.mat4.mul_vec4(dir_v, rot, dir_v)
+		return dir_v[1], dir_v[2], dir_v[3]
+	else
+		return 0,0,-1
+	end
+end
+
 -- a test to see if anything has changed that requires
 -- a new perspective matrix
 function Camera:checkNeedToUpdatePerspective()

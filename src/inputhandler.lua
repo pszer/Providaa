@@ -28,7 +28,7 @@ function InputHandler:new( level , keybinds )
 			error(string.format("InputHandler:new(): unexpected argument at index %d of type %s", i, type(v)))
 		end
 
-		this[v] = {
+		this[keybind] = {
 			down  = Event:new(),
 			held  = Event:new(),
 			up    = Event:new(),

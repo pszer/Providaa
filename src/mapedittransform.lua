@@ -13,7 +13,7 @@
 -- appropiate transformation based on the current view.
 -- depending on the type of transformation, it will return a:
 -- {x,y,z}   translation
--- {x,y,z,w} quaternion
+-- {x,y,z}   direction vector
 -- {x,y,z}   scale factors
 --
 -- transformations can be axis-locked, to toggle axis-locking call
@@ -25,6 +25,8 @@
 -- "y"   - y axis locked
 -- "z"   - z axis locked
 --
+
+local cpml = require 'cpml'
 
 local MapEditTransform = {}
 MapEditTransform.__index = MapEditTransform
@@ -39,6 +41,11 @@ function MapEditTransform:new(mousex, mousey)
 
 		getTransform = function(cam)
 			error("MapEditTransform:getTransform(): this object has no transformation type, use newTranslate() / newRotate() / newScale()!")
+		end,
+		getTransformType = function(self)
+			local t = self.transformation_type
+			assert(t ~= "nil")
+			return t
 		end,
 
 		lockX = function(self)
@@ -149,12 +156,64 @@ local function __getTransform_translate(self, cam)
 		return {0,0,z}
 	end
 end
-local function __getTransform_rotate(self, cam)
 
-end
-local function __getTransform_scale(self, cam)
+local __tempvec3 = cpml.vec3.new()
+local __tempvec3t = {0,0,0}
+local function __getTransform_rotate(self, cam)
 	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 
+	local win_w, win_h = love.graphics.getDimensions()
+
+	local mouse_dx = (curr_mouse_x - self.mx) 
+	local mouse_dy = (curr_mouse_y - self.my) 
+	local mode = self.axis_mode
+
+	if mode == "xyz" then
+		local viewport = {0,0,win_w,win_h}
+
+		local unproject = cpml.mat4.unproject
+		local viewproj = cam:getViewProjMatrix()
+		local cursor = __tempvec3
+		cursor.x,cursor.y,cursor.z = win_w*0.5+mouse_dx*2, win_h*0.5+mouse_dy*2, 1.0
+
+		local P = unproject(cursor, viewproj, viewport)
+		local cam_pos = cam:getPosition()
+
+		local dir = __tempvec3t
+		dir[1] = P.x - cam_pos[1]
+		dir[2] = P.y - cam_pos[2]
+		dir[3] = P.z - cam_pos[3]
+		local x,y,z = cam:getInverseDirectionVector(dir)
+		local length = math.sqrt(x*x + y*y + z*z)
+		x = x/length
+		y = y/length
+		z = z/length
+
+		dir[1],dir[2],dir[3]=x,y,z
+		return dir
+	end
+
+	mouse_dx = mouse_dx * (8/win_w)
+	mouse_dy = mouse_dy * (8/win_h)
+	local sin,cos = math.sin,math.cos
+	if mode == "x" then
+		local y = sin(mouse_dy)
+		local z = -cos(mouse_dy)
+		return {0,y,z}
+	end
+	if mode == "y" then
+		local x = sin(mouse_dx)
+		local z = -cos(mouse_dx)
+		return {x,0,z}
+	end
+	if mode == "z" then
+		local z = -cos(mouse_dx)
+		return {0,0,z}
+	end
+end
+
+local function __getTransform_scale(self, cam)
+	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 	local mouse_dx = (curr_mouse_x - self.mx) / 66.0
 	local mouse_dy = (curr_mouse_y - self.my) / 66.0
 

@@ -1,5 +1,9 @@
 require "provtype"
 
+-- note about TTF
+-- only the filedata for the TTF is loaded, once retrieved
+-- it has to be converted
+
 Loader = {__type = "loader",
 
 	models   = {__dir="models/", __ref_counts={}, __release = "release" },

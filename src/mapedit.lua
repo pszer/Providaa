@@ -4,6 +4,7 @@ require "map"
 require "camera"
 require "render"
 require "angle"
+require "assetloader"
 
 local maptransform = require "mapedittransform"
 local shadersend = require "shadersend"
@@ -47,7 +48,16 @@ ProvMapEdit = {
 	selection_changed = false,
 
 	rotate_cam_around_selection = false,
-	rotate_cam_point = nil
+	rotate_cam_point = nil,
+
+	super_modifier = false,
+
+	font        = nil,
+	font_bold   = nil,
+	font_italic = nil,
+	__font_fname        = "LibreBaskerville-Regular.ttf",
+	__font_bold_fname   = "LibreBaskerville-Bold.ttf",
+	__font_italic_fname = "LibreBaskerville-Italic.ttf",
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -69,6 +79,18 @@ function ProvMapEdit:load(args)
 	self:setupInputHandling()
 	self:enterViewportMode()
 	self:defineCommands()
+end
+
+function ProvMapEdit:loadFont()
+	-- get the font filedata from Loader
+	self.font = Loader:getTTFReference(__font_fname)
+	-- convert to a love2d font object
+	self.font = love.graphics.newFont(self.font, 16, "light")
+	assert(font)
+
+	self.font = Loader:getTTFReference(__font_bold_fname)
+	self.font = love.graphics.newFont(self.font, 16, "light")
+	assert(font)
 end
 
 function ProvMapEdit:unload()
@@ -144,8 +166,7 @@ function ProvMapEdit:defineCommands()
 
 	local function table_eq(a,b)
 		for i,v in ipairs(a) do
-			if v~=b[i] then return false end
-		end
+			if v~=b[i] then return false end end
 		return true
 	end
 
@@ -374,7 +395,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
 										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
-										   "super","toggle_anim_tex",
+										   {"super",CONTROL_LOCK.META},"toggle_anim_tex",
 										   "transform_move","transform_rotate","transform_scale"})
 
 	local forward_v  = {0 , 0,-1}
@@ -483,7 +504,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 
 	local viewport_deselect = Hook:new(function ()
-		self:commitCommand("deselect_all", {}) end)
+		 self:viewportRightClickAction() end)
 	self.viewport_input:getEvent("edit_deselect", "down"):addHook(viewport_deselect)
 
 	local viewport_undo = Hook:new(function ()
@@ -573,7 +594,6 @@ end
 
 function ProvMapEdit:enterTransformMode(transform_mode)
 	assert(transform_mode and (transform_mode == "translate" or transform_mode == "rotate" or transform_mode == "scale"))
-	CONTROL_LOCK.MAPEDIT_VIEW.close()
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.open()
 	self.props.mapedit_mode = "transform"
 	self.props.mapedit_transform_mode = transform_mode
@@ -655,7 +675,6 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		end
 	end
 
-	print("objectAtcursor", unpack(mesh_test or {}))
 	return mesh_test
 end
 
@@ -778,6 +797,68 @@ function ProvMapEdit:testModelAgainstRay(ray , model_inst)
 	return nil, nil
 end
 
+--
+-- in viewport mode, right clicking serves two purposes
+-- if right clicking on a selected object, it opens open a context menu
+-- if right clicking elsewhere, it gets rid of the current selection
+-- 
+function ProvMapEdit:viewportRightClickAction(x,y)
+	if self.props.mapedit_mode ~= "viewport" then
+		error("ProvMapEdit:viewportRightClickAction(): invoked outside of viewport mode.")
+	end
+
+	local x = x or love.mouse.getX()
+	local y = y or love.mouse.getY()
+
+	local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
+	print(tile,wall,model)
+	local obj = self:objectAtCursor( x,y , tile,wall,model )
+
+	if not obj then
+		self:commitCommand("deselect_all", {})
+		return
+	else
+		local function table_eq(a,b)
+			for i,v in ipairs(a) do
+				if v~=b[i] then return false end end
+			return true
+		end
+
+		local isnt_part_of_selection = true
+		for i,v in ipairs(self.active_selection) do
+			if table_eq(v, obj) then
+				isnt_part_of_selection = false
+				break
+			end
+		end
+		if isnt_part_of_selection then
+			self:commitCommand("deselect_all", {})
+			return
+		end
+	end
+	-- context menu creation here
+end
+
+-- returns tile_exists, wall_exists, models_exists
+function ProvMapEdit:getObjectTypesInSelection(selection)
+	local selection = selection or self.active_selection
+
+	local tile_exists   = false
+	local wall_exists   = false
+	local models_exists = false
+	for i,v in ipairs(selection) do
+		if     v[1] == "tile"  then tile_exists = true
+		elseif v[1] == "wall"  then wall_exists = true
+		elseif v[1] == "model" then models_exists = true
+		else error()
+		end
+
+		-- prematurely break if all types already found
+		if tile_exists and wall_exists and models_exists then break end
+	end
+	return tile_exists, wall_exists, models_exists
+end
+
 function ProvMapEdit:getTilesIndexInMesh( x,z )
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	if x<1 or x>w or z<1 or z>h then
@@ -868,6 +949,53 @@ function ProvMapEdit:editTileVerts(x,z, new_heights)
 	end
 end
 
+local __tempmat4tt = cpml.mat4.new()
+local __tempvec3tt = cpml.vec3.new()
+local __temptablett = {0,0,0,"dir"}
+function ProvMapEdit:getMatrixFromMapEditTransformation(transform)
+	local info = transform:getTransform(self.props.mapedit_cam)
+	local t_type = transform:getTransformType()
+
+	local __id = {
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1}
+	for i=1,16 do
+		__tempmat4tt[i] = __id[i]
+	end
+
+	local mat = __tempmat4tt
+	if t_type == "translate" then
+		local translate = __tempvec3tt
+		translate.x = info[1]
+		translate.y = info[2]
+		translate.z = info[3]
+		mat:translate(mat, translate)
+		return mat
+	end
+
+	if t_type == "rotate" then
+		local dir = __temptablett
+		dir[1] = info[1]
+		dir[2] = info[2]
+		dir[3] = info[3]
+		dir[4] = "dir"
+		rotateMatrix(mat, dir)
+		return mat
+	end
+
+	if t_type == "scale" then
+		local scale = __tempvec3tt
+		scale.x = info[1]
+		scale.y = info[2]
+		scale.z = info[3]
+		mat:scale(mat, scale)
+		return mat
+	end
+	error()
+end
+
 function ProvMapEdit:newCamera()
 	self.props.mapedit_cam = Camera:new{
 		["cam_position"] = {self.props.mapedit_map_width*0.5*TILE_SIZE, -128, self.props.mapedit_map_height*0.5*TILE_SIZE},
@@ -885,8 +1013,6 @@ function ProvMapEdit:centreCamOnPointMinMax(centre, min, max)
 	local cam = self.props.mapedit_cam
 	local dx,dy,dz = centre[1]-min[1] , centre[2]-min[2] , centre[3]-min[3]
 	local dist = math.sqrt(dx*dx + dy*dy + dz*dz) + 100
-
-	print(dist)
 
 	local cam_dir = cam:getDirection()
 	local new_pos = {
@@ -1037,11 +1163,8 @@ function ProvMapEdit:update(dt)
 	local cam = self.props.mapedit_cam
 
 	local mode = self.props.mapedit_mode
-	if mode == "viewport" then
-		self.viewport_input:poll()
-	elseif mode == "transform" then
-		self.transform_input:poll()
-	end
+	self.viewport_input:poll()
+	self.transform_input:poll()
 	self:interpCameraToPos(dt)
 	cam:update()
 	self:updateModelMatrices()
