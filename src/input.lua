@@ -167,6 +167,14 @@ function KEY_RELEASE(key, scancode)
 	end	
 end
 
+-- this is used for wheelup/wheeldown. these are discrete inputs i.e no "down"/"held"/"up" phase,
+-- so their inputs are registered as "up"
+local niltimer = {
+	Time = function() return 0 end}
+function KEY_UP(key, scancode)
+	CONTROL_KEYS_DOWN[scancode] = {"up", niltimer, niltimer}
+end
+
 function updateKeys()
 	for k,v in pairs(CONTROL_KEYS_DOWN) do
 		if v[1] == "down" then
@@ -196,6 +204,13 @@ end
 function __mousereleased(x, y, button, istouch, presses)
 	local m = "mouse" .. tostring(button)
 	KEY_RELEASE(m, m, false)
+end
+function __wheelmoved(x,y)
+	if y > 0 then
+		KEY_UP("wheelup","wheelup")
+	else
+		KEY_UP("wheeldown","wheeldown")
+	end
 end
 
 

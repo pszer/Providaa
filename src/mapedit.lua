@@ -10,6 +10,9 @@ local maptransform = require "mapedittransform"
 local shadersend = require "shadersend"
 local cpml       = require "cpml"
 
+local guirender = require 'mapeditguidraw'
+local contextmenu = require 'mapeditcontext'
+
 require "mapeditcommand"
 
 ProvMapEdit = {
@@ -26,6 +29,7 @@ ProvMapEdit = {
 	grabbed_mouse_y = 0,
 
 	commands = {},
+	context_menus = {},
 
 	wireframe_col = {19/255,66/255,72/255,0.8},
 	selection_col = {255/255,161/255,66/255,1.0},
@@ -52,12 +56,7 @@ ProvMapEdit = {
 
 	super_modifier = false,
 
-	font        = nil,
-	font_bold   = nil,
-	font_italic = nil,
-	__font_fname        = "LibreBaskerville-Regular.ttf",
-	__font_bold_fname   = "LibreBaskerville-Bold.ttf",
-	__font_italic_fname = "LibreBaskerville-Italic.ttf",
+	curr_context_menu = nil
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -75,22 +74,13 @@ function ProvMapEdit:load(args)
 	local map_name = lvledit_arg[1]
 	self:loadMap(map_name)
 
+	guirender:initAssets()
+
 	self:newCamera()
 	self:setupInputHandling()
 	self:enterViewportMode()
 	self:defineCommands()
-end
-
-function ProvMapEdit:loadFont()
-	-- get the font filedata from Loader
-	self.font = Loader:getTTFReference(__font_fname)
-	-- convert to a love2d font object
-	self.font = love.graphics.newFont(self.font, 16, "light")
-	assert(font)
-
-	self.font = Loader:getTTFReference(__font_bold_fname)
-	self.font = love.graphics.newFont(self.font, 16, "light")
-	assert(font)
+	self:defineContextMenus()
 end
 
 function ProvMapEdit:unload()
@@ -388,6 +378,28 @@ function ProvMapEdit:commitRedo()
 	self.props.mapedit_command_pointer = self.props.mapedit_command_pointer + 1
 end
 
+function ProvMapEdit:defineContextMenus()
+	local context = self.context_menus
+
+	context["select_models_context"] = 
+		contextmenu:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable{}}
+		},
+		 {"~bDelete", action=function() print("del") end}
+		 )
+end
+
+function ProvMapEdit:openContextMenu(context_name, props)
+	local context_table = self.context_menus
+	local context_def = context_table[context_name]
+	assert(context_def, string.format("No context menu %s defined", context_name))
+	local context = context_def:new(props)
+	assert(context)
+
+	return context
+end
+
 function ProvMapEdit:setupInputHandling()
 	--
 	-- VIEWPORT MODE INPUTS
@@ -395,7 +407,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
 										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
-										   {"super",CONTROL_LOCK.META},"toggle_anim_tex",
+										   {"super",CONTROL_LOCK.META},{"toggle_anim_tex",CONTROL_LOCK.META},"cam_zoom_in","cam_zoom_out",
 										   "transform_move","transform_rotate","transform_scale"})
 
 	local forward_v  = {0 , 0,-1}
@@ -594,6 +606,14 @@ end
 
 function ProvMapEdit:enterTransformMode(transform_mode)
 	assert(transform_mode and (transform_mode == "translate" or transform_mode == "rotate" or transform_mode == "scale"))
+
+	local tile_selected, wall_selected, model_selected = self:getObjectTypesInSelection()
+
+	if transform_mode ~= "translate" and (tile_selected or wall_selected) then
+		print("Tiles/walls cannot be rotated.")
+		return
+	end
+
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.open()
 	self.props.mapedit_mode = "transform"
 	self.props.mapedit_transform_mode = transform_mode
@@ -811,7 +831,6 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 	local y = y or love.mouse.getY()
 
 	local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
-	print(tile,wall,model)
 	local obj = self:objectAtCursor( x,y , tile,wall,model )
 
 	if not obj then
@@ -837,6 +856,9 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 		end
 	end
 	-- context menu creation here
+	if model and not tile and not wall then
+		self:openContextMenu("select_models_context", {select_objects=self.active_selection})
+	end
 end
 
 -- returns tile_exists, wall_exists, models_exists
@@ -1405,6 +1427,14 @@ function ProvMapEdit:highlightObject(obj, highlight_val)
 	elseif obj_type == "wall" then
 		self:highlightWall(obj[2], obj[3], obj[4], highlight_val)
 	end
+end
+
+function ProvMapEdit:selectionCount()
+	return #self:selectionCount()
+end
+
+function ProvMapEdit:isSelectionEmpty()
+	return self:selectionCount() == 0
 end
 
 function ProvMapEdit:drawSelectedHighlight(shader)

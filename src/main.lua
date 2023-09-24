@@ -184,6 +184,11 @@ function love.mousemoved(x,y,dx,dy,istouch)
 	if GAMESTATE.mousemoved then GAMESTATE:mousemoved(x,y,dx,dy,istouch) end
 end
 
+function love.wheelmoved(x,y)
+	__wheelmoved(x,y)
+	if GAMESTATE.wheelmoved then GAMESTATE:wheelmoved(x,y) end
+end
+
 function love.textinput(t)
 	if Console.isOpen() then
 		Console.textinput(t)

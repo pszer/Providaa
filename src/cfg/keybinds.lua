@@ -18,7 +18,8 @@ VALID_SCANCODES = {
 "sleep","alterase","sysreq","cancel","clear","prior","return2","separator","out","oper","clearagain","crsel",
 "exsel","kp00","kp000","thsousandsseparator","decimalseparator","currencyunit","currencysubunit","app1","app2","unknown",
 --
-"mouse1","mouse2","mouse3","mouse4","mouse5"
+"mouse1","mouse2","mouse3","mouse4","mouse5",
+"wheelup","wheeldown"
 }
 
 for i,v in ipairs(VALID_SCANCODES) do
@@ -54,6 +55,8 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
 	["cam_reset"]    = { "kp0"    , "home" , default = "kp0"},
 	["cam_centre"]   = { "kp."    , "home" , default = "kp."},
+	["cam_zoom_in"]  = { "wheeldown", nil   , default = "wheeldown"},
+	["cam_zoom_out"] = { "wheelup" , nil   , default = "wheelup"},
 
 	["super"]           = { "lshift" , nil    , default = "lshift"},
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
@@ -66,11 +69,15 @@ MAPEDIT_KEY_SETTINGS = {
 	["transform_move"]   = { "g"      , nil , default = "g" },
 	["transform_rotate"] = { "r"      , nil , default = "r" },
 	["transform_scale"]  = { "p"      , nil , default = "p" },
-	["transform_cancel"] = { "mouse2" , nil, default = "mouse2" },
-	["transform_commit"] = { "mouse1" , nil, default = "mouse1" },
+	["transform_cancel"] = { "mouse2" , nil , default = "mouse2" },
+	["transform_commit"] = { "mouse1" , nil , default = "mouse1" },
 	["transform_x_axis"] = { "x" , nil, default = "x" },
 	["transform_y_axis"] = { "y" , nil, default = "y" },
 	["transform_z_axis"] = { "z" , nil, default = "z" },
+
+	["cxtm_select"] = { "mouse1" , nil , default = "mouse1" },
+	["cxtm_scroll_up"]   = { "up"   , "wheelup"   , default = "up" },
+	["cxtm_scroll_down"] = { "down" , "wheeldown" , default = "down" },
 
 }
 
