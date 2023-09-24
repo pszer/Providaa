@@ -487,7 +487,8 @@ function ProvMapEdit:setupInputHandling()
 	-- TRANSFORM MODE INPUTS
 	--
 	self.transform_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_TRANSFORM,
-	                                       {"transform_move", "transform_scale", "transform_rotate", "transform_cancel", "transform_commit"})
+	                                       {"transform_move", "transform_scale", "transform_rotate", "transform_cancel", "transform_commit",
+										    "transform_x_axis", "transform_y_axis", "transform_z_axis"})
 	local transform_commit = Hook:new(function ()
 		self:enterViewportMode()
 		end)
@@ -496,6 +497,22 @@ function ProvMapEdit:setupInputHandling()
 		end)
 	self.transform_input:getEvent("transform_commit", "down"):addHook(transform_commit)
 	self.transform_input:getEvent("transform_cancel", "down"):addHook(transform_cancel)
+
+	local transform_x_axis = Hook:new(function ()
+		local active_transform = self.active_transform
+		if active_transform then
+			active_transform:lockX() end end)
+	local transform_y_axis = Hook:new(function ()
+		local active_transform = self.active_transform
+		if active_transform then
+			active_transform:lockY() end end)
+	local transform_z_axis = Hook:new(function ()
+		local active_transform = self.active_transform
+		if active_transform then
+			active_transform:lockZ() end end)
+	self.transform_input:getEvent("transform_x_axis", "down"):addHook(transform_x_axis)
+	self.transform_input:getEvent("transform_y_axis", "down"):addHook(transform_y_axis)
+	self.transform_input:getEvent("transform_z_axis", "down"):addHook(transform_z_axis)
 end
 
 local grabbed_mouse_x=0
@@ -824,6 +841,7 @@ function ProvMapEdit:newCamera()
 	}
 end
 
+local count = 0
 function ProvMapEdit:update(dt)
 	local cos,sin=math.cos,math.sin
 	local cam = self.props.mapedit_cam
@@ -837,8 +855,9 @@ function ProvMapEdit:update(dt)
 	cam:update()
 	self:updateModelMatrices()
 
-	if self.active_transform then
-		local t = self.active_selection:getTransform(self.props.mapedit_cam)
+	count = count+1
+	if self.active_transform and (count % 25 == 0) then
+		local t = self.active_transform:getTransform(self.props.mapedit_cam)
 		if t then
 			print(unpack(t))
 		end
