@@ -38,6 +38,16 @@ ProvMapEdit = {
 	-- and rotate its direction to cam_rot_to_dir
 	cam_move_to_pos = nil,
 	--cam_rot_to_dir  = nil -- not implemented
+	--
+	__cache_selection_centre = nil,
+	__cache_selection_min = nil,
+	__cache_selection_max = nil,
+	__cache_recalc_selection_centre = false,
+
+	selection_changed = false,
+
+	rotate_cam_around_selection = false,
+	rotate_cam_point = nil
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -144,6 +154,7 @@ function ProvMapEdit:defineCommands()
 		 {"select_objects", "table", nil, PropDefaultTable{}},
 		},
 		function(props) -- command function
+			self.selection_changed = true
 			local mapedit = self
 			local active_selection = mapedit.active_selection
 			local skip = {}
@@ -179,6 +190,7 @@ function ProvMapEdit:defineCommands()
 		end, -- command function
 
 		function(props) -- undo command function
+			self.selection_changed = true
 			local mapedit = self
 			local active_selection = mapedit.active_selection
 			local skip = {}
@@ -218,6 +230,7 @@ function ProvMapEdit:defineCommands()
 		 {"select_objects", "table", nil, PropDefaultTable{}}
 		},
 		function(props) -- command function
+			self.selection_changed = true
 			local mapedit = self
 			local active_selection = mapedit.active_selection
 
@@ -246,6 +259,7 @@ function ProvMapEdit:defineCommands()
 		end, -- command function
 
 		function(props) -- undo command function
+			self.selection_changed = true
 			local mapedit = self
 			local active_selection = mapedit.active_selection
 			for i,v in ipairs(props.select_objects) do
@@ -264,6 +278,7 @@ function ProvMapEdit:defineCommands()
 		 {"past_selection", "table", nil, PropDefaultTable(self.active_selection)}
 		},
 		function(props) -- command function
+			self.selection_changed = true
 			local mapedit = self
 			for i,v in ipairs(mapedit.active_selection) do
 				self:highlightObject(v, 0.0)
@@ -272,13 +287,26 @@ function ProvMapEdit:defineCommands()
 		end, -- command function
 
 		function(props) -- undo command function
+			self.selection_changed = true
 			local mapedit = self
 			mapedit.active_selection = props.past_selection
 			for i,v in ipairs(mapedit.active_selection) do
 				self:highlightObject(v, 1.0)
 			end
 		end -- undo command function
-		) 
+		)
+
+	coms["transform"] = MapEditCom:define(
+		{
+		 {"selection", "table", nil, PropDefaultTable(self.active_selection)},
+		 {"transformation_type", "string", nil, PropIsOneOf{"translate","rotate","scale"}},
+		 {"transformation_info", "table", nil, nil}
+		},
+		function(props) -- command function
+		end, -- command function
+		function(props) -- undo command function
+		end -- undo command function
+	)
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -370,6 +398,7 @@ function ProvMapEdit:setupInputHandling()
 			end
 			local speed = self.props.mapedit_cam_speed
 			local campos = cam:getPosition()
+			self.rotate_cam_around_selection = false
 			cam:setPosition{
 				campos[1] + dir[1] * dt * speed,
 				campos[2] + dir[2] * dt * speed,
@@ -404,8 +433,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)
 
 	self.viewport_input:getEvent("cam_reset","down"):addHook(Hook:new(function()
-		self:newCamera()
-	end))
+		self:newCamera() end))
 	self.viewport_input:getEvent("cam_centre","down"):addHook(Hook:new(function()
 		self:centreCamOnSelection()
 	end))
@@ -849,14 +877,9 @@ function ProvMapEdit:newCamera()
 	}
 end
 
-function ProvMapEdit:centreCamOnSelection()
-	local centre,min,max = self:getSelectionCentreAndMinMax()
-
-	if not centre then
-		return
-	--	local cam = self.props.mapedit_cam
-	--	cam:setPosition {self.props.mapedit_map_width*0.5*TILE_SIZE, -280, self.props.mapedit_map_height*0.5*TILE_SIZE}
-	--	cam:setDirection {0,1,0}
+function ProvMapEdit:centreCamOnPointMinMax(centre, min, max)
+	if not (centre and min and max) then
+		return false
 	end
 
 	local cam = self.props.mapedit_cam
@@ -872,11 +895,60 @@ function ProvMapEdit:centreCamOnSelection()
 		centre[3] - cam_dir[3] * dist
 	}
 
-	--cam:setPosition(new_pos)
 	self.cam_move_to_pos = new_pos
+	return true
+end
+
+function ProvMapEdit:centreCamOnPointDist(centre, dist)
+	if not (centre and dist) then
+		return false
+	end
+
+	local cam = self.props.mapedit_cam
+	local dist = dist
+
+	print(dist)
+
+	local cam_dir = cam:getDirection()
+	local new_pos = {
+		centre[1] - cam_dir[1] * dist,
+		centre[2] - cam_dir[2] * dist,
+		centre[3] - cam_dir[3] * dist
+	}
+
+	self.cam_move_to_pos = new_pos
+	return true
+end
+
+-- this function first tries to centre on the current selection
+-- if there is no selection, it tries to centre on where the cursor is
+function ProvMapEdit:centreCamOnSelection()
+	local centre,min,max = self:getSelectionCentreAndMinMax()
+	if centre then
+		self:centreCamOnPointMinMax(centre,min,max)
+		self.rotate_cam_around_selection = true
+		self.rotate_cam_point = centre
+		return
+	end
+
+	local x,y = love.mouse.getPosition()
+	local obj_at_cursor = self:objectAtCursor(x,y,true,true,true)
+	if not obj_at_cursor then return end
+	centre = self:getObjectCentre(obj_at_cursor)
+	if not centre then return end
+	self:centreCamOnPointDist(centre, 100)
+	self.rotate_cam_around_selection = true
+	self.rotate_cam_point = centre
 end
 
 function ProvMapEdit:getSelectionCentreAndMinMax()
+	if not self.__cache_recalc_selection_centre then
+		return self.__cache_selection_centre,
+		       self.__cache_selection_min,
+			   self.__cache_selection_max
+	end
+	self.__cache_recalc_selection_centre = false
+
 	local x,y,z = 0,0,0
 
 	local min_x,min_y,min_z = 1/0,1/0,1/0
@@ -926,12 +998,42 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 	x = x / count
 	y = y / count
 	z = z / count
-	return {x,y,z}, {min_x,min_y,min_z}, {max_x,max_y,max_z}
+	self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max =
+		{x,y,z}, {min_x,min_y,min_z}, {max_x,max_y,max_z}
+	return self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max
+end
+
+function ProvMapEdit:getObjectCentre(obj)
+	assert(obj)
+	local obj_type = obj[1]
+
+	local mx,my,mz
+	if obj_type == "model" then
+		local model = obj[2]
+		local min,max = model:getBoundingBoxMinMax()
+
+		mx,my,mz = 
+			(min[1] + max[1]) * 0.5,
+			(min[2] + max[2]) * 0.5,
+			(min[3] + max[3]) * 0.5
+	elseif obj_type == "tile" then
+		local v1,v2,v3,v4 = self:getTileVerts(obj[2],obj[3])
+		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
+		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
+		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+	elseif obj_type == "wall" then
+		local v1,v2,v3,v4 = self:getWallVerts(obj[2],obj[3],obj[4])
+		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
+		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
+		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+	else
+		error()
+	end
+	return {mx,my,mz}
 end
 
 local count = 0
 function ProvMapEdit:update(dt)
-	local cos,sin=math.cos,math.sin
 	local cam = self.props.mapedit_cam
 
 	local mode = self.props.mapedit_mode
@@ -954,6 +1056,11 @@ function ProvMapEdit:update(dt)
 
 	local map_mesh = self.props.mapedit_map_mesh
 	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
+
+	if self.selection_changed then
+		self.selection_changed = false
+		self.__cache_recalc_selection_centre = true
+	end
 end
 
 function ProvMapEdit:interpCameraToPos(dt)
@@ -1221,28 +1328,70 @@ end
 
 function ProvMapEdit:viewport_mousemoved(x,y,dx,dy)
 	if self.view_rotate_mode then
-		local cam = self.props.mapedit_cam
-		local dir = cam:getDirection()
-		local scale = self.props.mapedit_cam_rotspeed
-		local cos,sin = math.cos, math.sin
-		local angle = atan3(dir[1], dir[3])
-
-		local newdir = __tempdir
-		newdir[1] = dir[1] - (cos(angle)*dx)*scale
-		newdir[2] = dir[2] + dy*scale
-		newdir[3] = dir[3] - (-sin(angle)*dx)*scale
-		local length = math.sqrt(newdir[1]*newdir[1] + newdir[2]*newdir[2] + newdir[3]*newdir[3])
-		if length == 0 then length = 1 end
-
-		newdir[1] = newdir[1] / length
-		newdir[2] = newdir[2] / length
-		newdir[3] = newdir[3] / length
-
-		cam:setDirection{
-			newdir[1],
-			newdir[2],
-			newdir[3]}
+		if not self.rotate_cam_around_selection then
+			self:rotateCameraByMouse(dx,dy)
+		else
+			local centre = self.rotate_cam_point
+			self:rotateCameraByMouseAroundPoint(dx,dy, centre)
+		end
 	end
+end
+
+function ProvMapEdit:rotateCameraByMouse(dx,dy)
+	local cam = self.props.mapedit_cam
+	local dir = cam:getDirection()
+	local scale = self.props.mapedit_cam_rotspeed
+	local cos,sin = math.cos, math.sin
+	local angle = atan3(dir[1], dir[3])
+
+	local newdir = __tempdir
+	newdir[1] = dir[1] - (cos(angle)*dx)*scale
+	newdir[2] = dir[2] + dy*scale
+	newdir[3] = dir[3] - (-sin(angle)*dx)*scale
+	local length = math.sqrt(newdir[1]*newdir[1] + newdir[2]*newdir[2] + newdir[3]*newdir[3])
+	if length == 0 then length = 1 end
+
+	newdir[1] = newdir[1] / length
+	newdir[2] = newdir[2] / length
+	newdir[3] = newdir[3] / length
+
+	cam:setDirection{
+		newdir[1],
+		newdir[2],
+		newdir[3]}
+end
+
+function ProvMapEdit:rotateCameraByMouseAroundPoint(dx,dy, centre)
+	-- get new camera direction
+	local cam = self.props.mapedit_cam
+	local dir = cam:getDirection()
+	local scale = self.props.mapedit_cam_rotspeed
+	local cos,sin = math.cos, math.sin
+	local angle = atan3(dir[1], dir[3])
+
+	local newdir = __tempdir
+	newdir[1] = dir[1] - (cos(angle)*dx)*scale
+	newdir[2] = dir[2] + dy*scale
+	newdir[3] = dir[3] - (-sin(angle)*dx)*scale
+
+	cam:setDirection(newdir)
+	if not centre then return end
+	
+	-- move camera to new position, keeping the distance from selection centre
+	-- the exact same
+	local cam_pos = cam:getPosition()
+	local dirn = cam:getDirection() -- same as newdir but normalized
+
+	local dx,dy,dz = centre[1]-cam_pos[1],centre[2]-cam_pos[2],centre[3]-cam_pos[3]
+	local length = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+	local newpos = {
+		centre[1] - dirn[1] * length,
+		centre[2] - dirn[2] * length,
+		centre[3] - dirn[3] * length
+	}
+
+	cam:setPosition(newpos)
 end
 
 function ProvMapEdit:transform_mousemoved(x,y,dx,dy)
