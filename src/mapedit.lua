@@ -5,6 +5,7 @@ require "camera"
 require "render"
 require "angle"
 
+local maptransform = require "mapedittransform"
 local shadersend = require "shadersend"
 local cpml       = require "cpml"
 
@@ -29,7 +30,9 @@ ProvMapEdit = {
 	selection_col = {255/255,161/255,66/255,1.0},
 
 	active_selection = {},
-	highlight_mesh = nil
+	highlight_mesh = nil,
+
+	active_transform = nil
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -341,12 +344,12 @@ function ProvMapEdit:setupInputHandling()
 										   "super","toggle_anim_tex",
 										   "transform_move","transform_rotate","transform_scale"})
 
-	local forward_v  = {0 , 0,-1,0}
-	local backward_v = {0 , 0, 1,0}
-	local left_v     = {-1, 0,0,0}
-	local right_v    = { 1, 0,0,0}
-	local up_v       = { 0,-1,0,0}
-	local down_v     = { 0, 1,0,0}
+	local forward_v  = {0 , 0,-1}
+	local backward_v = {0 , 0, 1}
+	local left_v     = {-1, 0,0}
+	local right_v    = { 1, 0,0}
+	local up_v       = { 0,-1,0}
+	local down_v     = { 0, 1,0}
 
 	local super_modifier = false
 
@@ -512,14 +515,16 @@ function ProvMapEdit:enterViewportMode()
 	CONTROL_LOCK.MAPEDIT_VIEW.open()
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.close()
 	self.props.mapedit_mode = "viewport"
+	self.active_transform = nil
 end
 
 function ProvMapEdit:enterTransformMode(transform_mode)
-	assert(transform_mode)
+	assert(transform_mode and (transform_mode == "translate" or transform_mode == "rotate" or transform_mode == "scale"))
 	CONTROL_LOCK.MAPEDIT_VIEW.close()
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.open()
 	self.props.mapedit_mode = "transform"
 	self.props.mapedit_transform_mode = transform_mode
+	self.active_transform = maptransform:newTransform(transform_mode)
 end
 
 function ProvMapEdit:getCurrentMode()
@@ -831,6 +836,13 @@ function ProvMapEdit:update(dt)
 	end
 	cam:update()
 	self:updateModelMatrices()
+
+	if self.active_transform then
+		local t = self.active_selection:getTransform(self.props.mapedit_cam)
+		if t then
+			print(unpack(t))
+		end
+	end
 
 	local map_mesh = self.props.mapedit_map_mesh
 	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
