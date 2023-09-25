@@ -1460,7 +1460,7 @@ function ProvMapEdit:update(dt)
 	if self.active_transform and (count % 25 == 0) then
 		local t = self.active_transform:getTransform(self.props.mapedit_cam)
 		if t then
-			print(t)
+			--print(t)
 		end
 	end
 	self:updateTransformationMatrix()

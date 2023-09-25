@@ -175,6 +175,8 @@ end
 
 local __tempvec3 = cpml.vec3.new()
 local __tempvec3t = {0,0,0}
+local __tempvec3cp1 = cpml.vec3.new()
+local __tempvec3cp2 = cpml.vec3.new()
 local function __getTransform_rotate(self, cam)
 	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 
@@ -191,6 +193,9 @@ local function __getTransform_rotate(self, cam)
 		local viewproj = cam:getViewProjMatrix()
 		local cursor = __tempvec3
 		cursor.x,cursor.y,cursor.z = win_w*0.5+mouse_dx*2, win_h*0.5+mouse_dy*2, 1.0
+		--cursor.x = cursor.x * 2.0
+		--cursor.y = cursor.y * 2.0
+		--cursor.z = cursor.z * 2.0
 
 		local P = unproject(cursor, viewproj, viewport)
 		local cam_pos = cam:getPosition()
@@ -199,14 +204,28 @@ local function __getTransform_rotate(self, cam)
 		dir[1] = P.x - cam_pos[1]
 		dir[2] = P.y - cam_pos[2]
 		dir[3] = P.z - cam_pos[3]
-		local x,y,z = cam:getInverseDirectionVector(dir)
+		local x,y,z = cam:getDirectionVector(dir)
+		local up_vector = __tempdirright
+		local x1,y1,z1 = cam:getDirectionVector(up_vector)
+
+		local v1 = __tempvec3cp1
+		local v2 = __tempvec3cp2
+		v1.x, v1.y, v1.z = x,y,z
+		v2.x, v2.y, v2.z = x1,y1,z1
+		local cross = cpml.vec3.cross(v1,v2)
+		local cross = cpml.vec3.cross(cross, v1)
+		cross = cross:normalize()
+
 		--local length = math.sqrt(x*x + y*y + z*z)
 		--x = x/length
 		--y = y/length
 		--z = z/length
 
 		--dir[1],dir[2],dir[3],dir[4]=x,y,z,1
-		return cpml.quat.new(dir)
+		--return cpml.quat.new(dir)
+		--return cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0))
+		return cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0))
+		--return cpml.quat.from_direction(v1, cpml.vec3.new(0,-1,0))
 		--return dir
 	end
 
