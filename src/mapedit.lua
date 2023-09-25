@@ -692,6 +692,23 @@ function ProvMapEdit:setupInputHandling()
 	self.transform_input:getEvent("transform_x_axis", "down"):addHook(transform_x_axis)
 	self.transform_input:getEvent("transform_y_axis", "down"):addHook(transform_y_axis)
 	self.transform_input:getEvent("transform_z_axis", "down"):addHook(transform_z_axis)
+
+	local transform_to_move = Hook:new(function ()
+		self:enterTransformMode("translate")
+		end)
+	local transform_to_rotate = Hook:new(function ()
+		self:enterTransformMode("rotate")
+		end)
+	local transform_to_scale = Hook:new(function ()
+		self:enterTransformMode("scale")
+		end)
+	self.transform_input:getEvent("transform_move", "down"):addHook(transform_to_move)
+	self.transform_input:getEvent("transform_rotate", "down"):addHook(transform_to_rotate)
+	self.transform_input:getEvent("transform_scale", "down"):addHook(transform_to_scale)
+end
+
+function ProvMapEdit:selectionEmpty()
+	return self.active_selection[1] == nil
 end
 
 local grabbed_mouse_x=0
@@ -716,6 +733,8 @@ end
 
 function ProvMapEdit:enterTransformMode(transform_mode)
 	assert(transform_mode and (transform_mode == "translate" or transform_mode == "rotate" or transform_mode == "scale"))
+
+	if self:selectionEmpty() then return end
 
 	local tile_selected, wall_selected, model_selected = self:getObjectTypesInSelection()
 
@@ -1159,13 +1178,15 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	end
 
 	if t_type == "rotate" then
-		local dir = __temptablett
-		dir[1] = info[1]
-		dir[2] = info[2]
-		dir[3] = info[3]
-		dir[4] = "dir"
-		rotateMatrix(mat, dir)
-		return mat
+		--local dir = __temptablett
+		--dir[1] = info[1]
+		--dir[2] = info[2]
+		--dir[3] = -info[3]
+		--dir[4] = "dir"
+		--rotateMatrix(mat, dir)
+		--return mat
+		local quat = info
+		return cpml.mat4.from_quaternion(quat)
 	end
 
 	if t_type == "scale" then
@@ -1439,7 +1460,7 @@ function ProvMapEdit:update(dt)
 	if self.active_transform and (count % 25 == 0) then
 		local t = self.active_transform:getTransform(self.props.mapedit_cam)
 		if t then
-			print(unpack(t))
+			print(t)
 		end
 	end
 	self:updateTransformationMatrix()
