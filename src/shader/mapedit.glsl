@@ -79,12 +79,18 @@ mat4 get_model_matrix() {
 }
 
 mat4 apply_ab_transformation(mat4 model) {
-	return u_transform_b * model * u_transform_a;
+	//return (u_transform_b * model) * u_transform_a;
+	return u_transform_b * u_transform_a * model;
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
 	//mat4 skin_u = get_model_matrix() * get_deform_matrix();
 	mat4 skin_u = get_model_matrix();
+
+	if (u_apply_ab_transformation) {
+		skin_u = apply_ab_transformation(skin_u);
+	}
+
 	mat4 skinview_u = u_view * skin_u;
 
 	frag_normal = normalize(get_normal_matrix(skin_u) * VertexNormal);

@@ -15,14 +15,14 @@ local MapEditGUIRender = {
 	__font_italic_fname = "LibreBaskerville-Italic.ttf",
 
 	cxtm_bg_col = {0.094,0.161,0.290},
-	__cxtm_bb = nil,
-	__cxtm_tt = nil,
-	__cxtm_rr = nil,
-	__cxtm_ll = nil,
-	__cxtm_tr = nil,
-	__cxtm_tl = nil,
-	__cxtm_br = nil,
-	__cxtm_bl = nil,
+	__cxtm_bb = nil, -- bottom border for a context menu box
+	__cxtm_tt = nil, -- top border for a context menu box
+	__cxtm_rr = nil, -- right border for a context menu box
+	__cxtm_ll = nil, -- left border
+	__cxtm_tr = nil, -- top right corner
+	__cxtm_tl = nil, -- top left corner
+	__cxtm_br = nil, -- bottom right corner
+	__cxtm_bl = nil, -- bottom left 
 
 	icons = {}
 }

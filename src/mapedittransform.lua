@@ -96,10 +96,16 @@ local function __getTransform_translate(self, cam)
 		-- from the camera's perspective, likewise for cam_relative_up_vector
 		local tdir_up    = {cam:getDirectionVector(__tempdirup)}
 		local tdir_right = {cam:getDirectionVector(__tempdirright)}
-		local x = mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1]
-		local y = mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2]
-		local z = mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3]
+		local x = mouse_dx * tdir_right[1] - mouse_dy * tdir_up[1]
+		local y = mouse_dx * tdir_right[2] - mouse_dy * tdir_up[2]
+		local z = mouse_dx * tdir_right[3] - mouse_dy * tdir_up[3]
 		return {x,y,z}
+	end
+
+	local function sign(x)
+		if x == 0.0 then return  0 end
+		if x  < 0.0 then return -1 end
+		if x  > 0.0 then return  1 end
 	end
 
 	if mode == "x" then
@@ -116,7 +122,15 @@ local function __getTransform_translate(self, cam)
 		local costheta = dot_p
 		local sintheta = sin(theta)
 
-		local x = costheta * mouse_dx - sintheta * mouse_dy
+		local forward_vector = __tempdirforward
+		local cam_f_vector = {cam:getDirectionVector(forward_vector)}
+
+		local dot_p = right_vector[1]*cam_f_vector[1] +
+                      right_vector[2]*cam_f_vector[2] +
+                      right_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local x = costheta * mouse_dx - sintheta * mouse_dy * dot_sign
 		return {x,0,0}
 	end
 
@@ -127,24 +141,18 @@ local function __getTransform_translate(self, cam)
 		local dot_p = up_vector[1]*cam_up_vector[1] +
                       up_vector[2]*cam_up_vector[2] +
                       up_vector[3]*cam_up_vector[3]
-		-- both right_vector and cam_right_vector are unit vectors, no need
-		-- to normalise
-		local theta = acos(dot_p)
-
 		local costheta = dot_p
-		local sintheta = sin(theta)
-
-		local y = costheta * mouse_dy - sintheta * mouse_dx
+		local y = costheta * mouse_dy
 		return {0,y,0}
 	end
 
 	if mode == "z" then
 		local forward_vector = __tempdirforward
-		local cam_right_vector = {cam:getDirectionVector(__tempdirright)}
+		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
 
-		local dot_p = forward_vector[1]*cam_right_vector[1] +
-                      forward_vector[2]*cam_right_vector[2] +
-                      forward_vector[3]*cam_right_vector[3]
+		local dot_p = forward_vector[1]*cam_forward_vector[1] +
+                      forward_vector[2]*cam_forward_vector[2] +
+                      forward_vector[3]*cam_forward_vector[3]
 		-- both right_vector and cam_right_vector are unit vectors, no need
 		-- to normalise
 		local theta = acos(dot_p)
@@ -152,7 +160,15 @@ local function __getTransform_translate(self, cam)
 		local costheta = dot_p
 		local sintheta = sin(theta)
 
-		local z = -(costheta * mouse_dx - sintheta * mouse_dy)
+		local right_vector = __tempdirright
+		local cam_f_vector = {cam:getDirectionVector(right_vector)}
+
+		local dot_p = forward_vector[1]*cam_f_vector[1] +
+                      forward_vector[2]*cam_f_vector[2] +
+                      forward_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local z = -sintheta * mouse_dx * dot_sign + costheta * mouse_dy
 		return {0,0,z}
 	end
 end
@@ -244,6 +260,12 @@ local function __getTransform_scale(self, cam)
 		return {x,y,z}
 	end
 
+	local function sign(x)
+		if x == 0.0 then return  0 end
+		if x  < 0.0 then return -1 end
+		if x  > 0.0 then return  1 end
+	end
+
 	if mode == "x" then
 		local right_vector = __tempdirright
 		local cam_right_vector = {cam:getDirectionVector(right_vector)}
@@ -258,8 +280,16 @@ local function __getTransform_scale(self, cam)
 		local costheta = dot_p
 		local sintheta = sin(theta)
 
-		local x = scale_map(costheta * mouse_dx - sintheta * mouse_dy)
-		return {x,1,1}
+		local forward_vector = __tempdirforward
+		local cam_f_vector = {cam:getDirectionVector(forward_vector)}
+
+		local dot_p = right_vector[1]*cam_f_vector[1] +
+                      right_vector[2]*cam_f_vector[2] +
+                      right_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local x = costheta * mouse_dx - sintheta * mouse_dy
+		return {scale_map(x),1,1}
 	end
 
 	if mode == "y" then
@@ -276,17 +306,17 @@ local function __getTransform_scale(self, cam)
 		local costheta = dot_p
 		local sintheta = sin(theta)
 
-		local y = scale_map(-(costheta * mouse_dy - sintheta * mouse_dx))
+		local y = scale_map(-costheta * mouse_dy)
 		return {1,y,1}
 	end
 
 	if mode == "z" then
 		local forward_vector = __tempdirforward
-		local cam_right_vector = {cam:getDirectionVector(__tempdirright)}
+		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
 
-		local dot_p = forward_vector[1]*cam_right_vector[1] +
-                      forward_vector[2]*cam_right_vector[2] +
-                      forward_vector[3]*cam_right_vector[3]
+		local dot_p = forward_vector[1]*cam_forward_vector[1] +
+                      forward_vector[2]*cam_forward_vector[2] +
+                      forward_vector[3]*cam_forward_vector[3]
 		-- both right_vector and cam_right_vector are unit vectors, no need
 		-- to normalise
 		local theta = acos(dot_p)
@@ -294,8 +324,16 @@ local function __getTransform_scale(self, cam)
 		local costheta = dot_p
 		local sintheta = sin(theta)
 
-		local z = scale_map( costheta * mouse_dx - sintheta * mouse_dy)
-		return {1,1,z}
+		local right_vector = __tempdirright
+		local cam_f_vector = {cam:getDirectionVector(right_vector)}
+
+		local dot_p = forward_vector[1]*cam_f_vector[1] +
+                      forward_vector[2]*cam_f_vector[2] +
+                      forward_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local z = -sintheta * mouse_dx + costheta * mouse_dy
+		return {1,1,scale_map(-z)}
 	end
 end
 

@@ -41,7 +41,8 @@ ProvMapEdit = {
 
 	active_transform = nil,
 	active_transform_mesh_mat = nil,
-	active_transform_model_mat = nil,
+	active_transform_model_mat_a = nil,
+	active_transform_model_mat_b = nil,
 
 	-- if non-nil, the camera will fly over to cam_move_to_pos coordinate
 	-- and rotate its direction to cam_rot_to_dir
@@ -70,7 +71,7 @@ ProvMapEdit.__index = ProvMapEdit
 
 function ProvMapEdit:load(args)
 	SET_ACTIVE_KEYBINDS(MAPEDIT_KEY_SETTINGS)
-	if not self.mapedit_shader then
+	if not self.map_edit_shader then
 		self.map_edit_shader = love.graphics.newShader("shader/mapedit.glsl") end
 	
 	local lvledit_arg = args["lvledit"]
@@ -576,6 +577,8 @@ function ProvMapEdit:setupInputHandling()
 	local viewport_select = Hook:new(function ()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, true)
+
+		if not obj then return end
 
 		if not super_modifier then
 			self:commitCommand("invertible_select", {select_objects={obj}})
@@ -1204,16 +1207,22 @@ function ProvMapEdit:getSelectionTransformationModelMatrix(transform, matrix)
 
 	local centre_v = __tempvec3c
 	local neg_centre_v = __tempvec3ci
+
 	centre_v.x, centre_v.y, centre_v.z = centre[1],centre[2],centre[3]
+
 	neg_centre_v.x = -centre_v.x
 	neg_centre_v.y = -centre_v.y
 	neg_centre_v.z = -centre_v.z
 
 	local mat_a, mat_b = __tempmat4A, __tempmat4B
-	mat_a:translate(neg_centre_v)
-	mat_b:translate(centre_v)
+	mat_a:translate(mat_a, neg_centre_v)
+	mat_b:translate(mat_b, centre_v)
+	--cpml.mat4.mul(mat_a, base_mat, mat_a)
 	cpml.mat4.mul(mat_a, base_mat, mat_a)
 
+	--print()
+	--print(base_mat)
+	--print(mat_a * mat_b)
 	return mat_a, mat_b
 end
 
@@ -1431,6 +1440,7 @@ function ProvMapEdit:update(dt)
 			print(unpack(t))
 		end
 	end
+	self:updateTransformationMatrix()
 
 	local map_mesh = self.props.mapedit_map_mesh
 	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
@@ -1442,6 +1452,25 @@ function ProvMapEdit:update(dt)
 
 	self:updateContextMenu()
 	self:updatePopupMenu()
+end
+
+function ProvMapEdit:updateTransformationMatrix()
+	local trans = self.active_transform
+	if not trans then return end
+	local a,b = self:getSelectionTransformationModelMatrix(trans)
+	self.active_transform_model_mat_a = a
+	self.active_transform_model_mat_b = b
+
+	local shader = self.map_edit_shader
+	shader:send("u_transform_a", "column", a)
+	shader:send("u_transform_b", "column", b)
+end
+
+function ProvMapEdit:isModelSelected(inst)
+	for i,v in ipairs(self.active_selection) do
+		if v[1] == "model" and v[2] == inst then return true end
+	end
+	return false
 end
 
 function ProvMapEdit:updateContextMenu()
@@ -1586,8 +1615,13 @@ function ProvMapEdit:drawModelsInViewport(shader)
 	love.graphics.setColor(1,1,1,1)
 	for i,v in ipairs(models) do
 		if not selected_models[v] then
+			shader:send("u_apply_ab_transformation", false)
 			v:draw(shader, false)
 		else
+			if self.active_transform then
+				shader:send("u_apply_ab_transformation", true)
+			end
+
 			v:draw(shader, false)
 			shadersend(shader, "u_solid_colour_enable", true)
 			love.graphics.setDepthMode( "always", false  )
@@ -1601,12 +1635,13 @@ function ProvMapEdit:drawModelsInViewport(shader)
 			love.graphics.setColor(1,1,1,1)
 		end
 	end
+	shader:send("u_apply_ab_transformation", false)
 end
 
 function ProvMapEdit:updateModelMatrices(subset)
-	local subset = subset or self.props.mapedit_model_insts
-	for i,v in ipairs(subset) do
-		v:modelMatrix()
+local subset = subset or self.props.mapedit_model_insts
+for i,v in ipairs(subset) do
+	v:modelMatrix()
 	end
 end
 
