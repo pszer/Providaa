@@ -7,12 +7,13 @@ require "angle"
 require "assetloader"
 
 local maptransform = require "mapedittransform"
-local shadersend = require "shadersend"
-local cpml       = require "cpml"
-local transobj   = require "transobj"
+local shadersend   = require "shadersend"
+local cpml         = require "cpml"
+local transobj     = require "transobj"
 
-local guirender = require 'mapeditguidraw'
+local guirender   = require 'mapeditguidraw'
 local contextmenu = require 'mapeditcontext'
+local popup       = require 'mapeditpopup'
 
 require "mapeditcommand"
 
@@ -58,6 +59,7 @@ ProvMapEdit = {
 	super_modifier = false,
 
 	curr_context_menu = nil,
+	curr_popup = nil,
 
 	clipboard = {}
 
@@ -289,23 +291,30 @@ function ProvMapEdit:defineCommands()
 
 	coms["deselect_all"] = MapEditCom:define(
 		{
-		 {"past_selection", "table", nil, PropDefaultTable(self.active_selection)}
+		 {"past_selection", "table", nil, PropDefaultTable(self.active_selection)},
+		 {"memory", "table", nil, PropDefaultTable{}}
 		},
 		function(props) -- command function
 			self.selection_changed = true
 			local mapedit = self
-			for i,v in ipairs(mapedit.active_selection) do
-				self:highlightObject(v, 0.0)
+			if props.memory[1] == nil then
+				for i,v in ipairs(mapedit.active_selection) do
+					table.insert(props.memory, v)
+				end
 			end
-			mapedit.active_selection = {}
+
+			for i=#mapedit.active_selection,1,-1 do
+				self:highlightObject(mapedit.active_selection[i], 0.0)
+				table.remove(mapedit.active_selection, i)
+			end
 		end, -- command function
 
 		function(props) -- undo command function
 			self.selection_changed = true
 			local mapedit = self
-			mapedit.active_selection = props.past_selection
-			for i,v in ipairs(mapedit.active_selection) do
+			for i,v in ipairs(props.memory) do
 				self:highlightObject(v, 1.0)
+				table.insert(mapedit.active_selection, i, v)
 			end
 		end -- undo command function
 		)
@@ -606,7 +615,11 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 
 	local viewport_deselect = Hook:new(function ()
-		 self:viewportRightClickAction() end)
+		local selection_empty = self.active_selection[1] == nil
+		if not selection_empty then
+			self:viewportRightClickAction()
+		end
+	end)
 	self.viewport_input:getEvent("edit_deselect", "down"):addHook(viewport_deselect)
 
 	local viewport_undo = Hook:new(function ()
@@ -1350,6 +1363,7 @@ function ProvMapEdit:update(dt)
 	end
 
 	self:updateContextMenu()
+	self:updatePopupMenu()
 end
 
 function ProvMapEdit:updateContextMenu()
@@ -1359,6 +1373,15 @@ function ProvMapEdit:updateContextMenu()
 	end
 	local x,y = love.mouse.getX(), love.mouse.getY()
 	self.context_menu_hovered = self.curr_context_menu:updateHoverInfo(x,y)
+end
+
+function ProvMapEdit:updatePopupMenu()
+	if not self.curr_popup then return end
+	local p = self.curr_popup
+	if p:expire() then
+		p:release()
+		self.curr_popup = nil
+	end
 end
 
 function ProvMapEdit:interpCameraToPos(dt)
@@ -1622,6 +1645,11 @@ function ProvMapEdit:drawContextMenu()
 	if not cxtm then return end
 	cxtm:draw()
 end
+function ProvMapEdit:drawPopup()
+	local p = self.curr_popup
+	if not p then return end
+	p:draw()
+end
 
 function ProvMapEdit:draw()
 	self:drawViewport()
@@ -1633,6 +1661,7 @@ function ProvMapEdit:draw()
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.setDepthMode( "always", false  )
 	self:drawContextMenu()
+	self:drawPopup()
 end
 
 local __tempdir = {}
