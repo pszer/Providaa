@@ -4,7 +4,7 @@ Event.__index = Event
 function Event:new()
 	local this = {
 		hooks = {},
-		lock = false
+		_lock = false
 	}
 
 	this.hooks[0] = 0 -- index 0 is used for hooks table length
@@ -17,21 +17,19 @@ end
 -- if an event is locked, it won't notify any of its hooks
 -- in Event:raise()
 function Event:lock()
-	self.lock = true end
+	self._lock = true end
 function Event:unlock()
-	self.lock = false end
+	self._lock = false end
 function Event:isLocked()
-	return self.lock end
+	return self._lock end
 
 function Event:raise(args)
-	if self.lock then return end
+	if self._lock then return end
 
-	prof.push("teh_call")
 	local h = self.hooks
 	for i=1,h[0] do
 		h[i].call(args)
 	end
-	prof.pop("teh_call")
 end
 
 function Event:addHook( hook )

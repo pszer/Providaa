@@ -442,19 +442,19 @@ function ProvMapEdit:defineContextMenus()
 		{
 		 {"select_objects", "table", nil, PropDefaultTable{}},
 		},
-		 {"Copy",      action=function() print("cop") end, icon = "mapedit/icon_copy.png"},
+		 {"Copy",      action=function(props) print("cop") end, icon = "mapedit/icon_copy.png"},
 
-		 {"Duplicate", action=function() print("dup") end, icon = "mapedit/icon_dup.png"},
+		 {"Duplicate", action=function(props) print("dup") end, icon = "mapedit/icon_dup.png"},
 
-		 {"~(orange)~bDelete", action=function() self:commitCommand("delete_obj") end,
+		 {"~(orange)~bDelete", action=function(props) self:commitCommand("delete_obj") end,
 		 	icon = "mapedit/icon_del.png"},
 
 		 {"--Transform--"},
 		 {"Flip", suboptions = function(props)
 		 	return {
 			 {"... by ~b~(lred)X~r axis", action=function() print("flipx") end},
-			 {"... by ~b~(lgreen)Y~r axis", action=function() print("flipx") end},
-			 {"... by ~b~(lblue)Z~r axis", action=function() print("flipx") end},
+			 {"... by ~b~(lgreen)Y~r axis", action=function() print("flipy") end},
+			 {"... by ~b~(lblue)Z~r axis", action=function() print("flipz") end},
 			}
 		 	end}
 		 )
@@ -559,10 +559,12 @@ function ProvMapEdit:setupInputHandling()
 	local viewport_rotate_start = Hook:new(function ()
 		self.view_rotate_mode = true
 		self:captureMouse()
+		self.viewport_input:lockInverse{"cam_rotate","cam_forward","cam_backward","cam_left","cam_right","cam_up","cam_down"}
 	end)
 	local viewport_rotate_finish = Hook:new(function ()
 		self.view_rotate_mode = false
 		self:releaseMouse()
+		self.viewport_input:unlockAll()
 	end)
 	self.viewport_input:getEvent("cam_rotate","down"):addHook(viewport_rotate_start)
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)

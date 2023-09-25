@@ -75,7 +75,7 @@ end
 --
 -- ~R ~r reset to default
 --
--- example, the word example will be drawn in bold and the substring "sent" in
+-- example, the word "example" will be drawn in bold and the substring "sent" in
 -- the word sentence will be red
 -- This is an ~Bexample~B ~(0xFF0000)sent~(0xFFFFFF)ence
 --

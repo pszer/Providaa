@@ -34,16 +34,24 @@ function InputHandler:new( level , keybinds )
 			up    = Event:new(),
 			press = Event:new(),
 
-			level = k_level
+			level = k_level,
+			lock = function(self)
+				self.down:lock()
+				self.held:lock()
+				self.up:lock()
+				self.press:lock()
+			end,
+			unlock = function(self)
+				self.down:unlock()
+				self.held:unlock()
+				self.up:unlock()
+				self.press:unlock()
+			end
 		}
 	end
 
 	setmetatable(this, InputHandler)
 	return this
-end
-
-function InputHandler:hookToKeybind(hook, keybind)
-
 end
 
 -- goes over all of its keybinds and checks their status, raising the appropiate events
@@ -72,6 +80,42 @@ function InputHandler:poll()
 			events.press:raise(__temptable)
 		end
 		prof.pop("raise_events")
+	end
+end
+
+function InputHandler:unlockAll()
+	for i,v in pairs(self) do
+		v:unlock()
+	end
+end
+
+function InputHandler:lock(keybinds)
+	for i,v in ipairs(keybinds) do
+		local ev = self[i]
+		if ev then ev:lock() end
+	end
+end
+
+function InputHandler:lockInverse(keybinds)
+	if type(keybinds) == "table" then
+		for i,v in pairs(self) do
+			local in_set = false
+			for j,u in ipairs(keybinds) do
+				if u == i then
+					in_set = true
+					break
+				end
+			end
+			if not in_set then
+				v:lock()
+			end
+		end
+	else
+		for i,v in pairs(self) do
+			if i ~= keybinds then
+				v:lock()
+			end
+		end
 	end
 end
 

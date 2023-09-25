@@ -209,12 +209,27 @@ local function __getTransform_rotate(self, cam)
 		return dir
 	end
 
+	local function sign(x)
+		if x == 0.0 then return  0 end
+		if x  < 0.0 then return -1 end
+		if x  > 0.0 then return  1 end
+	end
+
 	mouse_dx = mouse_dx * (8/win_w)
 	mouse_dy = mouse_dy * (8/win_h)
 	local sin,cos = math.sin,math.cos
 	if mode == "x" then
-		local y = sin(mouse_dy)
-		local z = -cos(mouse_dy)
+		local forward_vector = __tempdirforward
+		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
+
+		local dot_p = forward_vector[1]*cam_forward_vector[1] +
+                      forward_vector[2]*cam_forward_vector[2] +
+                      forward_vector[3]*cam_forward_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local y = sin(mouse_dy * dot_sign)
+		local z = -cos(mouse_dy * dot_sign)
+		print(dot_sign)
 		return {0,y,z}
 	end
 	if mode == "y" then
@@ -223,8 +238,16 @@ local function __getTransform_rotate(self, cam)
 		return {x,0,z}
 	end
 	if mode == "z" then
-		local z = -cos(mouse_dx)
-		return {0,0,z}
+		local right_vector = __tempdirright
+		local cam_f_vector = {cam:getDirectionVector(right_vector)}
+		local dot_p = right_vector[1]*cam_f_vector[1] +
+                      right_vector[2]*cam_f_vector[2] +
+                      right_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+		print("z")
+		local x = sin(mouse_dy * -dot_sign)
+		local y = -cos(mouse_dy * -dot_sign)
+		return {x,y,0}
 	end
 end
 
