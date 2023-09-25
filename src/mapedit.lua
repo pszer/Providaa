@@ -580,7 +580,7 @@ function ProvMapEdit:setupInputHandling()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, true)
 
-		if not obj then return end
+		if not obj then self:deselectSelection() end
 
 		if not super_modifier then
 			self:commitCommand("invertible_select", {select_objects={obj}})
@@ -622,8 +622,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 
 	local viewport_deselect = Hook:new(function ()
-		local selection_empty = self.active_selection[1] == nil
-		if not selection_empty then
+		if not self:selectionEmpty() then
 			self:viewportRightClickAction()
 		end
 	end)
@@ -1041,6 +1040,12 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 	end
 end
 
+function ProvMapEdit:deselectSelection()
+	if not self:selectionEmpty() then
+		self:commitCommand("deselect_all", {})
+	end
+end
+
 -- returns tile_exists, wall_exists, models_exists
 function ProvMapEdit:getObjectTypesInSelection(selection)
 	local selection = selection or self.active_selection
@@ -1158,6 +1163,24 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	local info = transform:getTransform(self.props.mapedit_cam)
 	local t_type = transform:getTransformType()
 
+	local function getScaleByDist()
+		local w = love.graphics.getDimensions()
+		local centre = self:getSelectionCentreAndMinMax()
+		if not centre then
+			return 1.0
+		end
+		local cam_pos = self.props.mapedit_cam:getPosition()
+		local dx = centre[1] - cam_pos[1]
+		local dy = centre[2] - cam_pos[2]
+		local dz = centre[3] - cam_pos[3]
+		local l = math.sqrt(dx*dx + dy*dy + dz*dz)
+		if l == 0 then return 1.0 end
+		l = (l*(90/50000))/(w/1366)
+		return l
+		--if l > 1 then return 1.0 end
+		--return l*l*l
+	end
+
 	local __id = {
 		1,0,0,0,
 		0,1,0,0,
@@ -1170,30 +1193,25 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	local mat = __tempmat4tt
 	if t_type == "translate" then
 		local translate = __tempvec3tt
-		translate.x = info[1]
-		translate.y = info[2]
-		translate.z = info[3]
+		local s = getScaleByDist()
+		translate.x = info[1]*s
+		translate.y = info[2]*s
+		translate.z = info[3]*s
 		mat:translate(mat, translate)
 		return mat
 	end
 
 	if t_type == "rotate" then
-		--local dir = __temptablett
-		--dir[1] = info[1]
-		--dir[2] = info[2]
-		--dir[3] = -info[3]
-		--dir[4] = "dir"
-		--rotateMatrix(mat, dir)
-		--return mat
 		local quat = info
 		return cpml.mat4.from_quaternion(quat)
 	end
 
 	if t_type == "scale" then
 		local scale = __tempvec3tt
-		scale.x = info[1]
-		scale.y = info[2]
-		scale.z = info[3]
+		local s = 1.0
+		scale.x = info[1]*s
+		scale.y = info[2]*s
+		scale.z = info[3]*s
 		mat:scale(mat, scale)
 		return mat
 	end
