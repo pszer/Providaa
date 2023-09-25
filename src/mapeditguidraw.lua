@@ -13,6 +13,18 @@ local MapEditGUIRender = {
 	__font_fname        = "LibreBaskerville-Regular.ttf",
 	__font_bold_fname   = "LibreBaskerville-Bold.ttf",
 	__font_italic_fname = "LibreBaskerville-Italic.ttf",
+
+	cxtm_bg_col = {0.094,0.161,0.290},
+	__cxtm_bb = nil,
+	__cxtm_tt = nil,
+	__cxtm_rr = nil,
+	__cxtm_ll = nil,
+	__cxtm_tr = nil,
+	__cxtm_tl = nil,
+	__cxtm_br = nil,
+	__cxtm_bl = nil,
+
+	icons = {}
 }
 MapEditGUIRender.__index = MapEditGUIRender
 
@@ -30,6 +42,25 @@ function MapEditGUIRender:initAssets()
 	self.font_italic = Loader:getTTFReference(self.__font_italic_fname)
 	self.font_italic = love.graphics.newFont(self.font_italic, 16, "light")
 	assert(self.font_italic)
+
+	self.__cxtm_bb = Loader:getTextureReference("mapedit/cxtm_bb.png")
+	self.__cxtm_tt = Loader:getTextureReference("mapedit/cxtm_tt.png")
+	self.__cxtm_ll = Loader:getTextureReference("mapedit/cxtm_ll.png")
+	self.__cxtm_rr = Loader:getTextureReference("mapedit/cxtm_rr.png")
+	self.__cxtm_br = Loader:getTextureReference("mapedit/cxtm_br.png")
+	self.__cxtm_bl = Loader:getTextureReference("mapedit/cxtm_bl.png")
+	self.__cxtm_tr = Loader:getTextureReference("mapedit/cxtm_tr.png")
+	self.__cxtm_tl = Loader:getTextureReference("mapedit/cxtm_tl.png")
+
+	local icon_list = {
+		"mapedit/icon_del.png",
+		"mapedit/icon_dup.png",
+		"mapedit/icon_copy.png",
+		"mapedit/icon_sub.png"
+	}
+	for i,v in ipairs(icon_list) do
+		self.icons[v] = Loader:getTextureReference(v)
+	end
 end
 
 --
@@ -103,6 +134,8 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		["lyellow"] = 0xFFFF80,
 		["lgreen"]  = 0x80FF80,
 		["lblue"]   = 0x8080FF,
+		["lred"]    = 0xFF8080,
+		["lgray"]   = 0xBBBBBB
 	}
 
 	while true do
@@ -227,7 +260,45 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	end
 	love.graphics.setCanvas()
 
-	return substrs, canvas
+	return canvas
+end
+
+function MapEditGUIRender:createContextMenuBackground(w,h, col)
+	local canvas = love.graphics.newCanvas(w,h)
+
+	cxtm_bb = self.__cxtm_bb 
+	cxtm_tt = self.__cxtm_tt 
+	cxtm_rr = self.__cxtm_rr 
+	cxtm_ll = self.__cxtm_ll 
+	cxtm_tr = self.__cxtm_tr 
+	cxtm_tl = self.__cxtm_tl 
+	cxtm_br = self.__cxtm_br 
+	cxtm_bl = self.__cxtm_bl
+
+	local bg_col = self.cxtm_bg_col
+	local col = col or {1,1,1}
+
+	love.graphics.origin()
+	love.graphics.setShader()
+	love.graphics.setCanvas(canvas)
+	love.graphics.clear(bg_col[1],bg_col[2],bg_col[3],1)
+	love.graphics.setColor(col[1],col[2],col[3],1)
+
+	love.graphics.draw(cxtm_tl,0  ,0,   0, 1,1)
+	love.graphics.draw(cxtm_tr,w-2,0,   0, 1,1)
+	love.graphics.draw(cxtm_bl,0  ,h-2, 0, 1,1)
+	love.graphics.draw(cxtm_br,w-2,h-2, 0, 1,1)
+
+	local w2 = w-4
+	local h2 = h-4
+	love.graphics.draw(cxtm_ll,0  ,2  , 0, 1 ,h2)
+	love.graphics.draw(cxtm_rr,w-2,2  , 0, 1 ,h2)
+	love.graphics.draw(cxtm_tt,2  ,0  , 0, w2,1 )
+	love.graphics.draw(cxtm_bb,2  ,h-2, 0, w2,1 )
+
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.setCanvas()
+	return canvas
 end
 
 return MapEditGUIRender

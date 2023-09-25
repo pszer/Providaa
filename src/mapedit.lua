@@ -384,9 +384,19 @@ function ProvMapEdit:defineContextMenus()
 	context["select_models_context"] = 
 		contextmenu:define(
 		{
-		 {"select_objects", "table", nil, PropDefaultTable{}}
+		 {"select_objects", "table", nil, PropDefaultTable{}},
 		},
-		 {"~bDelete", action=function() print("del") end}
+		 {"Copy",      action=function() print("cop") end, icon = "mapedit/icon_copy.png"},
+		 {"Duplicate", action=function() print("dup") end, icon = "mapedit/icon_dup.png"},
+		 {"~(orange)~bDelete", action=function() print("del") end, icon = "mapedit/icon_del.png"},
+		 {"--Transform--"},
+		 {"Flip", suboptions = function(props)
+		 	return {
+			 {"... by ~b~(lred)X~r axis", action=function() print("flipx") end},
+			 {"... by ~b~(lgreen)Y~r axis", action=function() print("flipx") end},
+			 {"... by ~b~(lblue)Z~r axis", action=function() print("flipx") end},
+			}
+		 	end}
 		 )
 end
 
@@ -397,10 +407,42 @@ function ProvMapEdit:openContextMenu(context_name, props)
 	local context = context_def:new(props)
 	assert(context)
 
+	CONTROL_LOCK.MAPEDIT_CONTEXT.open()
+
+	self.curr_context_menu = context
 	return context
 end
 
+function ProvMapEdit:exitContextMenu()
+	if self.curr_context_menu then
+		self.curr_context_menu:release()
+		self.curr_context_menu = nil
+	end
+	CONTROL_LOCK.MAPEDIT_CONTEXT.close()
+end
+
 function ProvMapEdit:setupInputHandling()
+	--
+	-- CONTEXT MENU MODE INPUTS
+	--
+	self.cxtm_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_CONTEXT,
+	                                   {"cxtm_select","cxtm_scroll_up","cxtm_scroll_down"})
+
+	local cxtm_select_option = Hook:new(function ()
+		local cxtm = self.curr_context_menu
+		if not cxtm then
+			self:exitContextMenu()
+			return end
+		local hovered_opt = cxtm:getCurrentlyHoveredOption()
+		if not hovered_opt then
+			self:exitContextMenu()
+			return end
+		local action = hovered_opt.action
+		if action then action() end
+		self:exitContextMenu()
+	end)
+	self.cxtm_input:getEvent("cxtm_select", "down"):addHook(cxtm_select_option)
+
 	--
 	-- VIEWPORT MODE INPUTS
 	--
@@ -1187,6 +1229,7 @@ function ProvMapEdit:update(dt)
 	local mode = self.props.mapedit_mode
 	self.viewport_input:poll()
 	self.transform_input:poll()
+	self.cxtm_input:poll()
 	self:interpCameraToPos(dt)
 	cam:update()
 	self:updateModelMatrices()
@@ -1206,6 +1249,17 @@ function ProvMapEdit:update(dt)
 		self.selection_changed = false
 		self.__cache_recalc_selection_centre = true
 	end
+
+	self:updateContextMenu()
+end
+
+function ProvMapEdit:updateContextMenu()
+	if not self.curr_context_menu then
+		self.context_menu_hovered = false
+		return
+	end
+	local x,y = love.mouse.getX(), love.mouse.getY()
+	self.context_menu_hovered = self.curr_context_menu:updateHoverInfo(x,y)
 end
 
 function ProvMapEdit:interpCameraToPos(dt)
@@ -1464,9 +1518,22 @@ function ProvMapEdit:drawSelectedHighlight(shader)
 	love.graphics.setColor(1,1,1,1)
 end
 
+function ProvMapEdit:drawContextMenu()
+	local cxtm = self.curr_context_menu
+	if not cxtm then return end
+	cxtm:draw()
+end
+
 function ProvMapEdit:draw()
 	self:drawViewport()
 	Renderer.renderScaledDefault()
+
+	love.graphics.setCanvas()
+	love.graphics.setShader()
+	love.graphics.origin()
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.setDepthMode( "always", false  )
+	self:drawContextMenu()
 end
 
 local __tempdir = {}
@@ -1551,4 +1618,8 @@ function ProvMapEdit:transform_mousemoved(x,y,dx,dy)
 	local transform_mode = self.props.mapedit_transform_mode
 	if transform_mode == "translate" then
 	end
+end
+
+function ProvMapEdit:resize(w,h)
+	self:exitContextMenu()
 end
