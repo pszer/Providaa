@@ -25,6 +25,10 @@ uniform mat4 u_model;
 uniform mat4 u_proj;
 uniform mat4 u_normal_model;
 
+uniform bool u_apply_ab_transformation;
+uniform mat4 u_transform_a;
+uniform mat4 u_transform_b;
+
 uniform float curve_coeff;
 uniform bool curve_flag;
 
@@ -48,9 +52,9 @@ attribute float HighlightAttribute;
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
-mat4 get_deform_matrix() {
-	return mat4(1.0);
-}
+//mat4 get_deform_matrix() {
+//	return mat4(1.0);
+//}
 
 mat3 get_normal_matrix(mat4 skin_u) {
 	return mat3(transpose(inverse(skin_u)));
@@ -74,8 +78,13 @@ mat4 get_model_matrix() {
 	}
 }
 
+mat4 apply_ab_transformation(mat4 model) {
+	return u_transform_b * model * u_transform_a;
+}
+
 vec4 position(mat4 transform, vec4 vertex) {
-	mat4 skin_u = get_model_matrix() * get_deform_matrix();
+	//mat4 skin_u = get_model_matrix() * get_deform_matrix();
+	mat4 skin_u = get_model_matrix();
 	mat4 skinview_u = u_view * skin_u;
 
 	frag_normal = normalize(get_normal_matrix(skin_u) * VertexNormal);

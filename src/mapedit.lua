@@ -40,6 +40,8 @@ ProvMapEdit = {
 	highlight_mesh = nil,
 
 	active_transform = nil,
+	active_transform_mesh_mat = nil,
+	active_transform_model_mat = nil,
 
 	-- if non-nil, the camera will fly over to cam_move_to_pos coordinate
 	-- and rotate its direction to cam_rot_to_dir
@@ -1128,7 +1130,7 @@ end
 local __tempmat4tt = cpml.mat4.new()
 local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
-function ProvMapEdit:getMatrixFromMapEditTransformation(transform)
+function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	local info = transform:getTransform(self.props.mapedit_cam)
 	local t_type = transform:getTransformType()
 
@@ -1170,6 +1172,82 @@ function ProvMapEdit:getMatrixFromMapEditTransformation(transform)
 		return mat
 	end
 	error()
+end
+
+-- takes in a transformation matrix,
+-- 2nd argument is an optional precalculated result from getBaseMatrixFromMapEditTransformation
+-- returns two matrices a,b
+-- b*model_mat*a gives the post-transformation model matrix for a model
+-- matrix "a" translates a point by -selection_centre and applies the map edit transformation
+-- matrix "b" translates the point back by +selection_centre
+local __tempmat4A = cpml.mat4.new()
+local __tempmat4B = cpml.mat4.new()
+local __tempvec3c = cpml.vec3.new()
+local __tempvec3ci = cpml.vec3.new()
+function ProvMapEdit:getSelectionTransformationModelMatrix(transform, matrix)
+	local base_mat = matrix or self:getBaseMatrixFromMapEditTransformation(transform)
+
+	local centre = self:getSelectionCentreAndMinMax()
+	if not centre then
+		error()
+	end
+	
+	local __id = {
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1}
+	for i=1,16 do
+		__tempmat4A[i] = __id[i]
+		__tempmat4B[i] = __id[i]
+	end
+
+	local centre_v = __tempvec3c
+	local neg_centre_v = __tempvec3ci
+	centre_v.x, centre_v.y, centre_v.z = centre[1],centre[2],centre[3]
+	neg_centre_v.x = -centre_v.x
+	neg_centre_v.y = -centre_v.y
+	neg_centre_v.z = -centre_v.z
+
+	local mat_a, mat_b = __tempmat4A, __tempmat4B
+	mat_a:translate(neg_centre_v)
+	mat_b:translate(centre_v)
+	cpml.mat4.mul(mat_a, base_mat, mat_a)
+
+	return mat_a, mat_b
+end
+
+local __tempmat4T = cpml.mat4.new()
+local __tempvec3T = cpml.vec3.new()
+-- returns translation matrix
+function ProvMapEdit:getTileTransformationMatrix(transform)
+	local __id = {
+		1,0,0,0,
+		0,1,0,0,
+		0,0,1,0,
+		0,0,0,1}
+	for i=1,16 do
+		__tempmat4T[i] = __id[i]
+	end
+
+	local t_type = transform:getTransformType()
+
+	-- the only valid type of transformation for tiles
+	-- is a translation, return an identity matrix for
+	-- anything inappropiate
+	if t_type ~= "translate" then
+		return __tempmat4T
+	end
+
+	local t_vec = __tempvec3T
+	local mat = __tempmat4T
+	local info = transform:getTransform(self.props.mapedit_cam)
+	-- tiles can only move up and down
+	t_vec.x = 0
+	t_vec.y = info[2]
+	t_vec.z = 0
+	mat:translate(t_vec)
+	return mat
 end
 
 function ProvMapEdit:newCamera()
