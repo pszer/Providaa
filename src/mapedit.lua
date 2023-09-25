@@ -9,6 +9,7 @@ require "assetloader"
 local maptransform = require "mapedittransform"
 local shadersend = require "shadersend"
 local cpml       = require "cpml"
+local transobj   = require "transobj"
 
 local guirender = require 'mapeditguidraw'
 local contextmenu = require 'mapeditcontext'
@@ -56,7 +57,9 @@ ProvMapEdit = {
 
 	super_modifier = false,
 
-	curr_context_menu = nil
+	curr_context_menu = nil,
+
+	clipboard = {}
 
 }
 ProvMapEdit.__index = ProvMapEdit
@@ -307,6 +310,47 @@ function ProvMapEdit:defineCommands()
 		end -- undo command function
 		)
 
+	coms["delete_obj"] = MapEditCom:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
+		 --{"object_memory", "table", nil, PropDefaultTable()},
+		},
+		function (props) -- command function
+			local insts = {}
+			for i,v in ipairs(props.select_objects) do
+				local obj_type = v[1]
+				if obj_type == "model" then
+					local inst = v[2]
+					--local transf = transobj:from(inst)
+					--table.insert(props.object_memory, {inst, transf})
+					table.insert(insts, inst)
+				else
+					error()
+				end
+			end
+			-- collecting the models into a table first to 
+			-- pass into removeModel should be more efficient for
+			-- large delete operations
+			self:removeModelInstance(insts)
+		end, -- command function
+		function (props) -- undo command function
+			local insts = {}
+			for i,v in ipairs(props.select_objects) do
+				local obj_type = v[1]
+				if obj_type == "model" then
+					local inst = v[2]
+					--local transf = transobj:from(inst)
+					--table.insert(props.object_memory, {inst, transf})
+					table.insert(insts, inst)
+				else
+					error()
+				end
+			end
+
+			self:addModelInstance(insts)
+		end -- undo command function
+	)
+
 	coms["transform"] = MapEditCom:define(
 		{
 		 {"selection", "table", nil, PropDefaultTable(self.active_selection)},
@@ -387,8 +431,12 @@ function ProvMapEdit:defineContextMenus()
 		 {"select_objects", "table", nil, PropDefaultTable{}},
 		},
 		 {"Copy",      action=function() print("cop") end, icon = "mapedit/icon_copy.png"},
+
 		 {"Duplicate", action=function() print("dup") end, icon = "mapedit/icon_dup.png"},
-		 {"~(orange)~bDelete", action=function() print("del") end, icon = "mapedit/icon_del.png"},
+
+		 {"~(orange)~bDelete", action=function() self:commitCommand("delete_obj") end,
+		 	icon = "mapedit/icon_del.png"},
+
 		 {"--Transform--"},
 		 {"Flip", suboptions = function(props)
 		 	return {
@@ -664,6 +712,57 @@ end
 
 function ProvMapEdit:getCurrentMode()
 	return self.props.mapedit_mode
+end
+
+function ProvMapEdit:addModelInstance(inst)
+	local minsts = self.props.mapedit_model_insts
+	local arg_type = provtype(inst)
+
+	if arg_type == "table" then
+		for i,v in ipairs(inst) do
+			table.insert(minsts, v)
+		end
+	elseif arg_type == "modelinstance" then
+		table.insert(minsts, inst)
+	else
+		error(string.format("ProvMapEdit:addModel(): unexpected argument of type %s, expected modelinstance/table", tostring(arg_type)))
+	end
+end
+
+function ProvMapEdit:removeModelInstance(inst)
+	local minsts = self.props.mapedit_model_insts
+	local arg_type = provtype(inst)
+
+	if arg_type == "table" then
+		local set = {}
+		local set_count = 0
+		for i,v in ipairs(inst) do
+			set[i] = v
+			set_count = set_count + 1
+		end
+
+		for i=#minsts,1,-1 do
+			for j,u in ipairs(set) do
+				if minsts[i] == u then
+					table.remove(set, j)
+					table.remove(minsts, i)
+					set_count = set_count - 1
+					break
+				end
+			end
+
+			if set_count == 0 then break end
+		end
+	elseif arg_type == "modelinstance" then
+		for i=#minsts,1,-1 do
+			if minsts[i] == inst then
+				table.remove(minsts, i)
+				return
+			end
+		end
+	else
+		error(string.format("ProvMapEdit:removeModel(): unexpected argument of type %s, expected modelinstance/table", tostring(arg_type)))
+	end
 end
 
 -- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}

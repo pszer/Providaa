@@ -81,21 +81,33 @@ function MapEditContext:define(prototype, ...)
 						local bg  = v.bg
 						local txt = v.text
 						local icon = v.icon
-						if v.hover then
-							love.graphics.setColor(0,0,0,1)
-						end
-						love.graphics.draw(bg,x,y)
-						love.graphics.setColor(1,1,1,1)
 						local bl = MapEditContext.buffer_l_no_icon
 						if icon then
 							bl = MapEditContext.buffer_l
-							love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
+						end
+						love.graphics.draw(bg,x,y)
+						if v.hover then
+							local mode, alphamode = love.graphics.getBlendMode()
+							love.graphics.setColor(255/255,161/255,66/255,0.8)
+							love.graphics.setBlendMode("add","alphamultiply")
+							love.graphics.rectangle("fill",x,y,v.w,v.h)
+							love.graphics.setColor(1,1,1,1)
+							love.graphics.setBlendMode("subtract","alphamultiply")
+							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
+							if icon then
+								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
+							end
+							love.graphics.setBlendMode(mode, alphamode)
+						else
+							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
+							if icon then
+								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
+							end
 						end
 						if v.suboptions then
 							love.graphics.draw(guirender.icons["mapedit/icon_sub.png"],
 								x + v.w - MapEditContext.buffer_sub_r, y + MapEditContext.buffer_sub_t)
 						end
-						love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
 					end
 
 					local function draw_option_list(opts, draw_option_list)
