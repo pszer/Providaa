@@ -60,6 +60,7 @@ ProvMapEdit = {
 	rotate_cam_point = nil,
 
 	super_modifier = false,
+	ctrl_modifier  = false,
 
 	curr_context_menu = nil,
 	curr_popup = nil,
@@ -509,7 +510,9 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                                       {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
 										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
-										   {"super",CONTROL_LOCK.META},{"toggle_anim_tex",CONTROL_LOCK.META},"cam_zoom_in","cam_zoom_out",
+										   "cam_zoom_in","cam_zoom_out",
+										   {"super",CONTROL_LOCK.META},{"toggle_anim_tex",CONTROL_LOCK.META},{"ctrl",CONTROL_LOCK.META},
+
 										   "transform_move","transform_rotate","transform_scale"})
 
 	local forward_v  = {0 , 0,-1}
@@ -582,7 +585,7 @@ function ProvMapEdit:setupInputHandling()
 
 		if not obj then self:deselectSelection() end
 
-		if not super_modifier then
+		if not self.super_modifier then
 			self:commitCommand("invertible_select", {select_objects={obj}})
 			additive_select_obj = obj
 			return
@@ -591,6 +594,8 @@ function ProvMapEdit:setupInputHandling()
 		if not additive_select_obj then
 			if obj[1] == "tile" then
 				additive_select_obj = obj
+			else
+				additive_select_obj = nil
 			end
 			self:commitCommand("additive_select", {select_objects={obj}})
 			return
@@ -599,21 +604,24 @@ function ProvMapEdit:setupInputHandling()
 		local x1,z1,x2,z2
 		local min,max = math.min,math.max
 		if obj[1] == "tile" then
-			x1 = min(obj[2], additive_select_obj[2])
-			z1 = min(obj[3], additive_select_obj[3])
-			x2 = max(obj[2], additive_select_obj[2])
-			z2 = max(obj[3], additive_select_obj[3])
+			if self:isSelected(additive_select_obj) then
+				x1 = min(obj[2], additive_select_obj[2])
+				z1 = min(obj[3], additive_select_obj[3])
+				x2 = max(obj[2], additive_select_obj[2])
+				z2 = max(obj[3], additive_select_obj[3])
 
-			local objs_in_range = {}
-			for x=x1,x2 do
-				for z=z1,z2 do
-					table.insert(objs_in_range, {"tile",x,z})
+				local objs_in_range = {}
+				for x=x1,x2 do
+					for z=z1,z2 do
+						table.insert(objs_in_range, {"tile",x,z})
+					end
 				end
-			end
 
-			self:commitCommand("additive_select", {select_objects=objs_in_range})
-			additive_select_obj = nil
-			return
+				self:commitCommand("additive_select", {select_objects=objs_in_range})
+				additive_select_obj = nil
+				return
+			end
+			self:commitCommand("additive_select", {select_objects=obj})
 		end
 
 		additive_select_obj = nil
@@ -632,10 +640,10 @@ function ProvMapEdit:setupInputHandling()
 		self:commitUndo() end)
 	local viewport_redo = Hook:new(function ()
 		self:commitRedo() end)
-	local enable_super_hook = Hook:new(function ()
-		super_modifier = true end)
-	local disable_super_hook = Hook:new(function ()
-		super_modifier = false end)
+	local enable_super_hook = Hook:new(function () self.super_modifier = true end)
+	local disable_super_hook = Hook:new(function () self.super_modifier = false end)
+	local enable_ctrl_hook = Hook:new(function () self.ctrl_modifier = true end)
+	local disable_ctrl_hook = Hook:new(function () self.ctrl_modifier = false end)
 	local toggle_anim_tex = Hook:new(function ()
 		self.props.mapedit_enable_tex_anim = not self.props.mapedit_enable_tex_anim end)
 
@@ -643,6 +651,8 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_redo","down"):addHook(viewport_redo)
 	self.viewport_input:getEvent("super", "down"):addHook(enable_super_hook)
 	self.viewport_input:getEvent("super", "up"):addHook(disable_super_hook)
+	self.viewport_input:getEvent("ctrl", "down"):addHook(enable_ctrl_hook)
+	self.viewport_input:getEvent("ctrl", "up"):addHook(disable_ctrl_hook)
 	self.viewport_input:getEvent("toggle_anim_tex", "up"):addHook(toggle_anim_tex)
 
 	-- 
@@ -738,7 +748,12 @@ function ProvMapEdit:enterTransformMode(transform_mode)
 	local tile_selected, wall_selected, model_selected = self:getObjectTypesInSelection()
 
 	if transform_mode ~= "translate" and (tile_selected or wall_selected) then
-		print("Tiles/walls cannot be rotated.")
+		if transform_mode == "rotate" then
+			self:displayPopup("Tiles cannot be rotated")
+		else
+			self:displayPopup("Tiles cannot be scaled")
+		end
+		--print("Tiles/walls cannot be rotated.")
 		return
 	end
 
@@ -801,6 +816,15 @@ function ProvMapEdit:removeModelInstance(inst)
 	else
 		error(string.format("ProvMapEdit:removeModel(): unexpected argument of type %s, expected modelinstance/table", tostring(arg_type)))
 	end
+end
+
+function ProvMapEdit:applyTransformObjOntoModel(model, t_obj)
+	local pos = t_obj.position
+	local rot = t_obj.rotation
+	local scl = t_obj.scale
+	model:setPosition(pos)
+	model:setRotation(rot)
+	model:setScale(scl)
 end
 
 -- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}
@@ -1260,11 +1284,25 @@ function ProvMapEdit:getSelectionTransformationModelMatrix(transform, matrix)
 	mat_b:translate(mat_b, centre_v)
 	--cpml.mat4.mul(mat_a, base_mat, mat_a)
 	cpml.mat4.mul(mat_a, base_mat, mat_a)
+	cpml.mat4.mul(mat_a, mat_b, mat_a)
 
-	--print()
-	--print(base_mat)
-	--print(mat_a * mat_b)
-	return mat_a, mat_b
+	--return mat_a, mat_b
+	return mat_a
+end
+
+function ProvMapEdit:applyMapEditTransformOntoModel(model, trans)
+	local t_type = trans:getTransformType()
+	if t_type == "translate" then
+		
+	end
+
+	if t_type == "rotation" then
+
+	end
+
+	if t_type == "scale" then
+
+	end
 end
 
 local __tempmat4T = cpml.mat4.new()
@@ -1498,13 +1536,13 @@ end
 function ProvMapEdit:updateTransformationMatrix()
 	local trans = self.active_transform
 	if not trans then return end
-	local a,b = self:getSelectionTransformationModelMatrix(trans)
+	local a = self:getSelectionTransformationModelMatrix(trans)
 	self.active_transform_model_mat_a = a
-	self.active_transform_model_mat_b = b
+	--self.active_transform_model_mat_b = b
 
 	local shader = self.map_edit_shader
 	shader:send("u_transform_a", "column", a)
-	shader:send("u_transform_b", "column", b)
+	--shader:send("u_transform_b", "column", b)
 end
 
 function ProvMapEdit:isModelSelected(inst)
@@ -1521,6 +1559,10 @@ function ProvMapEdit:updateContextMenu()
 	end
 	local x,y = love.mouse.getX(), love.mouse.getY()
 	self.context_menu_hovered = self.curr_context_menu:updateHoverInfo(x,y)
+end
+
+function ProvMapEdit:displayPopup(str, ...)
+	self.curr_popup = popup:throw(str, ...)
 end
 
 function ProvMapEdit:updatePopupMenu()
@@ -1670,10 +1712,18 @@ function ProvMapEdit:drawModelsInViewport(shader)
 			local mode, alphamode = love.graphics.getBlendMode()
 			love.graphics.setBlendMode("screen","premultiplied")
 			v:draw(shader, false)
-			shadersend(shader, "u_solid_colour_enable", false)
-			love.graphics.setDepthMode( "less", true  )
-			love.graphics.setBlendMode(mode, alphamode)
+
 			love.graphics.setColor(1,1,1,1)
+			shadersend(shader, "u_solid_colour_enable", false)
+			shadersend(shader,"u_wireframe_enabled", true)
+			love.graphics.setWireframe( true )
+
+			v:draw(shader, false)
+
+			love.graphics.setDepthMode( "less", true  )
+			shadersend(shader,"u_wireframe_enabled", false)
+			love.graphics.setBlendMode(mode, alphamode)
+			love.graphics.setWireframe( false )
 		end
 	end
 	shader:send("u_apply_ab_transformation", false)
@@ -1765,6 +1815,19 @@ end
 
 function ProvMapEdit:isSelectionEmpty()
 	return self:selectionCount() == 0
+end
+
+function ProvMapEdit:isSelected(obj)
+	local function table_eq(a,b)
+		for i,v in ipairs(a) do
+			if v~=b[i] then return false end end
+		return true
+	end
+	assert_type(obj, "table")
+	for i,v in ipairs(self.active_selection) do
+		if table_eq(obj,v) then return true end
+	end
+	return false
 end
 
 function ProvMapEdit:drawSelectedHighlight(shader)

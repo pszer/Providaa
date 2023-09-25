@@ -27,7 +27,7 @@ uniform mat4 u_normal_model;
 
 uniform bool u_apply_ab_transformation;
 uniform mat4 u_transform_a;
-uniform mat4 u_transform_b;
+//uniform mat4 u_transform_b;
 
 uniform float curve_coeff;
 uniform bool curve_flag;
@@ -80,7 +80,8 @@ mat4 get_model_matrix() {
 
 mat4 apply_ab_transformation(mat4 model) {
 	//return (u_transform_b * model) * u_transform_a;
-	return u_transform_b * u_transform_a * model;
+	//return u_transform_b * u_transform_a * model;
+	return u_transform_a * model;
 }
 
 vec4 position(mat4 transform, vec4 vertex) {

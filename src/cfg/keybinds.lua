@@ -46,19 +46,20 @@ GAME_KEY_SETTINGS = {
 
 MAPEDIT_KEY_SETTINGS = {
 
-	["cam_left"]     = { "left"   , "a"    , default = "left"   },
-	["cam_right"]    = { "right"  , "d"    , default = "right"  },
-	["cam_forward"]  = { "up"     , "w"    , default = "up"     },
-	["cam_backward"] = { "down"   , "s"    , default = "down"   },
-	["cam_up"]       = { "space"  ,  nil   , default = "space"  },
-	["cam_down"]     = { "lctrl"  ,  nil   , default = "lctrl"  },
-	["cam_rotate"]   = { "mouse3" ,  nil   , default = "mouse3" },
-	["cam_reset"]    = { "kp0"    , "home" , default = "kp0"},
-	["cam_centre"]   = { "kp."    , "home" , default = "kp."},
+	["cam_left"]     = { "a"      , nil    , default = "a"     },
+	["cam_right"]    = { "d"      , nil    , default = "d"     },
+	["cam_forward"]  = { "w"      , nil    , default = "w"     },
+	["cam_backward"] = { "s"      , nil    , default = "s"     },
+	["cam_up"]       = { "up"     , nil    , default = "up"    },
+	["cam_down"]     = { "down"   , nil    , default = "down"  },
+	["cam_rotate"]   = { "mouse3" , nil    , default = "mouse3" },
+	["cam_reset"]    = { "kp0"    , "home" , default = "kp0"   },
+	["cam_centre"]   = { "kp."    , "home" , default = "kp."   },
 	["cam_zoom_in"]  = { "wheeldown", nil   , default = "wheeldown"},
 	["cam_zoom_out"] = { "wheelup" , nil   , default = "wheelup"},
 
 	["super"]           = { "lshift" , nil    , default = "lshift"},
+	["ctrl"]            = { "lctrl"  , nil    , default = "lctrl"},
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
 
 	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },
