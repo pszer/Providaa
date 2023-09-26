@@ -377,7 +377,7 @@ function ProvMapEdit:defineCommands()
 			self:addModelInstance(props.objects)
 		end, -- command function
 		function (props) -- undo command function
-			self:removeModelInstance(props.objects)
+			self:removeModelInstance(prop.objects)
 		end -- undo command function
 	)
  
@@ -452,37 +452,6 @@ function ProvMapEdit:commitCommand(command_name, props)
 	command:commit()
 end
 
-function ProvMapEdit:pushCommand(command)
-	local pointer = self.props.mapedit_command_pointer
-	local command_history = self.props.mapedit_command_stack
-	local history_length = #command_history
-	-- if the command pointer isn'at the top of the stack (i.e. there have been undo operations)
-	-- we prune any commands after it
-	local pruned=false
-	for i=pointer+1,history_length do
-		pruned=true
-		command_history[i] = nil
-	end
-	if pruned then collectgarbage("step",5000) end
-
-	table.insert(command_history, command)
-
-	-- add the new command to the stack, shifting it down if maximum limit of
-	-- remembered commands is reached
-	history_length = #command_history
-	if history_length > self.props.mapedit_command_stack_max then
-		for i=1,history_length-1 do
-			command_history[i] = command_history[i+1]
-		end
-		command_history[history_length] = nil
-		self.props.mapedit_command_pointer = history_length
-	else
-		self.props.mapedit_command_pointer = history_length
-	end
-
-	command:commit()
-end
-
 function ProvMapEdit:commitComposedCommand(...)
 	local com_args = {...}
 	local coms = {}
@@ -494,9 +463,6 @@ function ProvMapEdit:commitComposedCommand(...)
 		local command = command_definition:new(v[2])
 		coms[i] = command
 	end
-
-	local composed = commands:compose(coms)
-	self:pushCommand(composed)
 end
 
 function ProvMapEdit:commitUndo()
@@ -530,7 +496,7 @@ function ProvMapEdit:defineContextMenus()
 		},
 		 {"Copy",      action=function(props) self:copySelectionToClipboard() end, icon = "mapedit/icon_copy.png"},
 
-		 {"Duplicate", action=function(props) self:pasteClipboard() end, icon = "mapedit/icon_dup.png"},
+		 {"Duplicate", action=function(props) print("dup") end, icon = "mapedit/icon_dup.png"},
 
 		 {"~(orange)~bDelete", action=function(props) self:commitCommand("delete_obj") end,
 		 	icon = "mapedit/icon_del.png"},
@@ -1619,11 +1585,10 @@ function ProvMapEdit:copySelectionToClipboard()
 	end
 end
 
-function ProvMapEdit:pasteClipboard()
+function ProvMap:pasteClipboard()
 	local objs
 	local selection = {}
-	--if self.clipboard_paste_count == 0 then
-	if false then
+	if self.clipboard_paste_count == 0 then
 		objs = self.clipboard
 	else
 		objs = {}
@@ -1637,11 +1602,6 @@ function ProvMapEdit:pasteClipboard()
 	end
 
 	--self:addModelInstance(objs)
-	self:commitComposedCommand(
-	 {"deselect_all", {}},
-	 {"add_obj", {objects=objs}},
-	 {"additive_select", {select_objects = selection}}
-	)
 
 	self.clipboard_paste_count = self.clipboard_paste_count + 1
 end

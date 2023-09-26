@@ -25,6 +25,8 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_models", "table", nil, PropDefaultTable{}, "table of map's model definitions"},
 	{"mapedit_model_insts", "table", nil, PropDefaultTable{}, "table of map's model instances to draw in viewport"},
 
+	{"mapedit_model_groups", "table", nil, PropDefaultTable{}, "table of map's model groups"},
+
 	{"mapedit_tileset", "table", nil, PropDefaultTable{}, "tileset for active map"},
 	{"mapedit_wallset", "table", nil, PropDefaultTable{}, "wallset for active map"},
 

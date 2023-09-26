@@ -158,10 +158,9 @@ __props_inst_mt = {
 		end
 	end,
 
-	-- removed, anyplace where this would be used is bad practice
-	--props.__pairs = function (p)
-	--	return pairs(p.__proptabledata)
-	--end,
+	__pairs = function (p)
+		return pairs(p)
+	end,
 
 	__tostring = function (p)
 		local result = ""

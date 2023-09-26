@@ -192,6 +192,26 @@ function ModelInstance:__new(props)
 	return this
 end
 
+function ModelInstance:clone()
+	local function clone(dest, t, clone)
+		for i,v in pairs(t) do
+			local typ = provtype(v)
+			if typ ~= "table" then
+				dest[i] = v
+			else
+				dest[i] = {}
+				clone(dest[i], v, clone)
+			end
+		end
+		return dest
+	end
+
+	local t ={}
+	clone(t, self.props, clone)
+	if t.model_i_reference then t.model_i_reference:ref() end
+	return ModelInstance:__new(t)
+end
+
 function ModelInstance:newInstance(model, props)
 	local p
 

@@ -1,6 +1,6 @@
 require "prop"
 
-MapEditCom = {}
+local MapEditCom = {}
 MapEditCom.__index = MapEditCom
 
 function MapEditCom:define(prototype, action, undo)
@@ -27,3 +27,27 @@ function MapEditCom:define(prototype, action, undo)
 
 	return obj
 end
+
+function MapEditCom:compose(coms)
+	local this = {
+		props  = nil,
+
+		commit = function(self)
+			local I = #coms
+			for i=1,I do
+				coms[i]:commit()
+			end
+		end,
+
+		undo = function(self)
+			local I = #coms
+			for i=I,1,-1 do
+				coms[i]:undo()
+			end
+		end
+	}
+
+	return this
+end
+
+return MapEditCom
