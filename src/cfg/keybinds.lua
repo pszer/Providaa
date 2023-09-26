@@ -69,7 +69,7 @@ MAPEDIT_KEY_SETTINGS = {
 
 	["transform_move"]   = { "g"      , nil , default = "g" },
 	["transform_rotate"] = { "r"      , nil , default = "r" },
-	["transform_scale"]  = { "p"      , nil , default = "p" },
+	["transform_scale"]  = { "e"      , nil , default = "p" },
 	["transform_cancel"] = { "mouse2" , nil , default = "mouse2" },
 	["transform_commit"] = { "mouse1" , nil , default = "mouse1" },
 	["transform_x_axis"] = { "x" , nil, default = "x" },

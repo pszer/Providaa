@@ -336,13 +336,19 @@ local function __getTransform_scale(self, cam)
 		-- (mouse_dx * cam_relative_right_vector) + (mouse_dy * cam_relative_up_vector)
 		-- where cam_relative_right_vector is the vector pointing directly right
 		-- from the camera's perspective, likewise for cam_relative_up_vector
-		local tdir_up    = {cam:getDirectionVector(__tempdirup)}
-		local tdir_right = {cam:getDirectionVector(__tempdirright)}
-		local x = mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1]
-		local y = -(mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2])
-		local z = -(mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3])
-		local dist = math.sqrt(x*x + y*y + z*z)
-		local s = scale_map(dist)
+		--
+		--local tdir_up    = {cam:getDirectionVector(__tempdirup)}
+		--local tdir_right = {cam:getDirectionVector(__tempdirright)}
+		--local x = mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1]
+		--local y = -(mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2])
+		--local z = -(mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3])
+		--local dist = math.sqrt(x*x + y*y + z*z)
+		
+		--local sign
+		--if mouse_dx+mouse_dy < 0 then sign=-1 else sign=1 end
+		--local dist = math.sqrt(mouse_dx*mouse_dx + mouse_dy*mouse_dy)
+		--local s = scale_map(dist * sign)
+		local s = math.max(scale_map(mouse_dx),1/8.0)
 		return {s,s,s, type="scale"}
 	end
 
@@ -566,13 +572,13 @@ local __flipz = { 1, 1,-1, type="scale"}
 
 local FlipXT = MapEditTransform:new(0,0)
 FlipXT.getTransform = function(self,cam) return __flipx end
-FlipXT.transformation_type = "flip"
+FlipXT.transformation_type = "scale"
 local FlipYT = MapEditTransform:new(0,0)
 FlipYT.getTransform = function(self,cam) return __flipy end
-FlipYT.transformation_type = "flip"
+FlipYT.transformation_type = "scale"
 local FlipZT = MapEditTransform:new(0,0)
 FlipZT.getTransform = function(self,cam) return __flipz end
-FlipZT.transformation_type = "flip"
+FlipZT.transformation_type = "scale"
 
 MapEditTransform.flip_x_const = FlipXT
 MapEditTransform.flip_y_const = FlipYT

@@ -385,6 +385,7 @@ function ProvMapEdit:defineCommands()
 	coms["transform"] = commands:define(
 		{
 		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
+		 {"transform_info", nil, nil, nil},
 		 {"memory", "table", nil, PropDefaultTable{}},
 		 {"transform_function", nil, nil, nil}
 		},
@@ -399,7 +400,8 @@ function ProvMapEdit:defineCommands()
 			end
 
 			if not props.transform_function then
-				props.transform_function = self:applyActiveTransformationFunction(props.select_objects)
+				--props.transform_function = self:applyActiveTransformationFunction(props.select_objects)
+				props.transform_function = self:applyTransformationFunction(props.select_objects, props.transform_info)
 			end
 			props.transform_function()
 		end, -- command function
@@ -655,9 +657,12 @@ function ProvMapEdit:defineContextMenus()
 		 {"--Transform--"},
 		 {"Flip", suboptions = function(props)
 		 	return {
-			 {"... by ~b~(lred)X~r Axis", action=function() print("flipx") end},
-			 {"... by ~b~(lgreen)Y~r Axis", action=function() print("flipy") end},
-			 {"... by ~b~(lblue)Z~r Axis", action=function() print("flipz") end},
+			 {"... by ~b~(lred)X~r Axis", action=function()
+				self:commitCommand("transform", {transform_info=maptransform.flip_x_const}) end},
+			 {"... by ~b~(lgreen)Y~r Axis", action=function()
+				self:commitCommand("transform", {transform_info=maptransform.flip_y_const}) end},
+			 {"... by ~b~(lblue)Z~r Axis", action=function()
+				self:commitCommand("transform", {transform_info=maptransform.flip_z_const}) end},
 			}
 		 	end}
 		 )
@@ -881,9 +886,8 @@ function ProvMapEdit:setupInputHandling()
 	                                       {"transform_move", "transform_scale", "transform_rotate", "transform_cancel", "transform_commit",
 										    "transform_x_axis", "transform_y_axis", "transform_z_axis"})
 	local transform_commit = Hook:new(function ()
-		--self:applyActiveTransformation()
 		if not self:selectionEmpty() then
-			self:commitCommand("transform", {})
+			self:commitCommand("transform", {transform_info=self.active_transform})
 		end
 		self:enterViewportMode()
 		end)
@@ -1667,10 +1671,15 @@ function ProvMapEdit:applyMapEditTransformOntoModel(model, trans, precomp_mat, p
 end
 
 function ProvMapEdit:applyActiveTransformationFunction(objs)
-	if next(objs) == nil then return end
-	if self:selectionEmpty() then return end
 	local trans = self.active_transform
-	if not trans then return end
+	if not trans then return function() end end
+	return self:applyTransformationFunction(objs, trans)
+end
+
+function ProvMapEdit:applyTransformationFunction(objs, trans)
+	if next(objs) == nil then return function() end end
+	if self:selectionEmpty() then return function() end end
+	if not trans then return function() end end
 
 	local mat,info = self:getSelectionTransformationModelMatrix(trans)
 

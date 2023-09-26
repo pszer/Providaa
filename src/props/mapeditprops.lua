@@ -11,7 +11,7 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_filename", nil, nil, nil, "working map's filename"},
 
 	{"mapedit_mode", "string", "viewport", PropIsOneOf{"viewport","transform"}},
-	{"mapedit_transform_mode", "string", "translate", PropIsOneOf{"translate","rotate","scale","flip"}},
+	{"mapedit_transform_mode", "string", "translate", PropIsOneOf{"translate","rotate","scale"}},
 
 	{"mapedit_cam", nil, nil, nil, "camera for map edit view" },
 	{"mapedit_cam_speed", "number", 400, nil, "camera move speed"},
@@ -49,7 +49,7 @@ MapEditPropPrototype = Props:prototype{
 	                                                              each entry is a start index, the next 4 vertices starting from that
 																  index in the mesh are the vertices for the tile]]},
 	{"mapedit_wall_vertices", "table", nil, PropDefaultTable{}, [[map_width x map_height mapping of walls to their vertices in map_mesh,
-	                                                              each entry is {west=int/nil, south=int/nil, east=int/nil, north=int/ni;}
+	                                                              each entry is {west=int/nil, south=int/nil, east=int/nil, north=int/nil;}
 	                                                              each number is a start index, the next 4 vertices starting from that
 																  index in the mesh are the vertices for the tile]]}
 

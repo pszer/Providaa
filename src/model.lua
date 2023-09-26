@@ -298,6 +298,22 @@ local __mat4temp = cpml.mat4.new()
 function ModelInstance:modelMatrix()
 	local model_mode = self.props.model_i_transformation_mode
 
+	-- calculates the determinanet of the 3x3 portion in a 4x4 matrix
+	-- 1 2 3
+	-- 4 5 6
+	-- 7 8 9
+	--
+	-- 1  2  3  4
+	-- 5  6  7  8
+	-- 9  10 11 12
+	-- 13 14 15 16
+	function det(matrix)
+		local det = matrix[1] * (matrix[6] * matrix[11] - matrix[7] * matrix[10])
+				  - matrix[2] * (matrix[5] * matrix[11] - matrix[7] * matrix[9])
+				  + matrix[3] * (matrix[5] * matrix[10] - matrix[6] * matrix[9])
+		return det
+	end
+
 	if model_mode == "component" then
 		if not self.model_moved then
 			return self.static_model_matrix, self.static_normal_matrix
@@ -339,8 +355,11 @@ function ModelInstance:modelMatrix()
 		norm_m = norm_m:invert(m)
 		norm_m = norm_m:transpose(norm_m)
 
+
 		self.static_model_matrix = m
 		self.static_normal_matrix = norm_m
+		local m_det = det(m)
+		self.props.model_i_matrix_det = m_det
 
 		self.model_moved = false
 
@@ -373,6 +392,8 @@ function ModelInstance:modelMatrix()
 		norm_m = norm_m:transpose(norm_m)
 		--self.static_model_matrix = 
 		self.static_normal_matrix = norm_m
+		local m_det = det(m)
+		self.props.model_i_matrix_det = m_det
 
 		self.recalculate_bounds_flag = true
 		self:calculateBoundingBox()
@@ -628,6 +649,10 @@ function ModelInstance:draw(shader, is_main_pass)
 	self:sendToShader(shader)
 	prof.pop("model_shader_send")
 
+	local det = self.props.model_i_matrix_det
+	if det > 0 then
+		love.graphics.setFrontFaceWinding("cw") end
+
 	local modelprops = self:getModel().props
 
 	local props = self.props
@@ -641,6 +666,10 @@ function ModelInstance:draw(shader, is_main_pass)
 	else
 		shadersend(shader,"texture_animated", false)
 		self:callDrawMesh()
+	end
+
+	if det > 0 then
+		love.graphics.setFrontFaceWinding("ccw")
 	end
 	prof.pop("model_drawwww")
 end
