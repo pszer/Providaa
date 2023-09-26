@@ -77,19 +77,21 @@
 --
 --     all the static models in a map
 --     each entry is of the form
---     {name="model.iqm", pos={6,6,6}, orient={0,0,0,"rot"}, scale={1,1,1}}
---     the orientation and scale parameters are optional and default to no rotation and no scaling
+--     {name="model.iqm", pos={6,6,6}}
+--     or
+--     {name="model.iqm", matrix={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}}
 --
 --     the position is given in tile coordinates, the actual world position will be (x*TILE_SIZE, y*TILE_HEIGHT, z*TILE_SIZE)
 --     the position can have either 3 components or 2 components, 3 components specify (x,y,z) and 2 components specify only (x,?,z), the
 --     model's y position is then determined by the height of the tile at (x,z)
 --
---     when specifying a models orientation using a "rot" type rotation, the angles are in degrees
+--     a model matrix can be specified instead of a position vector
 --
 --     models =
 --     {
 --      {name="model.iqm", pos={6,6,6}, orient={0,0,-1,"dir"}, scale={1,1,1}},
---      {name="model2.iqm", pos={7,8}, orient={0,1.5,0,"rot"}, scale={1,1,1}},
+--      {name="model.iqm", pos={6,6,6}}
+--      {name="model.iqm", matrix={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}}
 --     }
 --
 -- }
@@ -1035,7 +1037,7 @@ function Map.generateModelInstances(map, dont_use_instancing)
 		for i,v in ipairs(indices) do
 			local mod_info = model_defs[v]
 
-			local mod_pos    = mod_info.pos
+			--[[local mod_pos    = mod_info.pos
 			local mod_orient = mod_info.orient or default_rot
 			local mod_scale  = mod_info.scale  or default_scale
 			local final_pos
@@ -1065,7 +1067,28 @@ function Map.generateModelInstances(map, dont_use_instancing)
 				final_rot = {0,0,0,"rot"}
 			end
 
-			indices[i] = ModelInfo.new(final_pos, final_rot, final_scale)
+			indices[i] = ModelInfo.new(final_pos, final_rot, final_scale)--]]
+
+			local mod_pos = mod_info.pos
+			local mod_mat = mod_info.matrix
+
+			if mod_mat then
+				indices[i] = ModelInfo.newFromMatrix(cpml.mat4.new(mod_mat))
+			else
+				local final_pos
+				if #mod_pos == 3 then
+					final_pos = {mod_pos[1] * TILE_SIZE, mod_pos[2] * TILE_HEIGHT, mod_pos[3] * TILE_SIZE}
+				else
+					local y = Map.getHeightsInterp(map, mod_pos[1], mod_pos[3])
+					final_pos = {mod_pos[1] * TILE_SIZE, y * TILE_HEIGHT, mod_pos[3] * TILE_SIZE}
+				end
+
+				local mat = cpml.mat4.new()
+				local vec = cpml.vec3.new(final_pos)
+				mat:translate(mat, vec)
+				--indices[i] = ModelInfo.new(final_pos, {0,0,-1,"dir",{1,1,1}})
+				indices[i] = ModelInfo.newFromMatrix(mat)
+			end
 		end
 
 		local model_inst = nil
@@ -1151,19 +1174,32 @@ function Map.malformedCheck(map)
 	for i,v in ipairs(models) do
 		local mod_name   = v.name
 		local mod_pos    = v.pos
-		local mod_orient = v.orient
-		local mod_scale  = v.scale
+		local mod_matrix = v.matrix
 
 		if not mod_name then
 			return string.format("Map %s model index %d is missing a model name", name, i) end
-		if not mod_pos then
-			return string.format("Map %s model index %d with model %s is missing a model position", name, i, mod_name) end
-		if #mod_pos ~= 2 and #mod_pos ~= 3 then
-			return string.format("Map %s model index %d with model %s has a malformed position", name, i, mod_name) end
-		if mod_orient and #mod_orient ~= 4 then
-			return string.format("Map %s model index %d with model %s has a malformed orientation", name, i, mod_name) end
-		if mod_scale and #mod_scale ~= 3 then
-			return string.format("Map %s model index %d with model %s has a malformed scale", name, i, mod_name) end
+		if not mod_pos and not mod_matrix then
+			return string.format("Map %s model index %d with model %s is missing a model position/model matrix", name, i, mod_name) end
+		if mod_pos then
+			if #mod_pos ~= 3 then
+				return string.format("Map %s model index %d with model %s has a malformed position", name, i, mod_name) 
+			end
+			for I=1,3 do
+				if type(mod_pos[I]) ~= "number" then
+					return string.format("Map %s model index %d with model %s has a malformed position, non-number data", name, i, mod_name) 
+				end
+			end
+		end
+		if mod_matrix then
+			if #mod_matrix ~= 16 then
+				return string.format("Map %s model index %d with model %s has a malformed matrix", name, i, mod_name)
+			end
+			for I=1,16 do
+				if type(mod_matrix[I]) ~= "number" then
+					return string.format("Map %s model index %d with model %s has a malformed matrix, non-number data", name, i, mod_name) 
+				end
+			end
+		end
 	end
 
 	if #height_map ~= h then

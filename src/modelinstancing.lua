@@ -38,6 +38,17 @@ function ModelInfo.new(pos, rot, scale)
 	return p
 end
 
+function ModelInfo.newFromMatrix(mat)
+	local p = {
+		position = nil,
+		rotation = nil,
+		scale    = nil,
+		matrix   = mat
+	}
+	setmetatable(p, ModelInfo)
+	return p
+end
+
 -- alias
 INSTANCE = ModelInfo.new
 
@@ -49,25 +60,32 @@ function ModelInfo.newMeshFromInfoTable(model, instances)
 	for i,instance in ipairs(instances) do
 		local vertex = {}
 
-		local m = __tempmat4
-		for i=1,16 do
-			m[i] = __tempid[i]
-		end
+		if instance.matrix then
+			local m = __tempmat4
+			for i=1,16 do
+				m[i] = instance.matrix[i]
+			end
+			mat4mul(m,m,model:getDirectionFixingMatrix())
+			for i=1,16 do
+				vertex[i] = m[i]
+			end
+		else
+			local m = __tempmat4
+			for i=1,16 do
+				m[i] = __tempid[i]
+			end
 
-		m:scale(m,  cpml.vec3(instance.scale))
+			m:scale(m,  cpml.vec3(instance.scale))
 
-		rotateMatrix(m, instance.rotation)
-		--m:rotate(m, instance.rotation[1], cpml.vec3.unit_x)
-		--m:rotate(m, instance.rotation[2], cpml.vec3.unit_y)
-		--m:rotate(m, instance.rotation[3], cpml.vec3.unit_z)
+			rotateMatrix(m, instance.rotation)
 
-		m:translate(m, cpml.vec3( instance.position ))
+			m:translate(m, cpml.vec3( instance.position ))
 
-		--m = m * model:getDirectionFixingMatrix()
-		mat4mul(m,m,model:getDirectionFixingMatrix())
+			mat4mul(m,m,model:getDirectionFixingMatrix())
 
-		for i=1,16 do
-			vertex[i] = m[i]
+			for i=1,16 do
+				vertex[i] = m[i]
+			end
 		end
 
 		verts[i] = vertex

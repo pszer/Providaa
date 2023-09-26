@@ -38,9 +38,16 @@ ModelInstancePropPrototype = Props:prototype{
 
 	{"model_i_reference", nil, nil, nil, "the model this instance is referencing" },
 
+	{"model_i_transformation_mode", "string", "component", nil, PropIsOneOf{"component","matrix"},
+	[[a model can be transformed either by specifying a position, rotation and scale component from which a model matrix is then
+	  derived, or a model matrix can be supplied directly. component mode is much easier to work with and recommended
+	  for dynamic models]]},
+
 	{"model_i_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position, don't change directly use setPosition"},
 	{"model_i_rotation", "table", nil, PropDefaultTable{0,0,0,"rot"}, "model's world rotation, don't change directly use setRotation"},
 	{"model_i_scale"   , "table", nil, PropDefaultTable{1,1,1}, "model's scale, don't change directly use setScale"},
+
+	{"model_i_matrix", nil, nil, PropDefaultMatrix(), "matrix to use if transformation_mode is in matrix mode"},
 
 	--{"model_i_outline_flag", "boolean", false, nil,                     "whether to draw an outline around this model"},
 	{"model_i_outline_colour", "table", nil, PropDefaultTable{0,0,0,1}, "model's contour colour"},

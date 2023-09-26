@@ -6,15 +6,17 @@
 -- transform = MapEditTransform:newTranslate()
 -- transform = MapEditTransform:newRotate()
 -- transform = MapEditTransform:newScale()
+-- transform = MapEditTransform:newFlip()
 --
 -- to get the transformation, you call transform:getTransform(cam) where cam
 -- is the Camera object for the scene.
 -- it will automatically get the current mouse position and determine the 
 -- appropiate transformation based on the current view.
 -- depending on the type of transformation, it will return a:
--- {x,y,z}   translation
--- {x,y,z,w} quaternion
--- {x,y,z}   scale factors
+-- {x,y,z, type="translate"}   translation
+-- {quaternion, type="rotate"} rotation
+-- {x,y,z, type="scale"}   scaling
+-- {x,y,z, type="scale"}   scale factors (for a flip transformation)
 --
 -- transformations can be axis-locked, to toggle axis-locking call
 -- transform:lockX() / lockY() / lockZ()
@@ -28,7 +30,8 @@
 
 local cpml = require 'cpml'
 
-local MapEditTransform = {}
+local MapEditTransform = {
+}
 MapEditTransform.__index = MapEditTransform
 
 function MapEditTransform:new(mousex, mousey)
@@ -99,7 +102,7 @@ local function __getTransform_translate(self, cam)
 		local x = mouse_dx * tdir_right[1] - mouse_dy * tdir_up[1]
 		local y = mouse_dx * tdir_right[2] - mouse_dy * tdir_up[2]
 		local z = mouse_dx * tdir_right[3] - mouse_dy * tdir_up[3]
-		return {x,y,z}
+		return {x,y,z, type = "translate"}
 	end
 
 	local function sign(x)
@@ -131,7 +134,7 @@ local function __getTransform_translate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local x = costheta * mouse_dx - sintheta * mouse_dy * dot_sign
-		return {x,0,0}
+		return {x,0,0, type = "translate"}
 	end
 
 	if mode == "y" then
@@ -143,7 +146,7 @@ local function __getTransform_translate(self, cam)
                       up_vector[3]*cam_up_vector[3]
 		local costheta = dot_p
 		local y = costheta * mouse_dy
-		return {0,y,0}
+		return {0,y,0, type = "translate"}
 	end
 
 	if mode == "z" then
@@ -169,7 +172,7 @@ local function __getTransform_translate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local z = -sintheta * mouse_dx * dot_sign + costheta * mouse_dy
-		return {0,0,z}
+		return {0,0,z, type = "translate"}
 	end
 end
 
@@ -224,7 +227,7 @@ local function __getTransform_rotate(self, cam)
 		--dir[1],dir[2],dir[3],dir[4]=x,y,z,1
 		--return cpml.quat.new(dir)
 		--return cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0))
-		return cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0))
+		return { cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0)), type="rotate" }
 		--return cpml.quat.from_direction(v1, cpml.vec3.new(0,-1,0))
 		--return dir
 	end
@@ -280,7 +283,7 @@ local function __getTransform_rotate(self, cam)
 
 		local axis = __tempdirright
 		local angle = mouse_dy * dot_sign
-		local quat = cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3])
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -288,7 +291,7 @@ local function __getTransform_rotate(self, cam)
 	if mode == "y" then
 		local axis = __tempdirup
 		local angle = mouse_dx
-		local quat = cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3])
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -303,7 +306,7 @@ local function __getTransform_rotate(self, cam)
 
 		local axis = __tempdirforward
 		local angle = mouse_dy * dot_sign
-		local quat = cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3])
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -335,10 +338,12 @@ local function __getTransform_scale(self, cam)
 		-- from the camera's perspective, likewise for cam_relative_up_vector
 		local tdir_up    = {cam:getDirectionVector(__tempdirup)}
 		local tdir_right = {cam:getDirectionVector(__tempdirright)}
-		local x = scale_map(mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1])
-		local y = scale_map(-(mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2]))
-		local z = scale_map(-(mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3]))
-		return {x,y,z}
+		local x = mouse_dx * tdir_right[1] + mouse_dy * tdir_up[1]
+		local y = -(mouse_dx * tdir_right[2] + mouse_dy * tdir_up[2])
+		local z = -(mouse_dx * tdir_right[3] + mouse_dy * tdir_up[3])
+		local dist = math.sqrt(x*x + y*y + z*z)
+		local s = scale_map(dist)
+		return {s,s,s, type="scale"}
 	end
 
 	local function sign(x)
@@ -370,7 +375,7 @@ local function __getTransform_scale(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local x = costheta * mouse_dx - sintheta * mouse_dy
-		return {scale_map(x),1,1}
+		return {scale_map(x),1,1, type="scale"}
 	end
 
 	if mode == "y" then
@@ -388,7 +393,7 @@ local function __getTransform_scale(self, cam)
 		local sintheta = sin(theta)
 
 		local y = scale_map(-costheta * mouse_dy)
-		return {1,y,1}
+		return {1,y,1, type="scale"}
 	end
 
 	if mode == "z" then
@@ -414,7 +419,108 @@ local function __getTransform_scale(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local z = -sintheta * mouse_dx + costheta * mouse_dy
-		return {1,1,scale_map(-z)}
+		return {1,1,scale_map(-z), type="scale"}
+	end
+end
+
+function MapEditTransform:__getTransform_flip(self, cam)
+	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
+
+	local mouse_dx = curr_mouse_x - self.mx
+	local mouse_dy = curr_mouse_y - self.my
+
+	local mode = self.axis_mode
+	assert(mode == "xyz" or mode=="x" or mode=="y" or mode=="z")
+
+	local acos = math.acos
+	local sin  = math.sin
+
+	local function flip_s(x)
+		if x > 0.0 then return 1.0 end
+		return -1.0
+	end
+
+	if mode == "xyz" then
+		-- in normal "xyz" mode, the final transformation is
+		-- (mouse_dx * cam_relative_right_vector) + (mouse_dy * cam_relative_up_vector)
+		-- where cam_relative_right_vector is the vector pointing directly right
+		-- from the camera's perspective, likewise for cam_relative_up_vector
+		local tdir_up    = {cam:getDirectionVector(__tempdirup)}
+		local tdir_right = {cam:getDirectionVector(__tempdirright)}
+		local x = mouse_dx * tdir_right[1] - mouse_dy * tdir_up[1]
+		local y = mouse_dx * tdir_right[2] - mouse_dy * tdir_up[2]
+		local z = mouse_dx * tdir_right[3] - mouse_dy * tdir_up[3]
+		return {flip_s(x),flip_s(y),flip_s(z),"scale"}
+	end
+
+	local function sign(x)
+		if x == 0.0 then return  0 end
+		if x  < 0.0 then return -1 end
+		if x  > 0.0 then return  1 end
+	end
+
+	if mode == "x" then
+		local right_vector = __tempdirright
+		local cam_right_vector = {cam:getDirectionVector(right_vector)}
+
+		local dot_p = right_vector[1]*cam_right_vector[1] +
+                      right_vector[2]*cam_right_vector[2] +
+                      right_vector[3]*cam_right_vector[3]
+		-- both right_vector and cam_right_vector are unit vectors, no need
+		-- to normalise
+		local theta = acos(dot_p)
+
+		local costheta = dot_p
+		local sintheta = sin(theta)
+
+		local forward_vector = __tempdirforward
+		local cam_f_vector = {cam:getDirectionVector(forward_vector)}
+
+		local dot_p = right_vector[1]*cam_f_vector[1] +
+                      right_vector[2]*cam_f_vector[2] +
+                      right_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local x = costheta * mouse_dx - sintheta * mouse_dy * dot_sign
+		return {flip_s(x),1,1,"scale"}
+	end
+
+	if mode == "y" then
+		local up_vector = __tempdirup
+		local cam_up_vector = {cam:getDirectionVector(up_vector)}
+
+		local dot_p = up_vector[1]*cam_up_vector[1] +
+                      up_vector[2]*cam_up_vector[2] +
+                      up_vector[3]*cam_up_vector[3]
+		local costheta = dot_p
+		local y = costheta * mouse_dy
+		return {1,flip_s(-y),1,"scale"}
+	end
+
+	if mode == "z" then
+		local forward_vector = __tempdirforward
+		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
+
+		local dot_p = forward_vector[1]*cam_forward_vector[1] +
+                      forward_vector[2]*cam_forward_vector[2] +
+                      forward_vector[3]*cam_forward_vector[3]
+		-- both right_vector and cam_right_vector are unit vectors, no need
+		-- to normalise
+		local theta = acos(dot_p)
+
+		local costheta = dot_p
+		local sintheta = sin(theta)
+
+		local right_vector = __tempdirright
+		local cam_f_vector = {cam:getDirectionVector(right_vector)}
+
+		local dot_p = forward_vector[1]*cam_f_vector[1] +
+                      forward_vector[2]*cam_f_vector[2] +
+                      forward_vector[3]*cam_f_vector[3]
+		local dot_sign = sign(dot_p)
+
+		local z = -sintheta * mouse_dx * dot_sign + costheta * mouse_dy
+		return {1,1,flip_s(z),"scale"}
 	end
 end
 
@@ -439,14 +545,37 @@ function MapEditTransform:newScale()
 	this.transformation_type = "scale"
 	return this
 end
-function MapEditTransform:newTransform(trans_type)
-	assert(trans_type and (trans_type == "translate" or trans_type == "rotate" or trans_type == "scale"))
-	if trans_type == "translate" then
-		return self:newTranslate() end
-	if trans_type == "rotate" then
-		return self:newRotate() end
-	if trans_type == "scale" then
-		return self:newScale() end
+function MapEditTransform:newFlip()
+	local mx,my = love.mouse.getX(), love.mouse.getY()
+	local this = MapEditTransform:new(mx,my)
+	this.getTransform = __getTransform_flip
+	this.transformation_type = "flip"
+	return this
 end
+function MapEditTransform:newTransform(trans_type)
+	assert(trans_type and (trans_type == "translate" or trans_type == "rotate" or trans_type == "scale" or trans_type == "flip"))
+	if trans_type == "translate" then return self:newTranslate() end
+	if trans_type == "rotate" then return self:newRotate() end
+	if trans_type == "scale" then return self:newScale() end
+	if trans_type == "flip" then return self:newFlip() end
+end
+
+local __flipx = {-1, 1, 1, type="scale"}
+local __flipy = { 1,-1, 1, type="scale"}
+local __flipz = { 1, 1,-1, type="scale"}
+
+local FlipXT = MapEditTransform:new(0,0)
+FlipXT.getTransform = function(self,cam) return __flipx end
+FlipXT.transformation_type = "flip"
+local FlipYT = MapEditTransform:new(0,0)
+FlipYT.getTransform = function(self,cam) return __flipy end
+FlipYT.transformation_type = "flip"
+local FlipZT = MapEditTransform:new(0,0)
+FlipZT.getTransform = function(self,cam) return __flipz end
+FlipZT.transformation_type = "flip"
+
+MapEditTransform.flip_x_const = FlipXT
+MapEditTransform.flip_y_const = FlipYT
+MapEditTransform.flip_z_const = FlipZT
 
 return MapEditTransform

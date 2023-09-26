@@ -160,7 +160,8 @@ function ModelInstance:__new(props)
 		bone_matrices = {}, -- bone matrices pushed to shader
 		--bone_matrices2 = {}, -- 2nd allocated buffer to use when interpolating between animator1 and 2
 
-		model_moved = true,
+		model_moved = true, -- changed to true whenever the models position/rotation/scale components change
+		matrix_changed = true, -- changed to true whenever the model is in matrix mode and the model matrix has changed
 
 		-- a flag that signals that this model has moved, so anything
 		-- that uses its bounding box needs to be recalculated i.e.
@@ -195,12 +196,21 @@ function ModelInstance:newInstance(model, props)
 	local p
 
 	if provtype(props) == "modelinfo" then
-		p = {
-			["model_i_static"]   = true,
-			["model_i_position"] = props.position,
-			["model_i_rotation"] = props.rotation,
-			["model_i_scale"]    = props.scale
-		}
+		if props.matrix then
+			print("obv")
+			p = {
+				["model_i_static"] = true,
+				["model_i_matrix"] = props.matrix,
+				["model_i_transformation_mode"] = "matrix",
+			}
+		else
+			p = {
+				["model_i_static"]   = true,
+				["model_i_position"] = props.position,
+				["model_i_rotation"] = props.rotation,
+				["model_i_scale"]    = props.scale
+			}
+		end
 	else
 		p = props or {}
 	end
@@ -266,59 +276,88 @@ end
 local __vec3temp = cpml.vec3.new()
 local __mat4temp = cpml.mat4.new()
 function ModelInstance:modelMatrix()
-	local is_static = self.props.model_i_static
-	--if (is_static and not self.model_moved) or not self.model_moved then
-	if not self.model_moved then
-		return self.static_model_matrix, self.static_normal_matrix
+	local model_mode = self.props.model_i_transformation_mode
+
+	if model_mode == "component" then
+		if not self.model_moved then
+			return self.static_model_matrix, self.static_normal_matrix
+		end
+
+		local props = self.props
+		local pos = props.model_i_position
+		local rot = props.model_i_rotation
+		local scale = props.model_i_scale
+
+		local m = self.static_model_matrix
+
+		local id =
+		{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
+		for i=1,16 do
+			m[i] = id[i]
+		end
+
+		--m = cpml.mat4.new()
+
+		--m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
+		__vec3temp.x = scale[1]
+		__vec3temp.y = scale[2]
+		__vec3temp.z = scale[3]
+		m:scale(m,  __vec3temp)
+
+		rotateMatrix(m, rot)
+
+		__vec3temp.x = pos[1]
+		__vec3temp.y = pos[2]
+		__vec3temp.z = pos[3]
+		m:translate(m, __vec3temp )
+
+		local dirfix = props.model_i_reference:getDirectionFixingMatrix()
+		m = cpml.mat4.mul(m, m, dirfix )
+		--m = m * dirfix 
+
+		local norm_m = self.static_normal_matrix
+		norm_m = norm_m:invert(m)
+		norm_m = norm_m:transpose(norm_m)
+
+		self.static_model_matrix = m
+		self.static_normal_matrix = norm_m
+
+		self.model_moved = false
+
+		self.recalculate_bounds_flag = true
+		self:calculateBoundingBox()
+		return m, norm_m
+	elseif model_mode == "matrix" then
+		if not self.matrix_changed then
+			return self.static_model_matrix, self.static_normal_matrix
+		end
+		self.matrix_changed = false
+
+		local props = self.props
+		local model_m = self.props.model_i_matrix
+		local m = __mat4temp
+
+		for i=1,16 do
+			m[i] = model_m[i]
+		end
+
+		local dirfix = props.model_i_reference:getDirectionFixingMatrix()
+		m = cpml.mat4.mul(m,m,dirfix)
+
+		for i=1,16 do
+			self.static_model_matrix[i] = m[i]
+		end
+
+		local norm_m = self.static_normal_matrix
+		norm_m = norm_m:invert(m)
+		norm_m = norm_m:transpose(norm_m)
+		--self.static_model_matrix = 
+		self.static_normal_matrix = norm_m
+
+		self.recalculate_bounds_flag = true
+		self:calculateBoundingBox()
+		return model_m, norm_m
 	end
-
-	prof.push("modelmatrix")
-	local props = self.props
-	local pos = props.model_i_position
-	local rot = props.model_i_rotation
-	local scale = props.model_i_scale
-
-	local m = self.static_model_matrix
-
-	local id =
-	{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}
-	for i=1,16 do
-		m[i] = id[i]
-	end
-
-	--m = cpml.mat4.new()
-
-	--m:scale(m,  cpml.vec3(unpack(props.model_i_scale)))
-	__vec3temp.x = scale[1]
-	__vec3temp.y = scale[2]
-	__vec3temp.z = scale[3]
-	m:scale(m,  __vec3temp)
-
-	rotateMatrix(m, rot)
-
-	__vec3temp.x = pos[1]
-	__vec3temp.y = pos[2]
-	__vec3temp.z = pos[3]
-	m:translate(m, __vec3temp )
-
-	local dirfix = props.model_i_reference:getDirectionFixingMatrix()
-	m = cpml.mat4.mul(m, m, dirfix )
-	--m = m * dirfix 
-
-	local norm_m = self.static_normal_matrix
-	--local norm_m = cpml.mat4.new()
-	norm_m = norm_m:invert(m)
-	norm_m = norm_m:transpose(norm_m)
-
-	self.static_model_matrix = m
-	self.static_normal_matrix = norm_m
-
-	self.model_moved = false
-	self.recalculate_bounds_flag = true
-
-	self:calculateBoundingBox()
-	prof.pop("modelmatrix")
-	return m, norm_m
 end
 
 function ModelInstance:areBoundsChanged()
@@ -456,6 +495,7 @@ function ModelInstance:setRotation(rot)
 		self.model_moved = true
 	end
 end
+ModelInstance.setDirection = ModelInstance.setRotation
 function ModelInstance:setScale(scale)
 	local s = self.props.model_i_scale
 	if scale[1]~=s[1] or scale[2]~=s[2] or scale[3]~=s[3] then
@@ -466,6 +506,16 @@ function ModelInstance:setScale(scale)
 	end
 end
 
+function ModelInstance:setMatrix(mat)
+	local m = self.props.model_i_matrix
+	local change = false
+	for i=1,16 do
+		if m[i] ~= mat[i] then change = true end
+		m[i] = mat[i]
+	end
+	self.matrix_changed = change
+end
+
 function ModelInstance:getPosition()
 	return self.props.model_i_position end
 function ModelInstance:getRotation()
@@ -473,12 +523,23 @@ function ModelInstance:getRotation()
 function ModelInstance:getScale()
 	return self.props.model_i_scale end
 
+function ModelInstance:getTransformMode()
+	return self.props.model_i_transformation_mode end
+function ModelInstance:getTransformMatrix()
+	return self.props.model_i_matrix end
+
 function ModelInstance:isStatic()
 	return self.props.model_i_static
 end
 
 function ModelInstance:getModel()
 	return self.props.model_i_reference
+end
+
+function ModelInstance:getDirection()
+	local rot = self.props.model_i_rotation
+	if rot[4] == "dir" then return rot end
+	return {0,0,-1,"dir"}
 end
 
 function ModelInstance:queryModelMatrix()

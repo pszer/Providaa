@@ -50,7 +50,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["cam_right"]    = { "d"      , nil    , default = "d"     },
 	["cam_forward"]  = { "w"      , nil    , default = "w"     },
 	["cam_backward"] = { "s"      , nil    , default = "s"     },
-	["cam_up"]       = { "up"     , nil    , default = "up"    },
+	["cam_up"]       = { "up"     , "space", default = "up"    },
 	["cam_down"]     = { "down"   , nil    , default = "down"  },
 	["cam_rotate"]   = { "mouse3" , nil    , default = "mouse3" },
 	["cam_reset"]    = { "kp0"    , "home" , default = "kp0"   },

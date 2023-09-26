@@ -366,13 +366,33 @@ function ProvMapEdit:defineCommands()
 
 	coms["transform"] = MapEditCom:define(
 		{
-		 {"selection", "table", nil, PropDefaultTable(self.active_selection)},
-		 {"transformation_type", "string", nil, PropIsOneOf{"translate","rotate","scale"}},
-		 {"transformation_info", "table", nil, nil}
+		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
+		 {"memory", "table", nil, PropDefaultTable{}},
+		 {"transform_function", nil, nil, nil}
 		},
 		function(props) -- command function
+			if props.memory[1] == nil then -- if memory hasn't been calculated yet
+				for i,v in ipairs(props.select_objects) do
+					local o_type = v[1]
+					if o_type == "model" then
+						props.memory[i] = transobj:from(v[2])
+					end
+				end
+			end
+
+			if not props.transform_function then
+				props.transform_function = self:applyActiveTransformationFunction(props.select_objects)
+			end
+			props.transform_function()
 		end, -- command function
 		function(props) -- undo command function
+			for i,v in ipairs(props.select_objects) do
+				local o_type = v[1]
+				if o_type == "model" then
+					local memory = props.memory[i]
+					memory:send(v[2])
+				end
+			end
 		end -- undo command function
 	)
 end
@@ -678,6 +698,10 @@ function ProvMapEdit:setupInputHandling()
 	                                       {"transform_move", "transform_scale", "transform_rotate", "transform_cancel", "transform_commit",
 										    "transform_x_axis", "transform_y_axis", "transform_z_axis"})
 	local transform_commit = Hook:new(function ()
+		--self:applyActiveTransformation()
+		if not self:selectionEmpty() then
+			self:commitCommand("transform", {})
+		end
 		self:enterViewportMode()
 		end)
 	local transform_cancel = Hook:new(function ()
@@ -1185,7 +1209,8 @@ local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
 function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	local info = transform:getTransform(self.props.mapedit_cam)
-	local t_type = transform:getTransformType()
+	--local t_type = transform:getTransformType()
+	local t_type = info.type
 
 	local function getScaleByDist()
 		local w = love.graphics.getDimensions()
@@ -1222,22 +1247,22 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 		translate.y = info[2]*s
 		translate.z = info[3]*s
 		mat:translate(mat, translate)
-		return mat
+		return mat, info
 	end
 
 	if t_type == "rotate" then
-		local quat = info
-		return cpml.mat4.from_quaternion(quat)
+		local quat = info[1]
+		return cpml.mat4.from_quaternion(quat), info
 	end
 
-	if t_type == "scale" then
+	if t_type == "scale" or t_type == "flip" then
 		local scale = __tempvec3tt
 		local s = 1.0
 		scale.x = info[1]*s
 		scale.y = info[2]*s
 		scale.z = info[3]*s
 		mat:scale(mat, scale)
-		return mat
+		return mat, info
 	end
 	error()
 end
@@ -1253,7 +1278,8 @@ local __tempmat4B = cpml.mat4.new()
 local __tempvec3c = cpml.vec3.new()
 local __tempvec3ci = cpml.vec3.new()
 function ProvMapEdit:getSelectionTransformationModelMatrix(transform, matrix)
-	local base_mat = matrix or self:getBaseMatrixFromMapEditTransformation(transform)
+	local base_mat, info = self:getBaseMatrixFromMapEditTransformation(transform)
+	base_mat = base_mat or matrix
 
 	local centre = self:getSelectionCentreAndMinMax()
 	if not centre then
@@ -1287,21 +1313,60 @@ function ProvMapEdit:getSelectionTransformationModelMatrix(transform, matrix)
 	cpml.mat4.mul(mat_a, mat_b, mat_a)
 
 	--return mat_a, mat_b
-	return mat_a
+	return mat_a, info
 end
 
-function ProvMapEdit:applyMapEditTransformOntoModel(model, trans)
+function ProvMapEdit:applyMapEditTransformOntoModel(model, trans, precomp_mat, precomp_info)
 	local t_type = trans:getTransformType()
+	local mat, info
+	if precomp_mat and precomp_info then
+		mat = precomp_mat
+		info = precomp_info
+	else
+		mat, info = self:getSelectionTransformationModelMatrix(trans)
+	end
+
 	if t_type == "translate" then
-		
+		local trans_o = transobj:from(model)
+		trans_o:applyMatrix(mat)
+		trans_o:send(model)
 	end
 
-	if t_type == "rotation" then
-
+	if t_type == "rotate" then
+		local trans_o = transobj:from(model)
+		trans_o:applyMatrix(mat, {rot=true})
+		trans_o:send(model)
 	end
 
-	if t_type == "scale" then
+	if t_type == "scale" or t_type == "flip" then
+		local trans_o = transobj:from(model)
+		trans_o:applyMatrix(mat, {scale=true})
+		trans_o:send(model)
+	end
 
+	self.__cache_recalc_selection_centre = true
+end
+
+function ProvMapEdit:applyActiveTransformationFunction(objs)
+	if next(objs) == nil then return end
+	if self:selectionEmpty() then return end
+	local trans = self.active_transform
+	if not trans then return end
+
+	local mat,info = self:getSelectionTransformationModelMatrix(trans)
+
+	local __m = cpml.mat4.new()
+	for i=1,16 do __m[i] = mat[i] end
+	local __i = info
+
+	return function()
+		for i,v in ipairs(objs) do
+			local o_type = v[1]
+			if o_type == "model" then
+				self:applyMapEditTransformOntoModel(v[2], trans, __m, __i)
+			else
+			end
+		end
 	end
 end
 

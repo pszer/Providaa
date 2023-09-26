@@ -81,6 +81,7 @@ mat4 get_model_matrix() {
 mat4 apply_ab_transformation(mat4 model) {
 	//return (u_transform_b * model) * u_transform_a;
 	//return u_transform_b * u_transform_a * model;
+	//return u_transform_a * model;
 	return u_transform_a * model;
 }
 
