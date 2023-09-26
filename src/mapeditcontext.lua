@@ -86,7 +86,7 @@ function MapEditContext:define(prototype, ...)
 							bl = MapEditContext.buffer_l
 						end
 						love.graphics.draw(bg,x,y)
-						if v.hover then
+						if v.hover and not v.disable then
 							local mode, alphamode = love.graphics.getBlendMode()
 							love.graphics.setColor(255/255,161/255,66/255,0.8)
 							love.graphics.setBlendMode("add","alphamultiply")
@@ -98,7 +98,13 @@ function MapEditContext:define(prototype, ...)
 								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
 							end
 							love.graphics.setBlendMode(mode, alphamode)
+						elseif not v.disable then
+							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
+							if icon then
+								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
+							end
 						else
+							love.graphics.setColor(0.9,0.9,1,0.3)	
 							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
 							if icon then
 								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
@@ -108,6 +114,7 @@ function MapEditContext:define(prototype, ...)
 							love.graphics.draw(guirender.icons["mapedit/icon_sub.png"],
 								x + v.w - MapEditContext.buffer_sub_r, y + MapEditContext.buffer_sub_t)
 						end
+						love.graphics.setColor(1,1,1,1)
 					end
 
 					local function draw_option_list(opts, draw_option_list)
@@ -190,7 +197,9 @@ function MapEditContext:define(prototype, ...)
 						end
 						return nil
 					end
-					return search(self.options, search)
+					local found = search(self.options, search)
+					if found and found.disable then return nil end
+					return found
 				end
 			}
 

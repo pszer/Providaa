@@ -413,6 +413,76 @@ function ProvMapEdit:defineCommands()
 			end
 		end -- undo command function
 	)
+
+	coms["create_group"] = commands:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
+		 {"created_group", nil, nil, nil}
+		},
+		function(props) -- command function
+			local models = {}
+			for i,v in ipairs(props.select_objects) do
+				if v[1] == "model" then table.insert(models, v[2]) end
+			end
+			props.created_group = self:createModelGroup("New Group",models)
+		end, -- command function
+		function(props) -- undo command function
+			self:dissolveGroup(props.created_group)
+		end -- undo command function
+	)
+
+	coms["add_to_group"] = commands:define(
+		{
+		 {"models", "table", nil, PropDefaultTable{}},
+		 {"group", "table", nil, nil}
+		},
+		function(props) -- command function
+			for i,v in ipairs(props.models) do
+				props.group:addToGroup(v)
+			end
+		end, -- command function
+		function(props) -- undo command function
+			for i,v in ipairs(props.models) do
+				props.group:removeFromGroup(v)
+			end
+		end -- undo command function
+	)
+
+	coms["dissolve_groups"] = commands:define(
+		{
+		 {"groups", nil, nil, PropDefaultTable{}}
+		},
+		function(props) -- command function
+			for i,v in ipairs(props.groups) do
+				self:dissolveGroup(v)
+			end
+		end, -- command function
+		function(props) -- undo command function
+			for i,v in ipairs(props.groups) do
+				self:addModelGroup(v)
+			end
+		end -- undo command function
+	)
+
+	coms["merge_groups"] = commands:define(
+		{
+		 {"groups", "table", nil, PropDefaultTable{}},
+		 {"merged_group", nil, nil, nil}
+		},
+		function(props) -- command function
+			if props.merged_group == nil then
+				props.merged_group = self:mergeGroups(unpack(props.groups))
+			end
+			self:addModelGroup(props.merged_group)
+		end, -- command function
+		function(props) -- undo command function
+			self:dissolveGroup(props.merged_group)
+			for i,group in ipairs(props.groups) do
+				self:addModelGroup(group)
+			end
+		end -- undo command function
+	)
+
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -526,21 +596,68 @@ function ProvMapEdit:defineContextMenus()
 	context["select_models_context"] = 
 		contextmenu:define(
 		{
-		 {"select_objects", "table", nil, PropDefaultTable{}},
+		 {"select_objects", "table", nil, PropDefaultTable{self.active_selection}},
 		},
-		 {"Copy",      action=function(props) self:copySelectionToClipboard() end, icon = "mapedit/icon_copy.png"},
+		 {"Copy",      action=function(props)
+		                        self:copySelectionToClipboard() end,
+		               icon = "mapedit/icon_copy.png"},
 
-		 {"Duplicate", action=function(props) self:pasteClipboard() end, icon = "mapedit/icon_dup.png"},
+		 {"Duplicate", action=function(props)
+		                        self:pasteClipboard() end,
+		               icon = "mapedit/icon_dup.png"},
 
-		 {"~(orange)~bDelete", action=function(props) self:commitCommand("delete_obj") end,
-		 	icon = "mapedit/icon_del.png"},
+		 {"~(orange)~bDelete", action=function(props)
+		                                self:commitCommand("delete_obj", {select_objects=props.select_objects}) end,
+		 	             icon = "mapedit/icon_del.png"},
 
+		 {"Group", suboptions = function(props)
+		 	local objs = props.select_objects
+			local groups = {}
+			local function add_to_groups(g) -- ensures unique entries in groups
+				for i,v in ipairs(groups) do
+					if v==g then return end end
+				table.insert(groups, g)
+			end
+			local model_outside_group_exists = false
+			local model_outside_group_count = 0
+			local models_outside = {}
+			for i,v in ipairs(objs) do
+				local group = self:isModelInAGroup(v[2])
+				if group then
+					add_to_groups(group)
+				else
+					model_outside_group_exists = true
+					model_outside_group_count = model_outside_group_count+1
+					table.insert(models_outside, v[2])
+				end
+			end
+			local group_count = #groups
+
+			local create_enable = (group_count == 0) and (model_outside_group_count>1)
+			local merge_groups_enable = (group_count > 1) and (not model_outside_group_exists)
+			local add_to_group_enable = (group_count==1) and (model_outside_group_exists)
+			local ungroup_enable = (group_count==1) and (not model_outside_group_exists)
+			
+		 	return {
+			 {"Create", disable = not create_enable, action=function()
+			 	self:commitCommand("create_group", {select_objects=props.select_objects}) end},
+
+			 {"Merge Groups", disable = not merge_groups_enable, action=function()
+			 	self:commitCommand("merge_groups", {groups=groups}) end},
+
+			 {"Add To Group", disable = not add_to_group_enable, action=function()
+			  self:commitCommand("add_to_group", {group=groups[1], models=models_outside})end},
+
+			 {"Ungroup", disable = not ungroup_enable, action=function()
+			 	self:commitCommand("dissolve_groups", {groups=groups, models=models_outside}) end},
+			}
+			end},
 		 {"--Transform--"},
 		 {"Flip", suboptions = function(props)
 		 	return {
-			 {"... by ~b~(lred)X~r axis", action=function() print("flipx") end},
-			 {"... by ~b~(lgreen)Y~r axis", action=function() print("flipy") end},
-			 {"... by ~b~(lblue)Z~r axis", action=function() print("flipz") end},
+			 {"... by ~b~(lred)X~r Axis", action=function() print("flipx") end},
+			 {"... by ~b~(lgreen)Y~r Axis", action=function() print("flipy") end},
+			 {"... by ~b~(lblue)Z~r Axis", action=function() print("flipz") end},
 			}
 		 	end}
 		 )
@@ -668,10 +785,10 @@ function ProvMapEdit:setupInputHandling()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, true)
 
-		if not obj then self:deselectSelection() end
+		if not obj then self:deselectSelection() return end
 
 		if not self.super_modifier then
-			self:commitCommand("invertible_select", {select_objects={obj}})
+			self:commitCommand("invertible_select", {select_objects={self:decomposeObject(obj)}})
 			additive_select_obj = obj
 			return
 		end
@@ -682,7 +799,7 @@ function ProvMapEdit:setupInputHandling()
 			else
 				additive_select_obj = nil
 			end
-			self:commitCommand("additive_select", {select_objects={obj}})
+			self:commitCommand("additive_select", {select_objects={self:decomposeObject(obj)}})
 			return
 		end
 
@@ -706,11 +823,12 @@ function ProvMapEdit:setupInputHandling()
 				additive_select_obj = nil
 				return
 			end
-			self:commitCommand("additive_select", {select_objects=obj})
+			self:commitCommand("additive_select", {select_objects={self:decomposeObject(obj)}})
+			return
 		end
 
 		additive_select_obj = nil
-		self:commitCommand("additive_select", {select_objects={obj}})
+		self:commitCommand("additive_select", {select_objects={self:decomposeObject(obj)}})
 	end)
 	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
 
@@ -907,6 +1025,136 @@ function ProvMapEdit:removeModelInstance(inst)
 	end
 end
 
+local __GroupMeta = {
+	isInGroup = function(self, inst)
+		for i,v in ipairs(self.insts) do
+			if inst == v then return true end
+		end
+		return false
+	end,
+
+	addToGroup = function(self, inst)
+		for i,v in ipairs(self.insts) do
+			if inst == v then return end
+		end
+		table.insert(self.insts, inst)
+	end,
+
+	removeFromGroup = function(self, inst)
+		for i,v in ipairs(self.insts) do
+			if inst == v then
+				table.remove(self.insts, i)
+				return
+			end
+		end
+	end
+}
+__GroupMeta.__index = __GroupMeta
+function ProvMapEdit:createModelGroup(name, insts)
+	local group = {
+		name = nil,
+		insts = {},
+	}
+	for i,v in ipairs(insts) do
+		if not self:isModelInAGroup(v) then
+			table.insert(group.insts, v)
+		end
+	end
+	-- ignore if empty
+	if group.insts[1] == nil then return end
+
+	-- ensure name is unique, appending an increasing number
+	-- if not
+	local groups = self.props.mapedit_model_groups
+	local num = 1
+	local unique_name = self:makeUniqueGroupName(name)
+	group.name = unique_name
+
+	setmetatable(group, __GroupMeta)
+	table.insert(groups, group)
+	return group
+end
+
+function ProvMapEdit:addModelGroup(group)
+	if not group then return end
+	local groups = self.props.mapedit_model_groups
+	for i,v in ipairs(groups) do
+		if group == v then return end
+	end
+	table.insert(groups, group)
+end
+
+function ProvMapEdit:makeUniqueGroupName(name)
+	local name = name or "Group"
+	local groups = self.props.mapedit_model_groups
+	local num = 1
+	local unique_name = name
+	while true do
+		local unique = true
+		for i,v in ipairs(groups) do
+			if v.name == unique_name then
+				num = num+1
+				unique_name = name .. tostring(num)
+				unique = false
+				break
+			end
+		end
+		if unique then break end
+	end
+	return unique_name
+end
+
+function ProvMapEdit:dissolveGroup(group)
+	if not group then return end
+	local groups = self.props.mapedit_model_groups
+	for i,v in ipairs(groups) do
+		if v == group then
+			table.remove(groups,i)
+			return
+		end
+	end
+end
+
+-- objectAtCursor returns {"model",model1,model2,...}
+-- when selecting a group of models
+-- this function decomposes this table into
+-- {"model",model1},{"model",model2}...
+function ProvMapEdit:decomposeObject(obj)
+	if not obj then return nil end
+	local o_type = obj[1]
+	if o_type ~= "model" then return obj end
+	if obj[2] == nil then return obj end
+	local objs = {}
+	for i=2,#obj do
+		table.insert(objs, {"model",obj[i]})
+	end
+	return unpack(objs)
+end
+
+function ProvMapEdit:mergeGroups(...)
+	local groups = {...}
+	if groups[1]==nil then return nil end
+	local insts = {}
+	for _,group in ipairs(groups) do
+		for i,v in ipairs(group.insts) do
+			table.insert(insts, v) 
+		end
+		self:dissolveGroup(group)
+	end
+	local new_group = self:createModelGroup(groups[1].name.." Merge", insts)
+	return new_group
+end
+
+function ProvMapEdit:isModelInAGroup(m)
+	local groups = self.props.mapedit_model_groups
+
+	for i,v in ipairs(groups) do
+		local inside_group = v:isInGroup(m)
+		if inside_group then return v end
+	end
+	return false
+end
+
 function ProvMapEdit:applyTransformObjOntoModel(model, t_obj)
 	local pos = t_obj.position
 	local rot = t_obj.rotation
@@ -916,7 +1164,8 @@ function ProvMapEdit:applyTransformObjOntoModel(model, t_obj)
 	model:setScale(scl)
 end
 
--- returns either nil, {"tile",x,z}, {"wall",x,z,side}, {model_i}
+-- returns either nil, or {"tile",x,z}, {"wall",x,z,side}, {"model", model_i, ...}
+-- it may return multiple models in case a model group is clicked
 function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	local unproject = cpml.mat4.unproject
 
@@ -981,7 +1230,12 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		for i,model in ipairs(self.props.mapedit_model_insts) do
 			local intersect, dist = self:testModelAgainstRay(ray, model)
 			if intersect and dist < min_dist then
-				mesh_test = {"model", model}
+				local group = self:isModelInAGroup(model)
+				if group then
+					mesh_test = {"model", unpack(group.insts)}
+				else
+					mesh_test = {"model", model}
+				end
 				min_dist = dist
 			end
 		end
@@ -1622,14 +1876,9 @@ end
 function ProvMapEdit:pasteClipboard()
 	local objs
 	local selection = {}
-	--if self.clipboard_paste_count == 0 then
-	if false then
-		objs = self.clipboard
-	else
-		objs = {}
-		for i,v in ipairs(self.clipboard) do
-			objs[i] = v:clone()
-		end
+	objs = {}
+	for i,v in ipairs(self.clipboard) do
+		objs[i] = v:clone()
 	end
 
 	for i,v in ipairs(objs) do
@@ -1642,23 +1891,27 @@ function ProvMapEdit:pasteClipboard()
 	 {"add_obj", {objects=objs}},
 	 {"additive_select", {select_objects = selection}}
 	)
-
-	self.clipboard_paste_count = self.clipboard_paste_count + 1
 end
 
 function ProvMapEdit:getObjectCentre(obj)
 	assert(obj)
 	local obj_type = obj[1]
 
-	local mx,my,mz
+	local mx,my,mz=0,0,0
 	if obj_type == "model" then
-		local model = obj[2]
-		local min,max = model:getBoundingBoxMinMax()
+		local count = #obj
+		for i=2,count do
+			local model = obj[i]
+			local min,max = model:getBoundingBoxMinMax()
 
-		mx,my,mz = 
-			(min[1] + max[1]) * 0.5,
-			(min[2] + max[2]) * 0.5,
-			(min[3] + max[3]) * 0.5
+			mx,my,mz = 
+				mx + (min[1] + max[1]) * 0.5,
+				my + (min[2] + max[2]) * 0.5,
+				mz + (min[3] + max[3]) * 0.5
+		end
+		mx=mx/(count-1)
+		my=my/(count-1)
+		mz=mz/(count-1)
 	elseif obj_type == "tile" then
 		local v1,v2,v3,v4 = self:getTileVerts(obj[2],obj[3])
 		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
@@ -1722,7 +1975,12 @@ end
 
 function ProvMapEdit:isModelSelected(inst)
 	for i,v in ipairs(self.active_selection) do
-		if v[1] == "model" and v[2] == inst then return true end
+		--if v[1] == "model" and v[2] == inst then return true end
+		if v[1] == "model" then
+			for i=2,#v do
+				if v[i] == inst then return true end
+			end
+		end
 	end
 	return false
 end
