@@ -86,7 +86,7 @@ function MapEditContext:define(prototype, ...)
 							bl = MapEditContext.buffer_l
 						end
 						love.graphics.draw(bg,x,y)
-						if v.hover and not v.disable then
+						if v.hover and not v.disable and (v.action or v.suboptions) then
 							local mode, alphamode = love.graphics.getBlendMode()
 							love.graphics.setColor(255/255,161/255,66/255,0.8)
 							love.graphics.setBlendMode("add","alphamultiply")
@@ -104,11 +104,13 @@ function MapEditContext:define(prototype, ...)
 								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
 							end
 						else
-							love.graphics.setColor(0.9,0.9,1,0.3)	
+							love.graphics.setShader(guirender.grayscale)
+							love.graphics.setColor(0.9,0.9,1,0.3)
 							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
 							if icon then
 								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
 							end
+							love.graphics.setShader()
 						end
 						if v.suboptions then
 							love.graphics.draw(guirender.icons["mapedit/icon_sub.png"],

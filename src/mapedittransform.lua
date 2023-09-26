@@ -80,7 +80,7 @@ end
 local __tempdirup      = {0,-1,0}
 local __tempdirright   = {1,0,0}
 local __tempdirforward = {0,0,-1}
-local function __getTransform_translate(self, cam)
+local function __getTransform_translate(self, cam, granular)
 	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 
 	local mouse_dx = curr_mouse_x - self.mx
@@ -92,6 +92,16 @@ local function __getTransform_translate(self, cam)
 	local acos = math.acos
 	local sin  = math.sin
 
+	local int = math.floor
+	local g_scale=8
+	local function granulate(v)
+		--if not granular then return v end
+		--v[1] = int(v[1]/g_scale)*g_scale
+		--v[2] = int(v[2]/g_scale)*g_scale
+		--v[3] = int(v[3]/g_scale)*g_scale
+		return v
+	end
+
 	if mode == "xyz" then
 		-- in normal "xyz" mode, the final transformation is
 		-- (mouse_dx * cam_relative_right_vector) + (mouse_dy * cam_relative_up_vector)
@@ -102,7 +112,7 @@ local function __getTransform_translate(self, cam)
 		local x = mouse_dx * tdir_right[1] - mouse_dy * tdir_up[1]
 		local y = mouse_dx * tdir_right[2] - mouse_dy * tdir_up[2]
 		local z = mouse_dx * tdir_right[3] - mouse_dy * tdir_up[3]
-		return {x,y,z, type = "translate"}
+		return granulate{x,y,z, type = "translate"}
 	end
 
 	local function sign(x)
@@ -134,7 +144,7 @@ local function __getTransform_translate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local x = costheta * mouse_dx - sintheta * mouse_dy * dot_sign
-		return {x,0,0, type = "translate"}
+		return granulate{x,0,0, type = "translate"}
 	end
 
 	if mode == "y" then
@@ -146,7 +156,7 @@ local function __getTransform_translate(self, cam)
                       up_vector[3]*cam_up_vector[3]
 		local costheta = dot_p
 		local y = costheta * mouse_dy
-		return {0,y,0, type = "translate"}
+		return granulate{0,y,0, type = "translate"}
 	end
 
 	if mode == "z" then
@@ -172,7 +182,7 @@ local function __getTransform_translate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local z = -sintheta * mouse_dx * dot_sign + costheta * mouse_dy
-		return {0,0,z, type = "translate"}
+		return granulate{0,0,z, type = "translate"}
 	end
 end
 
@@ -180,7 +190,7 @@ local __tempvec3 = cpml.vec3.new()
 local __tempvec3t = {0,0,0}
 local __tempvec3cp1 = cpml.vec3.new()
 local __tempvec3cp2 = cpml.vec3.new()
-local function __getTransform_rotate(self, cam)
+local function __getTransform_rotate(self, cam, granular)
 	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 
 	local win_w, win_h = love.graphics.getDimensions()
@@ -188,6 +198,14 @@ local function __getTransform_rotate(self, cam)
 	local mouse_dx = (curr_mouse_x - self.mx) 
 	local mouse_dy = (curr_mouse_y - self.my) 
 	local mode = self.axis_mode
+
+	local int = math.floor
+	local g_scale=math.pi/4.0
+	local function granulate_theta(t)
+		if not granular then return t end
+		t = int(t/g_scale)*g_scale
+		return t
+	end
 
 	if mode == "xyz" then
 		local viewport = {0,0,win_w,win_h}
@@ -240,38 +258,6 @@ local function __getTransform_rotate(self, cam)
 
 	mouse_dx = mouse_dx * (8/win_w)
 	mouse_dy = mouse_dy * (8/win_h)
-	--[[local sin,cos = math.sin,math.cos
-	if mode == "x" then
-		local forward_vector = __tempdirforward
-		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
-
-		local dot_p = forward_vector[1]*cam_forward_vector[1] +
-                      forward_vector[2]*cam_forward_vector[2] +
-                      forward_vector[3]*cam_forward_vector[3]
-		local dot_sign = sign(dot_p)
-
-		local y = sin(mouse_dy * dot_sign)
-		local z = -cos(mouse_dy * dot_sign)
-		print(dot_sign)
-		return {0,y,z}
-	end
-	if mode == "y" then
-		local x = sin(mouse_dx)
-		local z = -cos(mouse_dx)
-		return {x,0,z}
-	end
-	if mode == "z" then
-		local right_vector = __tempdirright
-		local cam_f_vector = {cam:getDirectionVector(right_vector)}
-		local dot_p = right_vector[1]*cam_f_vector[1] +
-                      right_vector[2]*cam_f_vector[2] +
-                      right_vector[3]*cam_f_vector[3]
-		local dot_sign = sign(dot_p)
-		print("z")
-		local x = sin(mouse_dy * -dot_sign)
-		local y = -cos(mouse_dy * -dot_sign)
-		return {x,y,0}
-	end--]]
 	if mode == "x" then
 		local forward_vector = __tempdirforward
 		local cam_forward_vector = {cam:getDirectionVector(forward_vector)}
@@ -282,7 +268,7 @@ local function __getTransform_rotate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local axis = __tempdirright
-		local angle = mouse_dy * dot_sign
+		local angle = granulate_theta(mouse_dy * dot_sign)
 		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
@@ -290,7 +276,7 @@ local function __getTransform_rotate(self, cam)
 
 	if mode == "y" then
 		local axis = __tempdirup
-		local angle = mouse_dx
+		local angle = granulate_theta(mouse_dx)
 		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
@@ -305,14 +291,14 @@ local function __getTransform_rotate(self, cam)
 		local dot_sign = sign(dot_p)
 
 		local axis = __tempdirforward
-		local angle = mouse_dy * dot_sign
+		local angle = granulate_theta(mouse_dy * dot_sign)
 		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
 end
 
-local function __getTransform_scale(self, cam)
+local function __getTransform_scale(self, cam, granular)
 	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
 	local mouse_dx = (curr_mouse_x - self.mx) / 66.0
 	local mouse_dy = (curr_mouse_y - self.my) / 66.0
@@ -571,13 +557,13 @@ local __flipy = { 1,-1, 1, type="scale"}
 local __flipz = { 1, 1,-1, type="scale"}
 
 local FlipXT = MapEditTransform:new(0,0)
-FlipXT.getTransform = function(self,cam) return __flipx end
+FlipXT.getTransform = function(self,cam,g) return __flipx end
 FlipXT.transformation_type = "scale"
 local FlipYT = MapEditTransform:new(0,0)
-FlipYT.getTransform = function(self,cam) return __flipy end
+FlipYT.getTransform = function(self,cam,g) return __flipy end
 FlipYT.transformation_type = "scale"
 local FlipZT = MapEditTransform:new(0,0)
-FlipZT.getTransform = function(self,cam) return __flipz end
+FlipZT.getTransform = function(self,cam,g) return __flipz end
 FlipZT.transformation_type = "scale"
 
 MapEditTransform.flip_x_const = FlipXT

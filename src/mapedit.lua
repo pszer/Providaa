@@ -42,7 +42,7 @@ ProvMapEdit = {
 	active_transform = nil,
 	active_transform_mesh_mat = nil,
 	active_transform_model_mat_a = nil,
-	active_transform_model_mat_b = nil,
+	granulate_transform = false,
 
 	-- if non-nil, the camera will fly over to cam_move_to_pos coordinate
 	-- and rotate its direction to cam_rot_to_dir
@@ -485,6 +485,33 @@ function ProvMapEdit:defineCommands()
 		end -- undo command function
 	)
 
+	coms["reset_transformation"] = commands:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable{self.active_selection}},
+		 {"memory", nil, nil, PropDefaultTable{}}
+		},
+		function(props) -- command function
+			local calc = props.memory[1]==nil
+			for i,v in ipairs(props.select_objects) do
+				if v[1] == "model" then
+					if calc then
+						props.memory[i] = transobj:from(v[2]) end
+					local reset = transobj:from(v[2])
+					reset:reset()
+					reset:send(v[2])
+				end
+			end
+		end, -- command function
+		function(props) -- undo command function
+			for i,v in ipairs(props.select_objects) do
+				if v[1] == "model" then
+					local old_trans = props.memory[i]
+					old_trans:send(v[2])
+				end
+			end
+		end -- undo command function
+	)
+
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -608,7 +635,7 @@ function ProvMapEdit:defineContextMenus()
 		                        self:pasteClipboard() end,
 		               icon = "mapedit/icon_dup.png"},
 
-		 {"~(orange)~bDelete", action=function(props)
+		 {"~b~(orange)Delete", action=function(props)
 		                                self:commitCommand("delete_obj", {select_objects=props.select_objects}) end,
 		 	             icon = "mapedit/icon_del.png"},
 
@@ -641,7 +668,7 @@ function ProvMapEdit:defineContextMenus()
 			local ungroup_enable = (group_count==1) and (not model_outside_group_exists)
 			
 		 	return {
-			 {"Create", disable = not create_enable, action=function()
+			 {"~(green)~bCreate", disable = not create_enable, action=function()
 			 	self:commitCommand("create_group", {select_objects=props.select_objects}) end},
 
 			 {"Merge Groups", disable = not merge_groups_enable, action=function()
@@ -650,21 +677,25 @@ function ProvMapEdit:defineContextMenus()
 			 {"Add To Group", disable = not add_to_group_enable, action=function()
 			  self:commitCommand("add_to_group", {group=groups[1], models=models_outside})end},
 
-			 {"Ungroup", disable = not ungroup_enable, action=function()
+			 {"~(lpurple)Ungroup", disable = not ungroup_enable, action=function()
 			 	self:commitCommand("dissolve_groups", {groups=groups, models=models_outside}) end},
 			}
 			end},
 		 {"--Transform--"},
 		 {"Flip", suboptions = function(props)
 		 	return {
-			 {"... by ~b~(lred)X~r Axis", action=function()
+			 {"... by ~i~(lred)X~r Axis", action=function()
 				self:commitCommand("transform", {transform_info=maptransform.flip_x_const}) end},
-			 {"... by ~b~(lgreen)Y~r Axis", action=function()
+			 {"... by ~i~(lgreen)Y~r Axis", action=function()
 				self:commitCommand("transform", {transform_info=maptransform.flip_y_const}) end},
-			 {"... by ~b~(lblue)Z~r Axis", action=function()
+			 {"... by ~i~(lblue)Z~r Axis", action=function()
 				self:commitCommand("transform", {transform_info=maptransform.flip_z_const}) end},
 			}
-		 	end}
+		 	end},
+
+		 {"Reset",     action=function(props)
+		                        self:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
+		               icon = nil}
 		 )
 end
 
@@ -728,8 +759,6 @@ function ProvMapEdit:setupInputHandling()
 	local right_v    = { 1, 0,0}
 	local up_v       = { 0,-1,0}
 	local down_v     = { 0, 1,0}
-
-	local super_modifier = false
 
 	local function __move(dir_v, relative_mode)
 		return function()
@@ -1531,7 +1560,7 @@ local __tempmat4tt = cpml.mat4.new()
 local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
 function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
-	local info = transform:getTransform(self.props.mapedit_cam)
+	local info = transform:getTransform(self.props.mapedit_cam, self.granulate_transform)
 	--local t_type = transform:getTransformType()
 	local t_type = info.type
 
@@ -1564,26 +1593,59 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 
 	local mat = __tempmat4tt
 	if t_type == "translate" then
+
+		local int = math.floor
+		local g_scale=8
+		local function granulate(v)
+			if not self.granulate_transform then return v end
+			v.x = int(v.x/g_scale)*g_scale
+			v.y = int(v.y/g_scale)*g_scale
+			v.z = int(v.z/g_scale)*g_scale
+			return v
+		end
+
 		local translate = __tempvec3tt
 		local s = getScaleByDist()
 		translate.x = info[1]*s
 		translate.y = info[2]*s
 		translate.z = info[3]*s
+		granulate(translate)
 		mat:translate(mat, translate)
 		return mat, info
 	end
 
 	if t_type == "rotate" then
+		-- granulating is handled by the MapEditTransform object itself
+		local function granulate(v)
+			return v
+		end
+
 		local quat = info[1]
+		granulate(quat)
 		return cpml.mat4.from_quaternion(quat), info
 	end
 
 	if t_type == "scale" or t_type == "flip" then
+
+		local int = math.floor
+		local function granulate(v)
+			if not self.granulate_transform then return v end
+
+			if v.x >= 1.0 then v.x = int(v.x) else
+			                   v.x = 1/int(1/v.x) end
+			if v.y >= 1.0 then v.y = int(v.y) else
+			                   v.y = 1/int(1/v.y) end
+			if v.z >= 1.0 then v.z = int(v.z) else
+			                   v.z = 1/int(1/v.z) end
+			return v
+		end
+
 		local scale = __tempvec3tt
 		local s = 1.0
 		scale.x = info[1]*s
 		scale.y = info[2]*s
 		scale.z = info[3]*s
+		granulate(scale)
 		mat:scale(mat, scale)
 		return mat, info
 	end
@@ -1949,13 +2011,15 @@ function ProvMapEdit:update(dt)
 	cam:update()
 	self:updateModelMatrices()
 
+	self.granulate_transform = self.ctrl_modifier 
+
 	count = count+1
-	if self.active_transform and (count % 25 == 0) then
-		local t = self.active_transform:getTransform(self.props.mapedit_cam)
-		if t then
-			--print(t)
-		end
-	end
+	--if self.active_transform and (count % 25 == 0) then
+	--	local t = self.active_transform:getTransform(self.props.mapedit_cam)
+	--	if t then
+	--		--print(t)
+	--	end
+	--end
 	self:updateTransformationMatrix()
 
 	local map_mesh = self.props.mapedit_map_mesh

@@ -136,4 +136,23 @@ function TransObj:applyMatrix(mat, mat_info)
 	self.scale[1] = self.scale[1] * row_x_l-]]
 end
 
+-- resets scale/rotation but keeps translation
+function TransObj:reset()
+	if self.matrix then
+		local m = self.matrix
+		m[1],m[2],m[3]   = 1,0,0
+		m[5],m[6],m[7]   = 0,1,0
+		m[9],m[10],m[11] = 0,0,1
+	else
+		self.scale[1] = 1.0
+		self.scale[2] = 1.0
+		self.scale[3] = 1.0
+
+		self.direction[1] = 0.0
+		self.direction[2] = 0.0
+		self.direction[3] = 0.0
+		self.direction[4] = "dir"
+	end
+end
+
 return TransObj

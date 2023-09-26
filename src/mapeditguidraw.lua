@@ -24,7 +24,26 @@ local MapEditGUIRender = {
 	__cxtm_br = nil, -- bottom right corner
 	__cxtm_bl = nil, -- bottom left 
 
-	icons = {}
+	icons = {},
+
+	grayscale = love.graphics.newShader(
+	[[
+	 uniform float interp;
+   	 vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords )
+   	 {
+        vec4 texcolor = Texel(tex, texture_coords) * color;
+		float lum = dot(texcolor.xyz, vec3(0.299, 0.587, 0.114));
+        return vec4(lum,lum,lum,texcolor.a) * (1.0-interp) + texcolor * interp;
+    }
+	]],
+	[[
+	 vec4 position( mat4 transform_projection, vec4 vertex_position )
+	    {
+   	     return transform_projection * vertex_position;
+   	 }
+	]]
+
+	)
 }
 MapEditGUIRender.__index = MapEditGUIRender
 
@@ -51,6 +70,8 @@ function MapEditGUIRender:initAssets()
 	self.__cxtm_bl = Loader:getTextureReference("mapedit/cxtm_bl.png")
 	self.__cxtm_tr = Loader:getTextureReference("mapedit/cxtm_tr.png")
 	self.__cxtm_tl = Loader:getTextureReference("mapedit/cxtm_tl.png")
+
+	self.grayscale:send("interp",0.1)
 
 	local icon_list = {
 		"mapedit/icon_del.png",
@@ -114,6 +135,8 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		["white"]   = 0xFFFFFF,
 		["gray"]    = 0x808080,
 		["grey"]    = 0x808080,
+		["lgray"]   = 0xBBBBBB,
+		["lgrey"]   = 0xBBBBBB,
 		["black"]   = 0x000000,
 
 		["red"]     = 0xFF0000,
@@ -135,7 +158,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		["lgreen"]  = 0x80FF80,
 		["lblue"]   = 0x8080FF,
 		["lred"]    = 0xFF8080,
-		["lgray"]   = 0xBBBBBB
+		["lpurple"] = 0xbb78ff
 	}
 
 	while true do
