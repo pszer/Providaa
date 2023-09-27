@@ -4,8 +4,8 @@
 
 require "prop"
 
-local guirender = require 'mapeditguidraw'
-local contextmenu = require 'mapeditcontext'
+local guirender = require 'mapedit.guidraw'
+local contextmenu = require 'mapedit.context'
 
 local MapEditToolbar = {
 }

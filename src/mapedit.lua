@@ -7,18 +7,14 @@ require "angle"
 require "assetloader"
 require "tile"
 
-local maptransform = require "mapedittransform"
+local maptransform = require "mapedit.transform"
 local shadersend   = require "shadersend"
 local cpml         = require "cpml"
 local transobj     = require "transobj"
 
-local guirender   = require 'mapeditguidraw'
-local contextmenu = require 'mapeditcontext'
-local toolbar     = require 'mapedittoolbar'
-local popup       = require 'mapeditpopup'
-local gui         = require 'mapeditgui'
-
-local commands = require "mapeditcommand"
+local gui         = require 'mapedit.gui'
+local guirender   = require 'mapedit.guidraw'
+local commands    = require 'mapedit.command'
 
 ProvMapEdit = {
 
@@ -51,7 +47,7 @@ ProvMapEdit = {
 	-- and rotate its direction to cam_rot_to_dir
 	cam_move_to_pos = nil,
 	--cam_rot_to_dir  = nil -- not implemented
-	--
+	
 	__cache_selection_centre = nil,
 	__cache_selection_min = nil,
 	__cache_selection_max = nil,
@@ -89,19 +85,12 @@ function ProvMapEdit:load(args)
 	local map_name = lvledit_arg[1]
 	self:loadMap(map_name)
 
-	guirender:initAssets()
-
 	self:newCamera()
 	self:setupInputHandling()
 	self:enterViewportMode()
 	self:defineCommands()
-	self:defineGUI()
+	gui:init(self)
 end
-
-function ProvMapEdit:defineGUI()
-	gui:define(self)
-end
-
 
 function ProvMapEdit:unload()
 	CONTROL_LOCK.MAPEDIT_VIEW.close()

@@ -1,9 +1,8 @@
-local guirender   = require 'mapeditguidraw'
-local contextmenu = require 'mapeditcontext'
-local toolbar     = require 'mapedittoolbar'
-local popup       = require 'mapeditpopup'
-
-local maptransform = require "mapedittransform"
+local guirender   = require 'mapedit.guidraw'
+local contextmenu = require 'mapedit.context'
+local toolbar     = require 'mapedit.toolbar'
+local popup       = require 'mapedit.popup'
+local maptransform = require "mapedit.transform"
 local transobj     = require "transobj"
 
 local MapEditGUI = {
@@ -16,6 +15,10 @@ local MapEditGUI = {
 }
 MapEditGUI.__index = MapEditGUI
 
+function MapEditGUI:init(mapedit)
+	guirender:initAssets()
+	self:define(mapedit)
+end
 
 function MapEditGUI:define(mapedit)
 	local context = self.context_menus

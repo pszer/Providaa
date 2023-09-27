@@ -1,4 +1,4 @@
-local guirender = require 'mapeditguidraw'
+local guirender = require 'mapedit.guidraw'
 local MapEditPopup = {
 	lifetime = 1.5
 }

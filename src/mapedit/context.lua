@@ -4,7 +4,7 @@
 
 require "prop"
 
-local guirender = require 'mapeditguidraw'
+local guirender = require 'mapedit.guidraw'
 
 local MapEditContext = {
 	l  = 24,
