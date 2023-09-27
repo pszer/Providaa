@@ -6,9 +6,9 @@ return {
 	height=64,
 
 	tile_set = {
-		[0] = {tile_type="void"},
-		[1] = {tile_type="land",tile_texture="dirt.png",tile_walkable=true},
-		[2] = {tile_type="land",tile_texture="water1.png",tile_walkable=false}
+		[0] = nil,
+		[1] = "dirt.png",
+		[2] = "water1.png",
 	},
 
 	anim_tex = {

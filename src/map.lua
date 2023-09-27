@@ -27,10 +27,11 @@
 --      {{y1,y2,y3,y4}  ,{y1,y2,y3,y4}, ...}
 --     },
 --
---     each entry in the tile_set is a list of properties for a Tile object
+--     each entry in the tile_set is a texture name
+--     only the [0] index is allowed to be nil
 --     tile_set = {
---       [0] = {tile_type="void"},
---       [1] = {tile_type="land",tile_texture="dirt.png",tile_walkable=true}
+--       [0] = nil,
+--       [1] = "dirt.png",
 --     },
 --
 --     textures can be given animations, in this example any tile/wall with a
@@ -42,6 +43,7 @@
 --     },
 --
 --     each entry in the wall_set is a texture to use when generating walls 
+--     only the [0] index is allowed to be nil
 --     wall_set = {
 --       [0] = nil
 --       [1] = "wall.png"
@@ -147,15 +149,16 @@ function Map.internalLoadTilesetTextures( map , textures , tex_names , tex_count
 	end
 
 	for i,t in pairs(map.tile_set) do
-		local tex_name = t.tile_texture
+		local tex_name = t
 		if tex_name then
 			load_tex(i, tex_name, tileset_id_to_tex)
 		end
 	end
 
 	for i,t in pairs(map.wall_set) do
-		if t then
-			load_tex(i, t, wallset_id_to_tex)
+		local tex_name = t
+		if tex_name then
+			load_tex(i, tex_name, wallset_id_to_tex)
 		end
 	end
 
@@ -1244,9 +1247,12 @@ function Map.malformedCheck(map)
 		for x=1,w do
 			local tile = tile_map[z][x]
 			local wall = wall_map[z][x]
-			if not tile_set[tile] then
+			if not tile_set[tile] and tile ~= 0 then
 				return string.format("Map %s: tile (z=%d,x=%d) uses undefined tile [%s]", name, z,x, tostring(tile))
 			end
+			--if wall and not wall_set[wall] and wall ~= 0 then
+			--	return string.format("Map %s: wall (z=%d,x=%d) uses undefined wall [%s]", name, z,x, tostring(wall))
+			--end
 		end
 	end
 

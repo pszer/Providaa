@@ -16,13 +16,13 @@ GameData.__index = {}
 
 function GameData:setupFromProv( Prov )
 
-	function GameData:getTileAtWorldCoord(x,y,z)
+	--[[function GameData:getTileAtWorldCoord(x,y,z)
 
 	end
 
 	function GameData:getTileAtTileCoord(x,z)
 
-	end
+	end--]]
 
 	function GameData:tileCoordToWorld(x,y,z)
 		return Tile.tileCoordToWorld(x,y,z)

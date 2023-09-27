@@ -350,6 +350,27 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	return canvas
 end
 
+function MapEditGUIRender:drawableFormatString(name, props)
+	assert(name)
+	local input_type = type(name)
+	local str = nil
+	if input_type == "string" then
+		str = name
+	elseif input_type == "table" then
+		local str_f = name[1]
+		local str_d = {}
+		for i=2,#name do
+			str_d[i-1] = this.props[name[i]]
+		end
+		str = string.format(str_f, unpack(str_d))
+	else
+		error("MapEditGUIRender:drawableFormatString(): expected string/table in name field", 2)
+	end
+	local drawable_text = self:createDrawableText(str)
+	local w,h = drawable_text:getDimensions()
+	return drawable_text,w,h
+end
+
 function MapEditGUIRender:createContextMenuBackground(w,h, col)
 	local canvas = love.graphics.newCanvas(w,h)
 
@@ -432,6 +453,58 @@ function MapEditGUIRender:draw3DCube(shader, min, max, col, solid, solid_col)
 	end
 
 	shadersend(shader, "u_model", "column", __id)
+	love.graphics.setColor(1,1,1,1)
+end
+
+
+function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state, buffer_info)
+	local bl = buffer_info.l_no_icon
+	if icon then
+		bl = buffer_info.l
+	end
+	love.graphics.draw(bg,x,y)
+
+	-- if hoverable
+	if state == "hover" then
+
+		local mode, alphamode = love.graphics.getBlendMode()
+		love.graphics.setColor(255/255,161/255,66/255,0.8)
+		love.graphics.setBlendMode("add","alphamultiply")
+
+		love.graphics.rectangle("fill",x,y,w,h)
+
+		love.graphics.setColor(1,1,1,1)
+		love.graphics.setBlendMode("subtract","alphamultiply")
+
+		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+
+		love.graphics.setBlendMode(mode, alphamode)
+
+	elseif state ~= "disable" then
+		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+	else
+		love.graphics.setShader(self.grayscale)
+		love.graphics.setColor(0.9,0.9,1,0.3)
+
+		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+
+		love.graphics.setShader()
+	end
+	if arrow then
+		love.graphics.draw(self.icons["mapedit/icon_sub.png"],
+			x + w - buffer_info.arrow_r, y + buffer_info.arrow_t)
+	end
+
 	love.graphics.setColor(1,1,1,1)
 end
 

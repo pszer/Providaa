@@ -2,7 +2,7 @@ require "gamestate"
 require "render"
 require "console"
 require "assetloader"
-require "mapedit"
+--require "mapedit"
 
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
@@ -40,6 +40,7 @@ function love.load( args )
 	 ["lvledit"] = function(args)
 	 	local mapname = args[1]
 		assert(mapname,"launch command lvledit expects a map name")
+		require "mapedit"
 		gamestate_on_launch = ProvMapEdit
 		end
 	}

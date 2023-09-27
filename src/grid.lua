@@ -1,4 +1,7 @@
-require "props.gridprops"
+--
+-- can be safely removed
+--
+--[[require "props.gridprops"
 
 require "tile"
 require "wall"
@@ -121,4 +124,4 @@ function Grid:applyTileAttribute(x,z)
 		--mesh:setVertexAttribute(i,animationoffset, tileprops.tile_texture_animation_offset)
 		mesh:setVertexAttribute(i,texoffset, offx, offy)
 	end
-end
+end--]]

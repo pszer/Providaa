@@ -7,17 +7,31 @@ require "prop"
 local guirender = require 'mapeditguidraw'
 
 local MapEditContext = {
-	buffer_l  = 24,
-	buffer_l_no_icon  = 6,
-	buffer_r = 6,
-	buffer_t = 4,
-	buffer_b = 4,
+	l  = 24,
+	l_no_icon  = 6,
+	r = 6,
+	t = 4,
+	b = 4,
 
-	buffer_sub_r = 23,
-	buffer_sub_t = 4,
+	sub_r = 23,
+	sub_t = 4,
 
-	buffer_il = 2,
-	buffer_it = 2,
+	il = 2,
+	it = 2,
+
+	buffer_info = {
+		l  = 24,
+		l_no_icon  = 6,
+		r = 6,
+		t = 4,
+		b = 4,
+
+		arrow_r = 23,
+		arrow_t = 4,
+
+		icon_l = 2,
+		icon_t = 2,
+	}
 }
 MapEditContext.__index = MapEditContext
 
@@ -49,8 +63,14 @@ MapEditContext.__index = MapEditContext
 -- instanciation, so they cannot be dynamically changed.
 -- look at mapeditguidraw.lua createDrawableText() for extra text formatting options
 --
+--
+--
+-- once a context menu is defined, instances of it can be created using
+-- contextmenu:new({key=value,...}, x, y)
+--
 
 function MapEditContext:define(prototype, ...)
+	local buffer_info = self.buffer_info
 	local options = { ... }
 
 	local p = Props:prototype(prototype)
@@ -78,46 +98,15 @@ function MapEditContext:define(prototype, ...)
 
 				draw = function(self)
 					local function draw_option(x,y,v)
-						local bg  = v.bg
-						local txt = v.text
-						local icon = v.icon
-						local bl = MapEditContext.buffer_l_no_icon
-						if icon then
-							bl = MapEditContext.buffer_l
-						end
-						love.graphics.draw(bg,x,y)
-						-- if hoverable
+						local state
 						if v.hover and not v.disable and (v.action or v.suboptions) then
-							local mode, alphamode = love.graphics.getBlendMode()
-							love.graphics.setColor(255/255,161/255,66/255,0.8)
-							love.graphics.setBlendMode("add","alphamultiply")
-							love.graphics.rectangle("fill",x,y,v.w,v.h)
-							love.graphics.setColor(1,1,1,1)
-							love.graphics.setBlendMode("subtract","alphamultiply")
-							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
-							if icon then
-								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
-							end
-							love.graphics.setBlendMode(mode, alphamode)
-						elseif not v.disable then
-							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
-							if icon then
-								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
-							end
+							state="hover"
+						elseif v.disable then
+							state="disable"
 						else
-							love.graphics.setShader(guirender.grayscale)
-							love.graphics.setColor(0.9,0.9,1,0.3)
-							love.graphics.draw(txt,x+bl,y+MapEditContext.buffer_r)
-							if icon then
-								love.graphics.draw(icon,x+MapEditContext.buffer_il,y+MapEditContext.buffer_it)
-							end
-							love.graphics.setShader()
+							state="normal"
 						end
-						if v.suboptions then
-							love.graphics.draw(guirender.icons["mapedit/icon_sub.png"],
-								x + v.w - MapEditContext.buffer_sub_r, y + MapEditContext.buffer_sub_t)
-						end
-						love.graphics.setColor(1,1,1,1)
+						guirender:drawGenericOption(x,y,v.w,v.h, v.bg,v.text,v.icon, v.suboptions~=nil, state, MapEditContext.buffer_info)
 					end
 
 					local function draw_option_list(opts, draw_option_list)
@@ -220,28 +209,15 @@ function MapEditContext:define(prototype, ...)
 					error("MapEditContext:define(): option has both an action and suboption generator")
 				end
 
-				local str = nil
-				if type(name) == "string" then
-				 	str = name
-				elseif type(name) == "table" then
-					local str_f = name[1]
-					local str_d = {}
-					for i=2,#name do
-						str_d[i-1] = this.props[name[i]]
-					end
-					str = string.format(str_f, unpack(str_d))
-				else
-					error("MapEditContext:define(): expected string/table in name field") 
-				end
-				text_drawable = guirender:createDrawableText(str)
+				text_drawable = guirender:drawableFormatString(name, this.props)
 
 				local w,h = text_drawable:getDimensions()
 				if icon then
-					w = w + MapEditContext.buffer_l + MapEditContext.buffer_r
+					w = w + buffer_info.l + buffer_info.r
 				else
-					w = w + MapEditContext.buffer_l_no_icon + MapEditContext.buffer_r
+					w = w + buffer_info.l_no_icon + buffer_info.r
 				end
-				h = h + MapEditContext.buffer_t + MapEditContext.buffer_b
+				h = h + buffer_info.t + buffer_info.b
 
 				local subopt_table = nil
 				if subopt then
@@ -258,33 +234,34 @@ function MapEditContext:define(prototype, ...)
 						action(this.props)
 					end
 				end
-				local o = {text=text_drawable,
-				           action=call_f,
-						   suboptions=subopt_table,
-						   expand = false,
-						   hover = false,
-						   disable=disable,
-						   w=w,
-						   h=h,
-						   x=0,
-						   y=0,
-						   bg=nil,
-						   icon = icon}
+				local o =
+					{text=text_drawable,
+				 	 action=call_f,
+				 	 suboptions=subopt_table,
+					 expand = false,
+					 hover = false,
+					 disable=disable,
+					 w=w,
+					 h=h,
+					 x=0,
+					 y=0,
+					 bg=nil,
+					 icon = icon}
 				return o
 			end
 
 			local function create_bgs(opts, create_bgs) 
 				local arrow_pad = 0
-				-- pad options by buffer_sub_r to fit an arrow
+				-- pad options by sub_r to fit an arrow
 				-- if there are any suboptions in this option menu
 				for i,v in ipairs(opts) do
 					if v.suboptions then
-						arrow_pad = MapEditContext.buffer_sub_r
+						arrow_pad = buffer_info.arrow_r
 						break
 					end
 				end
 
-				local max_w = 30 -- minimum with of 50 for each option
+				local max_w = 30 -- minimum with of 30 for each option
 				-- find max_w
 				for i,v in ipairs(opts) do
 					if v.suboptions then

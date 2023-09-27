@@ -1,7 +1,5 @@
 require "providaa"
 
-require "extras/eyestest"
-
 GAMESTATE = {}
 
 function SET_GAMESTATE(gs, args)

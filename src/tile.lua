@@ -1,22 +1,22 @@
 require "props.tileprops"
 
-require "texture"
-require "mesh"
-require "math"
+--require "texture"
+--require "mesh"
+--require "math"
 
 TILE_SIZE = 32
 TILE_HEIGHT = -24
 
 Tile = {__type = "tile",
 
-	atypes = {
-		--{"AnimationOffset", "float", 1},
+	--[[atypes = {
 		{"TextureScale",    "float", 2},
 		{"TextureOffset",   "float", 2}
-	}
+	}--]]
+
 }
 Tile.__index = Tile
-
+--[[
 function Tile:new(props)
 	local this = {
 		props = TilePropPrototype(props),
@@ -26,7 +26,7 @@ function Tile:new(props)
 	--this:allocateMesh()
 
 	return this
-end
+end--]]
 
 function Tile.tileCoordToWorld(x,y,z)
 	return x * TILE_SIZE, y*TILE_HEIGHT, -z*TILE_SIZE
@@ -36,7 +36,12 @@ function Tile.worldCoordToTile(x,y,z)
 	return x / TILE_SIZE, y/TILE_HEIGHT, -z/TILE_SIZE
 end
 
+--
+-- can be safely removed
+-- only the above two functions are used
+--
 
+--[[
 function Tile.voidTile()
 	return Tile:new{tile_type="void"}
 end
@@ -92,4 +97,4 @@ function Tile:attributeEquals(tile2)
 	local offx_eq   = mod1(t1.tile_texture_offx)  == mod1(t2.tile_texture_offx)
 	local offy_eq   = mod1(t1.tile_texture_offy)  == mod1(t2.tile_texture_offy)
 	return scalex_eq and scaley_eq and offx_eq and offy_eq
-end
+end--]]

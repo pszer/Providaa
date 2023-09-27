@@ -14,7 +14,9 @@ local transobj     = require "transobj"
 
 local guirender   = require 'mapeditguidraw'
 local contextmenu = require 'mapeditcontext'
+local toolbar     = require 'mapedittoolbar'
 local popup       = require 'mapeditpopup'
+local gui         = require 'mapeditgui'
 
 local commands = require "mapeditcommand"
 
@@ -31,8 +33,8 @@ ProvMapEdit = {
 	grabbed_mouse_x = 0,
 	grabbed_mouse_y = 0,
 
+	-- table of command definitions
 	commands = {},
-	context_menus = {},
 
 	wireframe_col = {19/255,66/255,72/255,0.8},
 	selection_col = {255/255,161/255,66/255,1.0},
@@ -93,8 +95,13 @@ function ProvMapEdit:load(args)
 	self:setupInputHandling()
 	self:enterViewportMode()
 	self:defineCommands()
-	self:defineContextMenus()
+	self:defineGUI()
 end
+
+function ProvMapEdit:defineGUI()
+	gui:define(self)
+end
+
 
 function ProvMapEdit:unload()
 	CONTROL_LOCK.MAPEDIT_VIEW.close()
@@ -184,15 +191,6 @@ end
 function ProvMapEdit:defineCommands()
 	coms = self.commands
 
-	--[[local function table_eq(a,b)
-		for i,v in ipairs(a) do
-			if v~=b[i] then return false end end
-		return true
-	end--]]
-	local function obj_eq(a,b)
-		return a[2]==b[2]
-	end
-
 	coms["invertible_select"] = commands:define(
 		{
 		 {"select_objects", "table", nil, PropDefaultTable{}},
@@ -206,7 +204,7 @@ function ProvMapEdit:defineCommands()
 			-- first we inverse the selection if already selected
 			for i,v in ipairs(props.select_objects) do
 				for j,u in ipairs(active_selection) do
-					if obj_eq(v,u) then
+					if v == u then
 						skip[i] = true
 						table.remove(active_selection, j)
 						self:highlightObject(v,0.0)
@@ -219,7 +217,7 @@ function ProvMapEdit:defineCommands()
 				if not skip[i] then
 					local unique = true
 					for j,u in ipairs(active_selection) do
-						if obj_eq(v,u) then
+						if v == u then
 							unique = false
 							break
 						end
@@ -243,7 +241,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				local unique = true
 				for j,u in ipairs(active_selection) do
-					if obj_eq(v,u) then
+					if v == u then
 						unique = false
 						break
 					end
@@ -259,7 +257,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				if not skip[i] then
 					for j,u in ipairs(active_selection) do
-						if obj_eq(v,u) then
+						if v == u then
 							table.remove(active_selection, j)
 							self:highlightObject(v,0.0)
 							break
@@ -280,6 +278,7 @@ function ProvMapEdit:defineCommands()
 			local active_selection = mapedit.active_selection
 
 			if props.first_pass then
+				-- remove already selected objects from the additive select
 				local lookup = {}
 				for i,v in ipairs(active_selection) do
 					lookup[v[2]] = true
@@ -297,24 +296,9 @@ function ProvMapEdit:defineCommands()
 			local obj_count = #props.select_objects
 			for i=obj_count,1,-1 do
 				v = props.select_objects[i]
-				--[[local unique = true
-				for j,u in ipairs(active_selection) do
-					if obj_eq(v,u) then
 
-						-- we remove any objects that have already been selected from the
-						-- additive select object list, this action is not reversed in the undo
-						-- operation
-						table.remove(props.select_objects, i)
-
-						unique = false
-						break
-					end
-				end--]]
-
-				--if unique then
-					table.insert(active_selection, v)
-					self:highlightObject(v,1.0)
-				--end
+				table.insert(active_selection, v)
+				self:highlightObject(v,1.0)
 			end
 
 			props.first_pass = false
@@ -376,8 +360,6 @@ function ProvMapEdit:defineCommands()
 				local obj_type = v[1]
 				if obj_type == "model" then
 					local inst = v[2]
-					--local transf = transobj:from(inst)
-					--table.insert(props.object_memory, {inst, transf})
 					table.insert(insts, inst)
 				else
 					--error()
@@ -394,8 +376,6 @@ function ProvMapEdit:defineCommands()
 				local obj_type = v[1]
 				if obj_type == "model" then
 					local inst = v[2]
-					--local transf = transobj:from(inst)
-					--table.insert(props.object_memory, {inst, transf})
 					table.insert(insts, inst)
 				else
 					--error()
@@ -685,146 +665,8 @@ function ProvMapEdit:commitRedo()
 	self.props.mapedit_command_pointer = self.props.mapedit_command_pointer + 1
 end
 
-function ProvMapEdit:defineContextMenus()
-	local context = self.context_menus
-
-	context["select_models_context"] = 
-		contextmenu:define(
-		{
-		 {"select_objects", "table", nil, PropDefaultTable{self.active_selection}},
-		},
-		 {"Copy",      action=function(props)
-		                        self:copySelectionToClipboard() end,
-		               icon = "mapedit/icon_copy.png"},
-
-		 {"Duplicate", action=function(props)
-		                        self:pasteClipboard() end,
-		               icon = "mapedit/icon_dup.png"},
-
-		 {"~b~(orange)Delete", action=function(props)
-		                                self:commitCommand("delete_obj", {select_objects=props.select_objects}) end,
-		 	             icon = "mapedit/icon_del.png"},
-
-		 {"Group", suboptions = function(props)
-		 	local objs = props.select_objects
-			local groups = {}
-			local function add_to_groups(g) -- ensures unique entries in groups
-				for i,v in ipairs(groups) do
-					if v==g then return end end
-				table.insert(groups, g)
-			end
-			local model_outside_group_exists = false
-			local model_outside_group_count = 0
-			local models_outside = {}
-			for i,v in ipairs(objs) do
-				local group = self:isModelInAGroup(v[2])
-				if group then
-					add_to_groups(group)
-				else
-					model_outside_group_exists = true
-					model_outside_group_count = model_outside_group_count+1
-					table.insert(models_outside, v[2])
-				end
-			end
-			local group_count = #groups
-
-			local create_enable = (group_count == 0) and (model_outside_group_count>1)
-			local merge_groups_enable = (group_count > 1) and (not model_outside_group_exists)
-			local add_to_group_enable = (group_count==1) and (model_outside_group_exists)
-			local ungroup_enable = (group_count==1) and (not model_outside_group_exists)
-			
-		 	return {
-			 {"~(green)~bCreate", disable = not create_enable, action=function()
-			 	self:commitCommand("create_group", {select_objects=props.select_objects}) end},
-
-			 {"Merge Groups", disable = not merge_groups_enable, action=function()
-			 	self:commitCommand("merge_groups", {groups=groups}) end},
-
-			 {"Add To Group", disable = not add_to_group_enable, action=function()
-			  self:commitCommand("add_to_group", {group=groups[1], models=models_outside})end},
-
-			 {"~(lpurple)Ungroup", disable = not ungroup_enable, action=function()
-			 	self:commitCommand("dissolve_groups", {groups=groups, models=models_outside}) end},
-			}
-			end},
-		 {"--Transform--"},
-		 {"Flip", suboptions = function(props)
-		 	return {
-			 {"... by ~i~(lred)X~r Axis", action=function()
-				self:commitCommand("transform", {transform_info=maptransform.flip_x_const}) end},
-			 {"... by ~i~(lgreen)Y~r Axis", action=function()
-				self:commitCommand("transform", {transform_info=maptransform.flip_y_const}) end},
-			 {"... by ~i~(lblue)Z~r Axis", action=function()
-				self:commitCommand("transform", {transform_info=maptransform.flip_z_const}) end},
-			}
-		 	end},
-
-		 {"Rotate", suboptions = function(props)
-		 	return {
-			 {"... around ~i~(lred)X~r Axis", suboptions = function(props)
-			 	return {
-					{"+~i90~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_x_090})
-						end},
-					{"+~i180~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_x_180})
-						end},
-					{"+~i270~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_x_270})
-						end}}
-				end},
-			 {"... around ~i~(lgreen)Y~r Axis", suboptions = function(props)
-			 	return {
-					{"+~i90~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_y_090})
-						end},
-					{"+~i180~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_y_180})
-						end},
-					{"+~i270~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_y_270})
-						end}}
-				end},
-			 {"... around ~i~(lblue)Z~r Axis", suboptions = function(props)
-			 	return {
-					{"+~i90~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_z_090})
-						end},
-					{"+~i180~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_z_180})
-						end},
-					{"+~i270~b°", action=function()
-						self:commitCommand("transform", {transform_info=maptransform.rot_z_270})
-						end}}
-				end},
-			}
-		 	end},
-
-		 {"~bReset",action=function(props)
-		   self:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
-		   icon = nil}
-		 )
-end
-
-function ProvMapEdit:openContextMenu(context_name, props)
-	local context_table = self.context_menus
-	local context_def = context_table[context_name]
-	assert(context_def, string.format("No context menu %s defined", context_name))
-	local context = context_def:new(props)
-	assert(context)
-
-	CONTROL_LOCK.MAPEDIT_CONTEXT.open()
-
-	self.curr_context_menu = context
-	return context
-end
-
-function ProvMapEdit:exitContextMenu()
-	if self.curr_context_menu then
-		self.curr_context_menu:release()
-		self.curr_context_menu = nil
-	end
-	CONTROL_LOCK.MAPEDIT_CONTEXT.close()
+function ProvMapEdit:defineGUI()
+	gui:define(self)
 end
 
 function ProvMapEdit:setupInputHandling()
@@ -835,17 +677,17 @@ function ProvMapEdit:setupInputHandling()
 	                                   {"cxtm_select","cxtm_scroll_up","cxtm_scroll_down"})
 
 	local cxtm_select_option = Hook:new(function ()
-		local cxtm = self.curr_context_menu
+		local cxtm = gui.curr_context_menu
 		if not cxtm then
-			self:exitContextMenu()
+			gui:exitContextMenu()
 			return end
 		local hovered_opt = cxtm:getCurrentlyHoveredOption()
 		if not hovered_opt then
-			self:exitContextMenu()
+			gui:exitContextMenu()
 			return end
 		local action = hovered_opt.action
 		if action then action() end
-		self:exitContextMenu()
+		gui:exitContextMenu()
 	end)
 	self.cxtm_input:getEvent("cxtm_select", "down"):addHook(cxtm_select_option)
 
@@ -1108,11 +950,10 @@ function ProvMapEdit:enterTransformMode(transform_mode)
 
 	if transform_mode ~= "translate" and (tile_selected or wall_selected) then
 		if transform_mode == "rotate" then
-			self:displayPopup("Tiles cannot be rotated")
+			gui:displayPopup("Tiles cannot be rotated")
 		else
-			self:displayPopup("Tiles cannot be scaled")
+			gui:displayPopup("Tiles cannot be scaled")
 		end
-		--print("Tiles/walls cannot be rotated.")
 		return
 	end
 
@@ -1630,9 +1471,42 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 			return
 		end
 	end
-	-- context menu creation here
+
+	self:openSelectionContextMenu(model,tile,wall)
+end
+
+function ProvMapEdit:openSelectionContextMenu(model,tile,wall)
 	if model and not tile and not wall then
-		self:openContextMenu("select_models_context", {select_objects=self.active_selection})
+		 	local objs = self.active_selection
+			local groups = {}
+			local function add_to_groups(g) -- ensures unique entries in groups
+				for i,v in ipairs(groups) do
+					if v==g then return end end
+				table.insert(groups, g)
+			end
+			local model_outside_group_exists = false
+			local model_outside_group_count = 0
+			local models_outside = {}
+			for i,v in ipairs(objs) do
+				local group = self:isModelInAGroup(v[2])
+				if group then
+					add_to_groups(group)
+				else
+					model_outside_group_exists = true
+					model_outside_group_count = model_outside_group_count+1
+					table.insert(models_outside, v[2])
+				end
+			end
+			local group_count = #groups
+
+			local group_flags = {
+				create_enable = (group_count == 0) and (model_outside_group_count>1),
+				merge_groups_enable = (group_count > 1) and (not model_outside_group_exists),
+				add_to_group_enable = (group_count==1) and (model_outside_group_exists),
+				ungroup_enable = (group_count==1) and (not model_outside_group_exists),
+			}
+
+		gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_flags=group_flags})
 	end
 end
 
@@ -2618,8 +2492,7 @@ function ProvMapEdit:update(dt)
 		self.__cache_recalc_selection_centre = true
 	end
 
-	self:updateContextMenu()
-	self:updatePopupMenu()
+	gui:update()
 end
 
 function ProvMapEdit:updateTransformationMatrix()
@@ -2645,19 +2518,6 @@ function ProvMapEdit:isModelSelected(inst)
 		end
 	end
 	return false
-end
-
-function ProvMapEdit:updateContextMenu()
-	if not self.curr_context_menu then
-		self.context_menu_hovered = false
-		return
-	end
-	local x,y = love.mouse.getX(), love.mouse.getY()
-	self.context_menu_hovered = self.curr_context_menu:updateHoverInfo(x,y)
-end
-
-function ProvMapEdit:displayPopup(str, ...)
-	self.curr_popup = popup:throw(str, ...)
 end
 
 local __tempwverts = {}
@@ -2775,15 +2635,6 @@ function ProvMapEdit:updateWallVerts(x,z)
 	add_wall_verts(wall_info,2)
 	add_wall_verts(wall_info,3)
 	add_wall_verts(wall_info,4)
-end
-
-function ProvMapEdit:updatePopupMenu()
-	if not self.curr_popup then return end
-	local p = self.curr_popup
-	if p:expire() then
-		p:release()
-		self.curr_popup = nil
-	end
 end
 
 function ProvMapEdit:interpCameraToPos(dt)
@@ -3075,20 +2926,6 @@ function ProvMapEdit:isSelectionEmpty()
 end
 
 function ProvMapEdit:isSelected(obj)
-	--[[local function table_eq(a,b)
-		local __mt = getmetatable(a)
-		if __mt then print("hyup") end
-		if __mt and __mt.__eq then return a==b end
-
-		for i,v in ipairs(a) do
-			if v~=b[i] then return false end end
-		return true
-	end
-	assert_type(obj, "table")
-	for i,v in ipairs(self.active_selection) do
-		if table_eq(obj,v) then return true end
-	end
-	return false--]]
 	for i,v in ipairs(self.active_selection) do
 		if obj[2]==v[2] then return true end
 	end
@@ -3127,28 +2964,13 @@ function ProvMapEdit:drawSelectedHighlight(shader)
 	love.graphics.setColor(1,1,1,1)
 end
 
-function ProvMapEdit:drawContextMenu()
-	local cxtm = self.curr_context_menu
-	if not cxtm then return end
-	cxtm:draw()
-end
-function ProvMapEdit:drawPopup()
-	local p = self.curr_popup
-	if not p then return end
-	p:draw()
-end
 
 function ProvMapEdit:draw()
 	self:drawViewport()
 	Renderer.renderScaledDefault()
 
-	love.graphics.setCanvas()
-	love.graphics.setShader()
-	love.graphics.origin()
-	love.graphics.setColor(1,1,1,1)
-	love.graphics.setDepthMode( "always", false  )
-	self:drawContextMenu()
-	self:drawPopup()
+	love.graphics.reset()
+	gui:draw()
 end
 
 local __tempdir = {}
