@@ -87,17 +87,20 @@ function Wall:getWallInfo(textures, tile_heights, west_heights, south_heights, e
 
 		local x,y,z = {},{},{}
 
+		if height_a < oppheight_a then oppheight_a = height_a end
+		if height_b < oppheight_b then oppheight_b = height_b end
+
 		local min,max = math.min,math.max
 		if i == 1 or i == 3 then
-			x[1],y[1],z[1] = 0+vector.x, max(height_a,oppheight_a),     0+vector.z
-			x[2],y[2],z[2] = 0         , max(height_b,oppheight_b),     0
-			x[3],y[3],z[3] = 0         , min(oppheight_b,height_b),  0
-			x[4],y[4],z[4] = 0+vector.x, min(oppheight_a,height_a),  0+vector.z
+			x[1],y[1],z[1] = 0+vector.x, height_a,     0+vector.z
+			x[2],y[2],z[2] = 0         , height_b,     0
+			x[3],y[3],z[3] = 0         , oppheight_b,  0
+			x[4],y[4],z[4] = 0+vector.x, oppheight_a,  0+vector.z
 		else
-			x[1],y[1],z[1] = 0         , max(height_a,oppheight_a),     0
-			x[2],y[2],z[2] = 0+vector.x, max(height_b,oppheight_b),     0+vector.z
-			x[3],y[3],z[3] = 0+vector.x, min(oppheight_b,oppheight_b),  0+vector.z
-			x[4],y[4],z[4] = 0         , min(oppheight_a,oppheight_a),  0
+			x[1],y[1],z[1] = 0         , height_a,     0
+			x[2],y[2],z[2] = 0+vector.x, height_b,     0+vector.z
+			x[3],y[3],z[3] = 0+vector.x, oppheight_b,  0+vector.z
+			x[4],y[4],z[4] = 0         , oppheight_a,  0
 		end
 
 		at_least_one_wall = true
