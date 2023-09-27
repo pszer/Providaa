@@ -7,18 +7,6 @@ require "prop"
 local guirender = require 'mapedit.guidraw'
 
 local MapEditContext = {
-	l  = 24,
-	l_no_icon  = 6,
-	r = 6,
-	t = 4,
-	b = 4,
-
-	sub_r = 23,
-	sub_t = 4,
-
-	il = 2,
-	it = 2,
-
 	buffer_info = {
 		l  = 24,
 		l_no_icon  = 6,
@@ -209,6 +197,10 @@ function MapEditContext:define(prototype, ...)
 
 				if action and subopt then
 					error("MapEditContext:define(): option has both an action and suboption generator")
+				end
+
+				if type(disable) == "function" then
+					v.disable = disable(this.props)
 				end
 
 				text_drawable = guirender:drawableFormatString(name, this.props)

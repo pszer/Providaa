@@ -655,15 +655,18 @@ function ProvMapEdit:commitRedo()
 	self.props.mapedit_command_pointer = self.props.mapedit_command_pointer + 1
 end
 
-function ProvMapEdit:defineGUI()
-	gui:define(self)
+function ProvMapEdit:canUndo()
+	return self.props.mapedit_command_pointer > 0
+end
+function ProvMapEdit:canRedo()
+	return self.props.mapedit_command_pointer ~= #(self.props.mapedit_command_stack)
 end
 
 function ProvMapEdit:setupInputHandling()
 	--
 	-- CONTEXT MENU MODE INPUTS
 	--
-	self.cxtm_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_CONTEXT,
+	--[[self.cxtm_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_CONTEXT,
 	                                   {"cxtm_select","cxtm_scroll_up","cxtm_scroll_down"})
 
 	local cxtm_select_option = Hook:new(function ()
@@ -680,6 +683,7 @@ function ProvMapEdit:setupInputHandling()
 		gui:exitContextMenu()
 	end)
 	self.cxtm_input:getEvent("cxtm_select", "down"):addHook(cxtm_select_option)
+	--]]
 
 	--
 	-- VIEWPORT MODE INPUTS
@@ -947,7 +951,7 @@ function ProvMapEdit:enterTransformMode(transform_mode)
 		return
 	end
 
-	CONTROL_LOCK.MAPEDIT_TRANSFORM.open()
+	CONTROL_LOCK.MAPEDIT_TRANSFORM.elevate()
 	self.props.mapedit_mode = "transform"
 	self.props.mapedit_transform_mode = transform_mode
 	self.active_transform = maptransform:newTransform(transform_mode)
@@ -1465,7 +1469,8 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 	self:openSelectionContextMenu(model,tile,wall)
 end
 
-function ProvMapEdit:openSelectionContextMenu(model,tile,wall)
+function ProvMapEdit:getSelectionContextMenu()
+	local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
 	if model and not tile and not wall then
 		 	local objs = self.active_selection
 			local groups = {}
@@ -1498,7 +1503,16 @@ function ProvMapEdit:openSelectionContextMenu(model,tile,wall)
 				groups = groups
 			}
 
-		gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
+		--gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
+		return "select_models_context", {select_objects=self.active_selection, group_info=group_flags}
+	end
+	return nil, nil
+end
+
+function ProvMapEdit:openSelectionContextMenu()
+	local cxtm_name, props = self:getSelectionContextMenu()
+	if cxtm_name then
+		gui:openContextMenu(cxtm_name, props)
 	end
 end
 
@@ -2456,24 +2470,18 @@ end
 local count = 0
 function ProvMapEdit:update(dt)
 	local cam = self.props.mapedit_cam
-
 	local mode = self.props.mapedit_mode
+
+	gui:update(dt)
 	self.viewport_input:poll()
 	self.transform_input:poll()
-	self.cxtm_input:poll()
+	--self.cxtm_input:poll()
 	self:interpCameraToPos(dt)
 	cam:update()
 	self:updateModelMatrices()
 
 	self.granulate_transform = self.ctrl_modifier 
 
-	count = count+1
-	--if self.active_transform and (count % 25 == 0) then
-	--	local t = self.active_transform:getTransform(self.props.mapedit_cam)
-	--	if t then
-	--		--print(t)
-	--	end
-	--end
 	self:updateTransformationMatrix()
 
 	local map_mesh = self.props.mapedit_map_mesh
@@ -2483,8 +2491,6 @@ function ProvMapEdit:update(dt)
 		self.selection_changed = false
 		self.__cache_recalc_selection_centre = true
 	end
-
-	gui:update()
 end
 
 function ProvMapEdit:updateTransformationMatrix()
@@ -3049,5 +3055,5 @@ function ProvMapEdit:transform_mousemoved(x,y,dx,dy)
 end
 
 function ProvMapEdit:resize(w,h)
-	self:exitContextMenu()
+	gui:exitContextMenu()
 end

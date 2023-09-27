@@ -46,25 +46,25 @@ require "cfg.keybinds"
 -- 3 = elevated priority
 --
 CONTROL_LOCK = {
---              priority | status
-	CONSOLE      = {0,        0},
+--              priority | status | queued status
+	CONSOLE      = {0,        0,     0},
 
-	MENU5        = {5,        0},
-	MENU4        = {6,        0},
-	MENU3        = {7,        0},
-	MENU2        = {8,        0},
-	MENU1        = {9,        0},
+	MENU5        = {5,        0,     0},
+	MENU4        = {6,        0,     0},
+	MENU3        = {7,        0,     0},
+	MENU2        = {8,        0,     0},
+	MENU1        = {9,        0,     0},
 
-	MAPEDIT_CONTEXT   = {100,      0},
-	MAPEDIT_DIALOG    = {101,      0},
-	MAPEDIT_PANEL     = {102,      0},
-	MAPEDIT_TRANSFORM = {103,      0},
-	MAPEDIT_VIEW      = {104,      0},
+	MAPEDIT_CONTEXT   = {100,      0,0},
+	MAPEDIT_DIALOG    = {101,      0,0},
+	MAPEDIT_TRANSFORM = {103,      0,0},
+	MAPEDIT_PANEL     = {104,      0,0},
+	MAPEDIT_VIEW      = {105,      0,0},
 
-	GAMEPROMPT = {200,      0},
-	GAME       = {201,      0},
+	GAMEPROMPT = {200,      0,     0},
+	GAME       = {201,      0,     0},
 
-	META       = {9999,     2}
+	META       = {9999,     2,     2}
 }
 
 -- shorter alias
@@ -80,16 +80,21 @@ function ADD_CONTROL_LOCK(name, priority)
 			return
 		end
 	end
-	CONTROL_LOCK[name] = {priority, 0}
+	CONTROL_LOCK[name] = {priority, 0,0}
 	setmetatable(CONTROL_LOCK, CONTROL_LOCK_METATABLE)
 end
 
 -- metatable for each control lock in CONTROL_LOCK
 CONTROL_LOCK_METATABLE = {
-	close      = function(lock) lock[2] = 0 end,
-	open       = function(lock) lock[2] = 1 end,
-	forceOpen  = function(lock) lock[2] = 2 end,
-	elevate    = function(lock) lock[2] = 3 end
+	close      = function(lock) lock[2] = 0 lock[3] = 0 end,
+	open       = function(lock) lock[2] = 1 lock[3] = 1 end,
+	forceOpen  = function(lock) lock[2] = 2 lock[3] = 2 end,
+	elevate    = function(lock) lock[2] = 3 lock[3] = 3 end,
+
+	queueClose      = function(lock) lock[3] = 0 end,
+	queueOpen       = function(lock) lock[3] = 1 end,
+	queueForceOpen  = function(lock) lock[3] = 2 end,
+	queueElevate    = function(lock) lock[3] = 3 end
 }
 CONTROL_LOCK_METATABLE.__index = function (lock,t)
 	return function() CONTROL_LOCK_METATABLE[t](lock) end
@@ -118,14 +123,14 @@ CONTROL_LOCK_METATABLE.__call  = function(t)
 			if not (lock[2] == 0 or t[2] == 2) then
 
 				-- if a lock has elevated priority this lock
-				-- and all others are disabled
+				-- and all others open locks are disabled
 				if lock[2] == 3 then
 					return false
 				end
 
 				-- if a lock with higher priority is open
 				-- this lock is disabled
-				if lock[2] == 1 and lock[1] < t[1] then
+				if lock[2] == 1 and (lock[1] < t[1]) then
 					return false
 				end
 			end
@@ -182,6 +187,10 @@ function updateKeys()
 		elseif v[1] == "up" then
 			CONTROL_KEYS_DOWN[k] = nil
 		end
+	end
+
+	for i,v in pairs(CONTROL_LOCK) do
+		v[2] = v[3]
 	end
 end
 

@@ -8,6 +8,19 @@ local guirender = require 'mapedit.guidraw'
 local contextmenu = require 'mapedit.context'
 
 local MapEditToolbar = {
+	buffer_info = {
+		l  = 24,
+		l_no_icon  = 6,
+		r = 6,
+		t = 4,
+		b = 4,
+
+		arrow_r = 23,
+		arrow_t = 4,
+
+		icon_l = 2,
+		icon_t = 2,
+	}
 }
 MapEditToolbar.__index = MapEditToolbar
 
@@ -59,7 +72,7 @@ function MapEditToolbar:define(prototype, ...)
 				local x,y = self.x,self.y
 				local max_w,max_h = self.w(), self.h
 
-				love.graphics.setScissor(x,y,x+max_w,y+max_h)
+				love.graphics.setScissor(x,y,max_w,max_h)
 
 				for i,v in ipairs(self.menus) do
 					local menu_x,menu_y = v.x,v.y
@@ -69,24 +82,26 @@ function MapEditToolbar:define(prototype, ...)
 					if v.disable then state = "disable" 
 					elseif v.hover then state = "hover" 
 					end
+					--print(state)
 
 					guirender:drawGenericOption(x + menu_x, y + menu_y, v.w, v.h, v.bg, v.text, v.icon, false,
-					 v.state, buffer_info)
+					 state, buffer_info)
 				end
 
 				love.graphics.setScissor()
 			end
 
 			function this.updateHoverInfo(self)
-				local locked = not self.lock()
+				--[[local locked = not self.lock()
 				if locked then
 					for i,v in ipairs(self.menus) do
 						v.hover = false
 					end
 					return
-				end
+				end--]]
 
 				local mx,my = love.mouse.getPosition()
+				local hovered = nil
 				for i,v in ipairs(self.menus) do
 					local x,y,w,h = v.x,v.y,v.w,v.h
 					local x2,y2 = x+w,y+h
@@ -95,8 +110,12 @@ function MapEditToolbar:define(prototype, ...)
 					   y<=my and my<= y2
 					then
 						v.hover = true
+						hovered = v
+					else
+						v.hover = false
 					end
 				end
+				return hovered
 			end
 			function this.getCurrentlyHoveredOption(self)
 				local locked = not self.lock()
@@ -117,7 +136,10 @@ function MapEditToolbar:define(prototype, ...)
 
 				local name = menu_def[1]
 				menu.generate = menu_def.generate
-				menu.icon = guirender.icons[v.icon] or nil
+				local icon = menu_def.icon
+				if icon then
+					menu.icon = guirender.icons[menu_def.icon] or nil
+				end
 
 				assert(name, "MapEditToolbar:define(): no name given for a menu option")
 				assert(menu.generate, "MapEditToolbar:define(): no generator function given for a menu option")
@@ -134,7 +156,7 @@ function MapEditToolbar:define(prototype, ...)
 				menu.bg = guirender:createContextMenuBackground(menu.w,menu.h)
 				menu.x = x_acc
 				menu.y = 0
-				x_acc = x_acc + menu.w
+				x_acc = x_acc + menu.w+1
 
 				menu.hover = false
 				menu.disable = menu_def.disable
@@ -142,21 +164,23 @@ function MapEditToolbar:define(prototype, ...)
 				menu.action = function(self)
 					local context_menu_def, context_props = self.generate(self.props)
 					assert(context_menu_def, "MapEditToolbar: recieved no context menu definition in menu:action()")
-					local cx,cy = self.x + menu.x, self.y + menu.y
-					return context_menu_def:new(context_props, cx, cy)
+					local cx,cy = this.x + menu.x, this.y + menu.y
+					return context_menu_def:new(context_props, cx, cy+self.h)
 				end
 
 				return menu
 			end
 
 			for i,v in ipairs(menus) do
-				this[i] = fill_out_menu(v)
-				local mh = this[i].h
+				this.menus[i] = fill_out_menu(v)
+				local mh = this.menus[i].h
 				if mh > this.h then this.h = mh end
 			end
 
 			return this
 		end}
+
+		return obj
 end
 
 return MapEditToolbar

@@ -87,6 +87,16 @@ function PropDefaultTable(table)
 	end
 end
 
+function PropDefaultFunction(func)
+	return function(x)
+		if not x then
+			return true, func()
+		else
+			return true, x
+		end
+	end
+end
+
 local cpml = require 'cpml'
 local mat4new = cpml.mat4.new
 function PropDefaultMatrix(table)

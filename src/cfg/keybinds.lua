@@ -80,6 +80,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["cxtm_select"] = { "mouse1" , nil , default = "mouse1" },
 	["cxtm_scroll_up"]   = { "up"   , "wheelup"   , default = "up" },
 	["cxtm_scroll_down"] = { "down" , "wheeldown" , default = "down" },
+	["panel_select"] = { "mouse1" , nil , default = "mouse1" },
 
 }
 
