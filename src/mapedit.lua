@@ -68,12 +68,9 @@ ProvMapEdit = {
 	curr_popup = nil,
 
 	clipboard = {},
-	clipboard_paste_count = 0 -- when the current selection gets copied to clipboard, all objects in
-	                          -- the selection gets cloned.
-							  -- on the first paste of the clipboard, these objects get added to the scene,
-							  -- on any subsequent pastes the objects have to be cloned before being added
-							  -- to the scene
 
+	tilevertex_objs = {},
+	wall_objs = {}
 }
 ProvMapEdit.__index = ProvMapEdit
 
@@ -119,7 +116,7 @@ function ProvMapEdit:loadMap(map_name)
 
 	local map_mesh = Map.generateMapMesh( map_file ,
 		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true,
-		  gen_newvert_buffer = true} )
+		  gen_newvert_buffer = true, keep_textures=true} )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -137,6 +134,7 @@ function ProvMapEdit:loadMap(map_name)
 	self.props.mapedit_model_insts = models
 
 	self:copyPropsFromMap(map_file)
+	self:allocateObjects()
 end
 
 function ProvMapEdit:copyPropsFromMap(map_file)
@@ -167,13 +165,32 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_skybox, map_file.skybox)
 end
 
+function ProvMapEdit:allocateObjects()
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	for z=1,h do
+		self.tilevertex_objs[z]={}
+		self.wall_objs[z] = {}
+		for x=1,w do
+			self.tilevertex_objs[z][x]={}
+			self.wall_objs[z][x]={}
+			for i=1,4 do
+				self.tilevertex_objs[z][x][i]=self:getTileVertexObject(x,z,i)
+				self.wall_objs[z][x][i]=self:getWallObject(x,z,i)
+			end
+		end
+	end
+end
+
 function ProvMapEdit:defineCommands()
 	coms = self.commands
 
-	local function table_eq(a,b)
+	--[[local function table_eq(a,b)
 		for i,v in ipairs(a) do
 			if v~=b[i] then return false end end
 		return true
+	end--]]
+	local function obj_eq(a,b)
+		return a[2]==b[2]
 	end
 
 	coms["invertible_select"] = commands:define(
@@ -189,7 +206,7 @@ function ProvMapEdit:defineCommands()
 			-- first we inverse the selection if already selected
 			for i,v in ipairs(props.select_objects) do
 				for j,u in ipairs(active_selection) do
-					if table_eq(v,u) then
+					if obj_eq(v,u) then
 						skip[i] = true
 						table.remove(active_selection, j)
 						self:highlightObject(v,0.0)
@@ -202,7 +219,7 @@ function ProvMapEdit:defineCommands()
 				if not skip[i] then
 					local unique = true
 					for j,u in ipairs(active_selection) do
-						if table_eq(v,u) then
+						if obj_eq(v,u) then
 							unique = false
 							break
 						end
@@ -226,7 +243,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				local unique = true
 				for j,u in ipairs(active_selection) do
-					if table_eq(v,u) then
+					if obj_eq(v,u) then
 						unique = false
 						break
 					end
@@ -242,7 +259,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				if not skip[i] then
 					for j,u in ipairs(active_selection) do
-						if table_eq(v,u) then
+						if obj_eq(v,u) then
 							table.remove(active_selection, j)
 							self:highlightObject(v,0.0)
 							break
@@ -254,19 +271,35 @@ function ProvMapEdit:defineCommands()
 
 	coms["additive_select"] = commands:define(
 		{
-		 {"select_objects", "table", nil, PropDefaultTable{}}
+		 {"select_objects", "table", nil, PropDefaultTable{}},
+		 {"first_pass", "boolean", true, nil} -- first time this command is invoked, we remove any already selected objects from select_objects
 		},
 		function(props) -- command function
 			self.selection_changed = true
 			local mapedit = self
 			local active_selection = mapedit.active_selection
 
+			if props.first_pass then
+				local lookup = {}
+				for i,v in ipairs(active_selection) do
+					lookup[v[2]] = true
+				end
+
+				local obj_count = #props.select_objects
+				for i=obj_count,1,-1 do
+					local obj = props.select_objects[i][2]
+					if lookup[obj] then
+						table.remove(props.select_objects, i)
+					end
+				end
+			end
+
 			local obj_count = #props.select_objects
 			for i=obj_count,1,-1 do
 				v = props.select_objects[i]
-				local unique = true
+				--[[local unique = true
 				for j,u in ipairs(active_selection) do
-					if table_eq(v,u) then
+					if obj_eq(v,u) then
 
 						-- we remove any objects that have already been selected from the
 						-- additive select object list, this action is not reversed in the undo
@@ -276,13 +309,15 @@ function ProvMapEdit:defineCommands()
 						unique = false
 						break
 					end
-				end
+				end--]]
 
-				if unique then
+				--if unique then
 					table.insert(active_selection, v)
 					self:highlightObject(v,1.0)
-				end
+				--end
 			end
+
+			props.first_pass = false
 		end, -- command function
 
 		function(props) -- undo command function
@@ -291,7 +326,7 @@ function ProvMapEdit:defineCommands()
 			local active_selection = mapedit.active_selection
 			for i,v in ipairs(props.select_objects) do
 				for j,u in ipairs(active_selection) do
-					if table_eq(v,u) then
+					if obj_eq(v,u) then
 						table.remove(active_selection, j)
 						self:highlightObject(v,0.0)
 						break
@@ -913,17 +948,6 @@ function ProvMapEdit:setupInputHandling()
 		local min,max = math.min,math.max
 		if obj[1] == "tile" then
 			if self:isSelected(additive_select_obj) then
-				--[[x1 = min(obj[2], additive_select_obj[2])
-				z1 = min(obj[3], additive_select_obj[3])
-				x2 = max(obj[2], additive_select_obj[2])
-				z2 = max(obj[3], additive_select_obj[3])
-
-				local objs_in_range = {}
-				for x=x1,x2 do
-					for z=z1,z2 do
-						table.insert(objs_in_range, {"tile",x,z})
-					end
-				end--]]
 				x1 = min(obj[2].x, additive_select_obj[2].x)
 				z1 = min(obj[2].z, additive_select_obj[2].z)
 				x2 = max(obj[2].x, additive_select_obj[2].x)
@@ -1862,6 +1886,24 @@ function ProvMapEdit:translateTileVerts(x,z, height_t)
 	end
 end
 
+function ProvMapEdit:__getScaleByDist()
+	local w = love.graphics.getDimensions()
+	local centre = self:getSelectionCentreAndMinMax()
+	if not centre then
+		return 1.0
+	end
+	local cam_pos = self.props.mapedit_cam:getPosition()
+	local dx = centre[1] - cam_pos[1]
+	local dy = centre[2] - cam_pos[2]
+	local dz = centre[3] - cam_pos[3]
+	local l = math.sqrt(dx*dx + dy*dy + dz*dz)
+	if l == 0 then return 1.0 end
+	l = (l*(90/50000))/(w/1366)
+	return l
+	--if l > 1 then return 1.0 end
+	--return l*l*l
+end
+
 local __tempmat4tt = cpml.mat4.new()
 local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
@@ -1870,7 +1912,7 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	--local t_type = transform:getTransformType()
 	local t_type = info.type
 
-	local function getScaleByDist()
+	--[[local function getScaleByDist()
 		local w = love.graphics.getDimensions()
 		local centre = self:getSelectionCentreAndMinMax()
 		if not centre then
@@ -1886,7 +1928,8 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 		return l
 		--if l > 1 then return 1.0 end
 		--return l*l*l
-	end
+	end--]]
+	local getScaleByDist = self.__getScaleByDist
 
 	local __id = {
 		1,0,0,0,
@@ -1911,7 +1954,7 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 		end
 
 		local translate = __tempvec3tt
-		local s = getScaleByDist()
+		local s = getScaleByDist(self)
 		translate.x = int(info[1]*s)
 		translate.y = int(info[2]*s)
 		translate.z = int(info[3]*s)
@@ -2125,6 +2168,7 @@ function ProvMapEdit:getTileTransformationMatrix(transform)
 		return __tempmat4T
 	end
 
+	local getScaleByDist = self.__getScaleByDist
 	local g_scale=math.abs(TILE_HEIGHT*0.5)
 	local int = math.floor
 	local function granulate(v)
@@ -2138,23 +2182,51 @@ function ProvMapEdit:getTileTransformationMatrix(transform)
 	local int = math.floor
 	local info = transform:getTransform(self.props.mapedit_cam)
 	-- tiles can only move up and down
+	local s = getScaleByDist(self)
 	t_vec.x = 0
-	t_vec.y = int(granulate(info[2]))
+	t_vec.y = int(granulate(info[2])) * s
 	t_vec.z = 0
 	mat:translate(mat, t_vec)
 	return mat, info
 end
 
 local __tileobj_mt = {
-	__eq = function(a,b)
+	--[[__eq = function(a,b)
 		return a.x==b.x and
 		       a.z==b.z and
 					 a.vert_i==b.vert_i
+	end--]]
+
+	getPosition = function(self)
+		return ProvMapEdit:getTileVertex(self.x,self.z,self.vert_i)
+	end,
+	getDirection = function(self)
+		return {0,0,-1,"dir"}
+	end,
+	getScale = function(self)
+		return {1,1,1}
+	end,
+
+	setPosition = function(self, pos)
+		ProvMapEdit:setTileVertex(self.x,self.z,self.vert_i,pos)
+	end,
+	setDirection = function(self, dir)
+		-- do nothin
+	end,
+	setScale = function(self, scale)
+		-- do nothing
+	end,
+
+	getTransformMode = function(self)
+		return "component"
 	end
 }
 __tileobj_mt.__index = __tileobj_mt
 -- each tile has 4 vertices, i specifies which vertex going from 1 to 4
 function ProvMapEdit:getTileVertexObject(x,z,i)
+	local obj = self.tilevertex_objs[z][x][i]
+	if obj then return obj end
+
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end
@@ -2165,30 +2237,6 @@ function ProvMapEdit:getTileVertexObject(x,z,i)
 		x=x,
 		z=z,
 		vert_i=i,
-
-		getPosition = function(self)
-			return mapedit:getTileVertex(self.x,self.z,self.vert_i)
-		end,
-		getDirection = function(self)
-			return {0,0,-1,"dir"}
-		end,
-		getScale = function(self)
-			return {1,1,1}
-		end,
-
-		setPosition = function(self, pos)
-			mapedit:setTileVertex(self.x,self.z,self.vert_i,pos)
-		end,
-		setDirection = function(self, dir)
-			-- do nothin
-		end,
-		setScale = function(self, scale)
-			-- do nothing
-		end,
-
-		getTransformMode = function(self)
-			return "component"
-		end
 	}
 	setmetatable(tile, __tileobj_mt)
 
@@ -2196,14 +2244,40 @@ function ProvMapEdit:getTileVertexObject(x,z,i)
 end
 
 local __wallobj_mt = {
-	__eq = function(a,b)
+	--[[__eq = function(a,b)
 		return a.x==b.x and
 		       a.z==b.z and
 					 a.side==b.side
+	end--]]
+	getPosition = function(self)
+		return {0,0,0}
+	end,
+	getDirection = function(self)
+		return {0,0,-1,"dir"}
+	end,
+	getScale = function(self)
+		return {1,1,1}
+	end,
+
+	setPosition = function(self, pos)
+		-- do nothing
+	end,
+	setDirection = function(self, dir)
+		-- do nothin
+	end,
+	setScale = function(self, scale)
+		-- do nothing
+	end,
+
+	getTransformMode = function(self)
+		return "component"
 	end
 }
 __wallobj_mt.__index = __wallobj_mt
 function ProvMapEdit:getWallObject(x,z,side)
+	local obj = self.wall_objs[z][x][i]
+	if obj then return obj end
+
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end

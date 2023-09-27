@@ -316,13 +316,15 @@ end
 
 local __temp_pos = {}
 function Scene:pointStaticShadowPass( shader , light )
-	light.props.light_static_depthmap_redraw_flag = false
+	--light.props.light_static_depthmap_redraw_flag = false
+	light.light_static_depthmap_redraw_flag = false
 	light:clearStaticDepthMap(false)
 
 	local mats = light:getPointLightSpaceMatrices()
 
 	local pos = light:getLightPosition()
-	local far_plane = light.props.light_cube_lightspace_far_plane
+	--local far_plane = light.props.light_cube_lightspace_far_plane
+	local far_plane = light.light_cube_lightspace_far_plane
 
 	__temp_pos[1] = pos[1]
 	__temp_pos[2] = pos[2]
@@ -365,21 +367,25 @@ function Scene:shadowPass( )
 		local ispoint  = light:isPoint()
 		local isstatic = light:isStatic()
 
-		local dir_redraw          = isdir and light.props.light_static_depthmap_redraw_flag
+		--local dir_redraw          = isdir and light.props.light_static_depthmap_redraw_flag
+		local dir_redraw          = isdir and light.light_static_depthmap_redraw_flag
 		local dir_force_redraw    = isdir and self.force_redraw_static_shadow
 		local static_point        = ispoint and isstatic
-		local static_point_redraw = static_point and light.props.light_static_depthmap_redraw_flag
+		--local static_point_redraw = static_point and light.props.light_static_depthmap_redraw_flag
+		local static_point_redraw = static_point and light.light_static_depthmap_redraw_flag
 		local point_force_redraw  = static_point and self.force_redraw_static_shadow
 
 
 		if dir_redraw or dir_force_redraw then
 			self.resend_static_lightmap_info = true
-			light.props.light_static_depthmap_redraw_flag = false
+			--light.props.light_static_depthmap_redraw_flag = false
+			light.light_static_depthmap_redraw_flag = false
 
 			self:dirStaticShadowPass( shader , light )
 		elseif static_point_redraw or point_force_redraw then
 			self.resend_static_lightmap_info = true
-			light.props.light_static_depthmap_redraw_flag = false
+			--light.props.light_static_depthmap_redraw_flag = false
+			light.light_static_depthmap_redraw_flag = false
 
 			self:pointStaticShadowPass( shader , light )
 		else
@@ -447,7 +453,7 @@ function Scene:pushShadowMaps(shader)
 					point_light_shadowmap_count = point_light_shadowmap_count + 1
 	
 					local cubemap = light:getCubeMap()
-					local farplane = light.props.light_cube_lightspace_far_plane
+					local farplane = light.light_cube_lightspace_far_plane
 
 					point_light_shadow_maps[point_light_count] = cubemap
 					point_light_far_planes[point_light_count] = farplane

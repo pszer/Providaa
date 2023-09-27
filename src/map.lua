@@ -606,6 +606,8 @@ function Map.generateMapMesh( map , params )
 	local gen_index_map  = params.gen_index_map
 	local gen_newvert_buffer = params.gen_newvert_buffer
 
+	local keep_textures = params.keep_textures
+
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_verts enabled, but no gen_nil_texture supplied. give either a filename/texture")
 	end
@@ -645,10 +647,14 @@ function Map.generateMapMesh( map , params )
 	
 	-- once the textures are added to an atlas, we don't need to keep
 	-- references to the original textures
-	for i,name in ipairs(tex_names) do
-		if name and name ~= "" then
-			Loader:deref("texture", name)
+	if not keep_textures then
+		for i,name in ipairs(tex_names) do
+			if name and name ~= "" then
+				Loader:deref("texture", name)
+			end
 		end
+	else
+		textures.names = tex_names
 	end
 
 	local verts = {}
@@ -741,7 +747,24 @@ function Map.generateMapMesh( map , params )
 		simple_mesh:setVertexMap(simple_index_map)
 	end
 
-	return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info, tile_vert_map, wall_vert_map, wall_exists)
+	--return MapMesh:new(mesh, attr_mesh, atlas, atlas_uvs, simple_mesh, anim_textures_info, tile_vert_map, wall_vert_map, wall_exists)
+	
+	if not keep_textures then
+		textures = nil
+	end
+
+	return MapMesh:new{
+		mesh=mesh,
+		mesh_atts=attr_mesh,
+		tex=atlas,
+		uvs=atlas_uvs,
+		simple_mesh=simple_mesh,
+		animated_tex_info=anim_textures_info,
+		tile_vert_map=tile_vert_map,
+		wall_vert_map=wall_vert_map,
+		wall_exists=wall_exists,
+
+		textures=textures}
 
 end
 

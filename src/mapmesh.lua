@@ -27,30 +27,35 @@ MapMesh = {__type="mapmesh",
 }
 MapMesh.__index = MapMesh
 
-function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info, tile_vert_m, wall_vert_m, wall_exists)
+--function MapMesh:new(mesh, mesh_atts, tex, uvs, simple_mesh, anim_tex_info, tile_vert_m, wall_vert_m, wall_exists)
+function MapMesh:new(args)
 
-	assert(mesh and mesh_atts and tex and uvs)
+	assert(args.mesh and args.mesh_atts and args.tex and args.uvs)
 
 	local this = {
 
-		mesh = mesh,
-		mesh_atts = mesh_atts,
-		tex  = tex,
+		mesh = nil,
+		mesh_atts = nil,
+		tex  = nil,
 
-		uvs = uvs,
-
+		uvs = nil,
 		uvs_buffer = {},
+		textures = nil,
 
-		animated_tex_info = anim_tex_info or {},
+		animated_tex_info = nil or {},
 
-		simple_mesh = simple_mesh,
+		simple_mesh = nil,
 
-		tile_vert_map = tile_vert_m,
-		wall_vert_map = wall_vert_m,
+		tile_vert_map = nil,
+		wall_vert_map = nil,
 
-		wall_exists = wall_exists
+		wall_exists = nil
 
 	}
+
+	for i,v in pairs(args) do
+		this[i]=v
+	end
 
 	for i,v in ipairs(this.uvs) do
 		this.uvs_buffer[i] = v
@@ -65,6 +70,11 @@ function MapMesh:release()
 	if self.mesh then self.mesh:release() end
 	if self.mesh_atts then self.mesh_atts:release() end
 	if self.tex then self.tex:release() end
+	if self.textures then
+		for i,v in ipairs(self.textures.names) do
+			Loader:deref("texture", v)
+		end
+	end
 end
 
 -- returns texture atlas canvas and uvs

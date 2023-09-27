@@ -15,6 +15,7 @@ LightPropPrototype = Props:prototype{
 	{"light_size", "number", 500, nil,                     "light's size, only applies for point lights"},
 	{"light_col", "table", nil, PropDefaultTable{1,1,1,1}, "light's colour; alpha channel determines light`s strength"},
 
+	--[[
 	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
 	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
 
@@ -30,7 +31,7 @@ LightPropPrototype = Props:prototype{
 	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
 	{"light_static_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
 	{"light_static_depthmap_redraw_flag", "boolean", true, nil, [[set to true whenever a new static lightspace matrix is generated.
-	                                                               set it to false after rendering a new static shadowmap!]]},
+	                                                               set it to false after rendering a new static shadowmap!]]--},--]]
 
 	{"light_static", "boolean", true, nil,     "true if light is never expected to change in property"}
 

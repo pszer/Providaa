@@ -50,7 +50,6 @@ ModelInstancePropPrototype = Props:prototype{
 	{"model_i_matrix", nil, nil, PropDefaultMatrix(), "matrix to use if transformation_mode is in matrix mode"},
 	{"model_i_matrix_det", "number", 1, nil, "determinant of the model matrix"},
 
-	--{"model_i_outline_flag", "boolean", false, nil,                     "whether to draw an outline around this model"},
 	{"model_i_outline_colour", "table", nil, PropDefaultTable{0,0,0,1}, "model's contour colour"},
 	{"model_i_outline_scale", "number", 1.03, nil,                      "model's contour scale factor"},
 	{"model_i_contour_flag", "boolean", false},

@@ -426,9 +426,9 @@ end
 
 function Renderer.setupCanvasForDirShadowMapping(light, map_type, keep_shader)
 	if map_type == "static" then
-		love.graphics.setCanvas{depthstencil = light.props.light_static_depthmap, depth=true}
+		love.graphics.setCanvas{depthstencil = light.light_static_depthmap, depth=true}
 	else
-		love.graphics.setCanvas{depthstencil = light.props.light_depthmap, depth=true}
+		love.graphics.setCanvas{depthstencil = light.light_depthmap, depth=true}
 	end
 	if not keep_shader then
 		love.graphics.setDepthMode( "less", true )

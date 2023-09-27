@@ -24,6 +24,38 @@ function Light:new(props)
 
 		dyn_lightspace_view_mat = nil,
 		static_lightspace_view_mat = nil,
+
+		light_depthmap = nil,
+		light_static_depthmap = nil,
+		light_cubemap = nil,
+		light_cube_lightspace_matrices = {},
+		light_cube_lightspace_far_plane = nil,
+		light_lightspace_matrix = nil,
+		light_lightspace_matrix_dimensions = nil,
+		light_lightspace_matrix_global_dimensions = nil,
+		light_static_lightspace_matrix = nil,
+		light_static_lightspace_matrix_dimensions = nil,
+		light_static_lightspace_matrix_global_dimensions = nil,
+		light_static_depthmap_redraw_flag = true
+
+--[[	{"light_depthmap", nil, nil, nil,          "light's depthbuffer for shadow mapping dynamic objects"},
+	{"light_static_depthmap", nil, nil, nil,   "light's depthbuffer for shadow mapping static objects"},
+
+	{"light_cubemap",  nil, nil, nil,          "light's cubemap depthbuffer for shadow mapping (point lights)"},
+	{"light_cube_lightspace_matrices", "table", nil, PropDefaultTable{}, "6 lightspace matrices used for static point light shadowmaps"},
+	{"light_cube_lightspace_far_plane", "number", 0, nil, "the far plane for the point lights projection matrices"},
+
+	{"light_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light"},
+	{"light_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},
+	{"light_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for lightspace_matrix projection."},
+
+	{"light_static_lightspace_matrix", nil, nil, nil, "matrix for moving points to the space for this light`s (for static shadowmapping)."},
+	{"light_static_lightspace_matrix_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
+	{"light_static_lightspace_matrix_global_dimensions", nil, nil, nil, "min_x,max_x,min_y,max_y,min_z,max_z for static_lightspace_matrix projection."},
+	{"light_static_depthmap_redraw_flag", "boolean", true, nil, [[set to true whenever a new static lightspace matrix is generated.
+	                                                               set it to false after rendering a new static shadowmap!},--]]
+
+
 	}
 
 	setmetatable(this,Light)
@@ -37,13 +69,21 @@ function Light:new(props)
 		error("Light:new(): light_pos w component is "..tostring(this.props.light_pos[4])..", neither 0 or 1, ill defined light")
 	end
 
+	--[[
 	this.props.light_lightspace_matrix = cpml.mat4.new()
 	this.props.light_lightspace_matrix_dimensions = {}
 	this.props.light_lightspace_matrix_global_dimensions = {}
 
 	this.props.light_static_lightspace_matrix = cpml.mat4.new()
 	this.props.light_static_lightspace_matrix_dimensions = {}
-	this.props.light_static_lightspace_matrix_global_dimensions = {}
+	this.props.light_static_lightspace_matrix_global_dimensions = {}--]]
+	this.light_lightspace_matrix = cpml.mat4.new()
+	this.light_lightspace_matrix_dimensions = {}
+	this.light_lightspace_matrix_global_dimensions = {}
+
+	this.light_static_lightspace_matrix = cpml.mat4.new()
+	this.light_static_lightspace_matrix_dimensions = {}
+	this.light_static_lightspace_matrix_global_dimensions = {}
 	
 	this.dyn_lightspace_view_mat = cpml.mat4.new()
 	this.static_lightspace_view_mat = cpml.mat4.new()
@@ -72,15 +112,22 @@ function Light:allocateDepthMap(size, staticsize)
 	local w,h = limit.clampTextureSize(size)
 
 	if self:isDirectional() then
-		self.props.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
-		self.props.light_depthmap:setDepthSampleMode("greater")
+		--self.props.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
+		--self.props.light_depthmap:setDepthSampleMode("greater")
+		self.light_depthmap = love.graphics.newCanvas (w,h,{format = "depth16", readable=true})
+		self.light_depthmap:setDepthSampleMode("greater")
 
 		local staticsize = staticsize or gfxSetting("static_shadow_map_size")
 		local w2, h2 = limit.clampTextureSize(staticsize)
-		self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
-		self.props.light_static_depthmap:setDepthSampleMode("greater")
+		--self.props.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
+		--self.props.light_static_depthmap:setDepthSampleMode("greater")
+		self.light_static_depthmap = love.graphics.newCanvas(w2,h2,{format = "depth16", readable=true})
+		self.light_static_depthmap:setDepthSampleMode("greater")
 	elseif self:isPoint() then
-		self.props.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
+		--self.props.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
+		self.light_cubemap = love.graphics.newCanvas (w,h,{format = "depth16", type="cube", readable=true})
+
+
 		--self.props.light_cubemap:setDepthSampleMode("greater")
 	end
 end
@@ -111,7 +158,8 @@ function Light:generatePointLightSpaceMatrix()
 
 	local far_plane = size*1
 	local proj_mat4 = cpml.mat4.from_perspective(90.0, 1.0, 1.0, far_plane)
-	self.props.light_cube_lightspace_far_plane = far_plane
+	--self.props.light_cube_lightspace_far_plane = far_plane
+	self.light_cube_lightspace_far_plane = far_plane
 
 	local sides = {}
 	local dirs = {
@@ -147,7 +195,8 @@ function Light:generatePointLightSpaceMatrix()
 		sides[i] = mat
 	end
 
-	self.props.light_cube_lightspace_matrices = sides
+	--self.props.light_cube_lightspace_matrices = sides
+	self.light_cube_lightspace_matrices = sides
 	self.recalc_point_matrices = false
 end
 
@@ -163,13 +212,14 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		local mat, dim, g_dim, view = self:calculateLightSpaceMatrixFromFrustrum(
 			cam:generateFrustrumCornersWorldSpace(proj))
 
-		--self.props.light_lightspace_matrix = mat
-		--self.props.light_lightspace_matrix_dimensions = dim
-		--self.props.light_lightspace_matrix_global_dimensions = g_dim
 		--
-		iclone(self.props.light_lightspace_matrix, mat)
-		iclone(self.props.light_lightspace_matrix_dimensions, dim)
-		iclone(self.props.light_lightspace_matrix_global_dimensions, g_dim)
+		--iclone(self.props.light_lightspace_matrix, mat)
+		--iclone(self.props.light_lightspace_matrix_dimensions, dim)
+		--iclone(self.props.light_lightspace_matrix_global_dimensions, g_dim)
+		--iclone(self.dyn_lightspace_view_mat, view)
+		iclone(self.light_lightspace_matrix, mat)
+		iclone(self.light_lightspace_matrix_dimensions, dim)
+		iclone(self.light_lightspace_matrix_global_dimensions, g_dim)
 		iclone(self.dyn_lightspace_view_mat, view)
 
 		-- for static shadowmapping we allocate a larger lightspace matrix
@@ -180,17 +230,22 @@ function Light:generateLightSpaceMatrixFromCamera( cam )
 		local proj = cam:calculatePerspectiveMatrix(nil, cam.props.cam_far_plane * 1.0)
 		local corners, centre = cam:generateFrustrumCornersWorldSpace(proj)
 		
-		if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
+		--if self:testNeedForNewStaticLightmapMatrix(corners, self.props.light_static_lightspace_matrix_dimensions) then
+		if self:testNeedForNewStaticLightmapMatrix(corners, self.light_static_lightspace_matrix_dimensions) then
 
 			local static_mat, static_map_dim, static_global_dim, static_view = self:calculateLightSpaceMatrixFromFrustrum(
 				corners, centre, 700)
 
-			iclone(self.props.light_static_lightspace_matrix, static_mat)
-			iclone(self.props.light_static_lightspace_matrix_dimensions, static_map_dim)
-			iclone(self.props.light_static_lightspace_matrix_global_dimensions, static_global_dim)
+			--iclone(self.props.light_static_lightspace_matrix, static_mat)
+			--iclone(self.props.light_static_lightspace_matrix_dimensions, static_map_dim)
+			--iclone(self.props.light_static_lightspace_matrix_global_dimensions, static_global_dim)
+			--iclone(self.static_lightspace_view_mat, static_view)
+			iclone(self.light_static_lightspace_matrix, static_mat)
+			iclone(self.light_static_lightspace_matrix_dimensions, static_map_dim)
+			iclone(self.light_static_lightspace_matrix_global_dimensions, static_global_dim)
 			iclone(self.static_lightspace_view_mat, static_view)
 
-			self.props.light_static_depthmap_redraw_flag = true
+			--self.props.light_static_depthmap_redraw_flag = true
 			self.static_lightspace_generated = true
 		end
 	elseif self:isPoint() then
@@ -324,6 +379,7 @@ function Light:calculateLightSpaceMatrixFromFrustrum( frustrum_corners, frustrum
 	return light_proj * light_view, dimensions, global_dimensions, light_view
 end
 
+--[[
 function Light:getDepthMap()
 	return self.props.light_depthmap end
 function Light:getStaticDepthMap()
@@ -336,56 +392,82 @@ function Light:getLightSpaceMatrix()
 function Light:getStaticLightSpaceMatrix()
 	return self.props.light_static_lightspace_matrix end
 function Light:getPointLightSpaceMatrices()
-	return self.props.light_cube_lightspace_matrices end
+	return self.props.light_cube_lightspace_matrices end--]]
+
+function Light:getDepthMap()
+	return self.light_depthmap end
+function Light:getStaticDepthMap()
+	return self.light_static_depthmap end
+function Light:getCubeMap()
+	return self.light_cubemap end
+
+function Light:getLightSpaceMatrix()
+	return self.light_lightspace_matrix end
+function Light:getStaticLightSpaceMatrix()
+	return self.light_static_lightspace_matrix end
+function Light:getPointLightSpaceMatrices()
+	return self.light_cube_lightspace_matrices end
 
 function Light:getLightSpaceMatrixDimensionsMinMax()
-	local dim = self.props.light_lightspace_matrix_dimensions
+	--local dim = self.props.light_lightspace_matrix_dimensions
+	local dim = self.light_lightspace_matrix_dimensions
 	local min = {dim[1],dim[3],dim[5]}
 	local max = {dim[2],dim[4],dim[6]}
 	return min , max
 end
 
 function Light:getLightSpaceMatrixGlobalDimensionsMinMax()
-	local dim = self.props.light_lightspace_matrix_global_dimensions
+	--local dim = self.props.light_lightspace_matrix_global_dimensions
+	local dim = self.light_lightspace_matrix_global_dimensions
 	local min = {dim[1],dim[3],dim[5]}
 	local max = {dim[2],dim[4],dim[6]}
 	return min , max
 end
 
 function Light:getStaticLightSpaceMatrixDimensionsMinMax()
-	local dim = self.props.light_static_lightspace_matrix_dimensions
+	--local dim = self.props.light_static_lightspace_matrix_dimensions
+	local dim = self.light_static_lightspace_matrix_dimensions
 	local min = {dim[1],dim[3],dim[5]}
 	local max = {dim[2],dim[4],dim[6]}
 	return min , max
 end
 
 function Light:getStaticLightSpaceMatrixGlobalDimensionsMinMax()
-	local dim = self.props.light_static_lightspace_matrix_global_dimensions
+	--local dim = self.props.light_static_lightspace_matrix_global_dimensions
+	local dim = self.light_static_lightspace_matrix_global_dimensions
 	local min = {dim[1],dim[3],dim[5]}
 	local max = {dim[2],dim[4],dim[6]}
 	return min , max
 end
 
 function Light:clearDepthMap(opt)
-	if self.props.light_depthmap then
-		love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+	--if self.props.light_depthmap then
+	if self.light_depthmap then
+		--love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+		love.graphics.setCanvas{nil, depthstencil=self.light_depthmap}
 		love.graphics.clear(0,0,0,0)
 	end
-	if self.props.light_cubemap then
-		love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+	--if self.props.light_cubemap then
+	if self.light_cubemap then
+		--love.graphics.setCanvas{nil, depthstencil=self.props.light_depthmap}
+		love.graphics.setCanvas{nil, depthstencil=self.light_depthmap}
 		love.graphics.clear(0,0,0,0)
 	end
 	if not opt then love.graphics.setCanvas() end
 end
 function Light:clearStaticDepthMap(opt)
-	if self.props.light_static_depthmap then
-		love.graphics.setCanvas{nil, depthstencil=self.props.light_static_depthmap}
+	--if self.props.light_static_depthmap then
+	if self.light_static_depthmap then
+		--love.graphics.setCanvas{nil, depthstencil=self.props.light_static_depthmap}
+		love.graphics.setCanvas{nil, depthstencil=self.light_static_depthmap}
 		love.graphics.clear(0,0,0,0)
 		if not opt then love.graphics.setCanvas() end
 	end
 
-	if self.props.light_cubemap then
-		love.graphics.setCanvas{nil, depthstencil=self.props.light_cubemap}
+	--if self.props.light_cubemap then
+	if self.light_cubemap then
+		--love.graphics.setCanvas{nil, depthstencil=self.props.light_cubemap}
+		love.graphics.setCanvas{nil, depthstencil=self.light_cubemap}
 		love.graphics.clear(0,0,0,0)
 		if not opt then love.graphics.setCanvas() end
 	end
@@ -413,7 +495,8 @@ end
 
 -- sets flag to redraw static maps for this light next frame
 function Light:redrawStaticMap()
-	self.props.light_static_depthmap_redraw_flag = true
+	--self.props.light_static_depthmap_redraw_flag = true
+	self.light_static_depthmap_redraw_flag = true
 end
 
 function Light:getLightDirection()

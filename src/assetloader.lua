@@ -100,6 +100,8 @@ function Loader:cleanupAssets(asset_table)
 end
 
 -- signals the removal of 1 reference to an asset
+-- argument asset_table can be a string for the asset type 
+-- instead of an asset_table, such as "model" or "texture"
 function Loader:deref(asset_table, filename)
 	assert(asset_table, filename)
 
