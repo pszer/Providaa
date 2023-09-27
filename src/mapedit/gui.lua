@@ -45,27 +45,29 @@ function MapEditGUI:define(mapedit)
 		                                               groups=nil}},
 		}
 		,
-
+		function(props) return
 		 {"~bCopy",
 		  action=function(props)
 		    mapedit:copySelectionToClipboard() end,
+			disable = not mapedit:canCopy(),
 		  icon = "mapedit/icon_copy.png"},
 
 		 {"Paste",
 		  action=function(props)
 		    mapedit:pasteClipboard() end,
+			disable = not mapedit:canPaste(),
 		  icon = "mapedit/icon_dup.png"},
 
 		 {"Undo",
 		  action=function(props)
 		    mapedit:commitUndo() end,
-			disable = false,
+			disable = not mapedit:canUndo(),
 		  icon = nil},
 
 		 {"Redo",
 		  action=function(props)
 		    mapedit:commitRedo() end,
-			disable = false,
+			disable = not mapedit:canRedo(),
 		  icon = nil},
 
 		 {"~b~(orange)Delete",
@@ -170,38 +172,68 @@ function MapEditGUI:define(mapedit)
 		 {"~bReset",action=function(props)
 		   mapedit:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
 		   icon = nil}
-		 )
+		 end)
 	
 	context["select_undef_context"] = 
 		contextmenu:define(
 		{
 		}
 		,
+		function(props) return
+		 {"~bCopy",
+		  action=function(props)
+		    mapedit:copySelectionToClipboard() end,
+			disable = true,
+		  icon = "mapedit/icon_copy.png"},
+
 		 {"Paste",
 		  action=function(props)
 		    mapedit:pasteClipboard() end,
+			disable = not mapedit:canPaste(),
 		  icon = "mapedit/icon_dup.png"},
 
 		 {"Undo",
 		  action=function(props)
 		    mapedit:commitUndo() end,
-			disable = false,
+			disable = not mapedit:canUndo(),
 		  icon = nil},
 
 		 {"Redo",
 		  action=function(props)
 		    mapedit:commitRedo() end,
-			disable = false,
-		  icon = nil}
-		 )
+			disable = not mapedit:canRedo(),
+		  icon = nil},
+
+		 {"~b~(orange)Delete",
+		  icon = "mapedit/icon_del.png",
+			disable = true},
+
+		 {"~(lpurple)Group", suboptions = function(props) 
+	     return {}
+			end, disable = true},
+
+		 {"~(lgray)--Transform--"},
+
+		 {"Flip", suboptions = function(props) 
+		  return {} end,
+		  disable = true},
+
+		 {"Rotate", suboptions = function(props)
+		 	return {} end,
+		  disable = true},
+
+		 {"~bReset",disable = true, icon = nil}
+		 end)
 
 	context["main_file_context"] =
 		contextmenu:define(
 		{
 		 -- props
 		},
+		function(props) return
 		{"Save",action=function()end},
 		{"Quit",action=function()love.event.quit()end}
+		end
 		)
 
 	toolbars["main_toolbar"] =
@@ -217,6 +249,15 @@ function MapEditGUI:define(mapedit)
 		   end
 		},
 		{"Edit",
+		 generate =
+		   function(props)
+			   --return context["main_file_context"], {}
+				 local cxtn_name, props = mapedit:getSelectionContextMenu()
+				 if not cxtn_name then return nil end
+				 return context[cxtn_name], props
+		   end
+		},
+		{"Help",
 		 generate =
 		   function(props)
 			   --return context["main_file_context"], {}

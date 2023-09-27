@@ -28,7 +28,8 @@ MapEditContext.__index = MapEditContext
 -- each instance of this context menu can have, these then can
 -- be dynamically filled out on instance creation
 --
--- each argument after that is the definition for an option in this context menu
+-- argument after that are the definitions for options in this context menu.
+-- it's expected to be a function(props) that returns any number of options.
 -- each option has the following format:
 -- 1. {name, action = function, disable = bool, icon = string }
 -- 2. {name, suboptions = function}
@@ -57,9 +58,10 @@ MapEditContext.__index = MapEditContext
 -- contextmenu:new({key=value,...}, x, y)
 --
 
-function MapEditContext:define(prototype, ...)
+--function MapEditContext:define(prototype, ...)
+function MapEditContext:define(prototype, options)
 	local buffer_info = self.buffer_info
-	local options = { ... }
+	--local options = { ... }
 
 	local p = Props:prototype(prototype)
 	local obj = {
@@ -296,6 +298,7 @@ function MapEditContext:define(prototype, ...)
 
 			local winw,winh = love.graphics.getDimensions()
 
+			local options = {options()}
 			if #options ~= 0 then
 				for i,v in ipairs(options) do
 					this.options[i] = fill_out_option(v, fill_out_option)

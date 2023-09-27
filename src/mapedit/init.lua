@@ -2412,6 +2412,10 @@ function ProvMapEdit:copySelectionToClipboard()
 	end
 end
 
+function ProvMapEdit:canCopy()
+	return not self:selectionEmpty()
+end
+
 function ProvMapEdit:pasteClipboard()
 	local objs
 	local selection = {}
@@ -2430,6 +2434,10 @@ function ProvMapEdit:pasteClipboard()
 	 {"add_obj", {objects=objs}},
 	 {"additive_select", {select_objects = selection}}
 	)
+end
+
+function ProvMapEdit:canPaste()
+	return #self.clipboard > 0
 end
 
 function ProvMapEdit:getObjectCentre(obj)
