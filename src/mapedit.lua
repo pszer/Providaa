@@ -464,13 +464,13 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.models) do
 				props.group:addToGroup(v)
 			end
-			group:calcMinMax()
+			props.group:calcMinMax()
 		end, -- command function
 		function(props) -- undo command function
 			for i,v in ipairs(props.models) do
 				props.group:removeFromGroup(v)
 			end
-			group:calcMinMax()
+			props.group:calcMinMax()
 		end -- undo command function
 	)
 
@@ -906,7 +906,7 @@ function ProvMapEdit:setupInputHandling()
 		local min,max = math.min,math.max
 		if obj[1] == "tile" then
 			if self:isSelected(additive_select_obj) then
-				x1 = min(obj[2], additive_select_obj[2])
+				--[[x1 = min(obj[2], additive_select_obj[2])
 				z1 = min(obj[3], additive_select_obj[3])
 				x2 = max(obj[2], additive_select_obj[2])
 				z2 = max(obj[3], additive_select_obj[3])
@@ -915,6 +915,21 @@ function ProvMapEdit:setupInputHandling()
 				for x=x1,x2 do
 					for z=z1,z2 do
 						table.insert(objs_in_range, {"tile",x,z})
+					end
+				end--]]
+				x1 = min(obj[2].x, additive_select_obj[2].x)
+				z1 = min(obj[2].z, additive_select_obj[2].z)
+				x2 = max(obj[2].x, additive_select_obj[2].x)
+				z2 = max(obj[2].z, additive_select_obj[2].z)
+
+				local objs_in_range = {}
+				for x=x1,x2 do
+					for z=z1,z2 do
+						--table.insert(objs_in_range, {"tile",x,z})
+						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
+						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
+						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
+						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
 					end
 				end
 
@@ -1237,11 +1252,10 @@ end
 function ProvMapEdit:decomposeObject(obj)
 	if not obj then return nil end
 	local o_type = obj[1]
-	if o_type ~= "model" then return obj end
-	if obj[2] == nil then return obj end
+	if obj[3] == nil then return obj end
 	local objs = {}
 	for i=2,#obj do
-		table.insert(objs, {"model",obj[i]})
+		table.insert(objs, {o_type,obj[i]})
 	end
 	return unpack(objs)
 end
@@ -1307,7 +1321,12 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 			for x=1,w do
 				local intersect, dist = self:testTileAgainstRay(ray, x,z)
 				if intersect and dist < min_dist then
-					mesh_test = {"tile",x,z}
+					mesh_test = {"tile",
+					             self:getTileVertexObject(x,z,1),
+					             self:getTileVertexObject(x,z,2),
+					             self:getTileVertexObject(x,z,3),
+					             self:getTileVertexObject(x,z,4)
+											 }
 					min_dist = dist
 				end
 			end
@@ -1319,22 +1338,22 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 			for x=1,w do
 				local intersect, dist = self:testWallSideAgainstRay(ray, x,z, 1)
 				if intersect and dist < min_dist  then
-					mesh_test = {"wall",x,z,1}
+					mesh_test = {"wall",self:getWallObject(x,z,1)}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 2)
 				if intersect and dist < min_dist  then
-					mesh_test = {"wall",x,z,2}
+					mesh_test = {"wall",self:getWallObject(x,z,2)}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 3)
 				if intersect and dist < min_dist  then
-					mesh_test = {"wall",x,z,3}
+					mesh_test = {"wall",self:getWallObject(x,z,3)}
 					min_dist = dist
 				end
 				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 4)
 				if intersect and dist < min_dist  then
-					mesh_test = {"wall",x,z,4}
+					mesh_test = {"wall",self:getWallObject(x,z,4)}
 					min_dist = dist
 				end
 			end
@@ -1575,6 +1594,29 @@ function ProvMapEdit:getTileVerts( x,z )
 		{x4,y4,z4}
 end
 
+function ProvMapEdit:getTileVertex( x,z , vert_i )
+	local index = self:getTilesIndexInMesh( x,z )
+	if not index then return nil end
+	assert(vert_i==1 or vert_i==2 or vert_i==3 or vert_i==4)
+
+	local mesh = self.props.mapedit_map_mesh.mesh
+	local x,y,z = mesh:getVertexAttribute( index+vert_i-1, 1 )
+
+	return
+		{x,y,z}
+end
+
+function ProvMapEdit:setTileVertex( x,z , vert_i , pos )
+	local index = self:getTilesIndexInMesh( x,z )
+	if not index then
+		return false end
+	assert((vert_i==1 or vert_i==2 or vert_i==3 or vert_i==4) and pos)
+
+	local mesh = self.props.mapedit_map_mesh.mesh
+	mesh:setVertexAttribute( index+vert_i-1 , 1 , pos[1], pos[2], pos[3])
+	return true
+end
+
 function ProvMapEdit:getWallsIndexInMesh( x,z , side )
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	if x<1 or x>w or z<1 or z>h then
@@ -1638,6 +1680,27 @@ function ProvMapEdit:editTileVerts(x,z, new_heights)
 	end
 end
 
+function ProvMapEdit:translateTileVerts(x,z, height_t)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or y<1 or y>h then return end
+	local tile_heights = self.props.mapedit_tile_heights
+
+	if nh_arg_type == "table" then
+		assert(#new_heights == 4)
+		for i=1,4 do
+			height_info[i] = new_heights[i]
+		end
+		tile_heights[z][x] = height_info
+	-- if argument is only 1 number, treat it as the height for all vertices
+	elseif nh_arg_type == "number" then
+		for i=1,4 do
+			height_info = new_heights
+		end
+	else
+		error(string.format("ProvMapEdit:editTileVerts: invalid new_heights argument, expected table/string got %s", nh_arg_type))
+	end
+end
+
 local __tempmat4tt = cpml.mat4.new()
 local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
@@ -1688,9 +1751,9 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 
 		local translate = __tempvec3tt
 		local s = getScaleByDist()
-		translate.x = info[1]*s
-		translate.y = info[2]*s
-		translate.z = info[3]*s
+		translate.x = int(info[1]*s)
+		translate.y = int(info[2]*s)
+		translate.z = int(info[3]*s)
 		granulate(translate)
 		mat:translate(mat, translate)
 		return mat, info
@@ -1814,6 +1877,35 @@ function ProvMapEdit:applyMapEditTransformOntoModel(model, trans, precomp_mat, p
 	self.__cache_recalc_selection_centre = true
 end
 
+function ProvMapEdit:applyMapEditTransformOntoTileVertex(tile_obj, trans, precomp_mat, precomp_info)
+	local t_type = trans:getTransformType()
+	local mat, info
+	if precomp_mat and precomp_info then
+		mat = precomp_mat
+		info = precomp_info
+	else
+		mat, info = self:getTileTransformationMatrix(trans)
+	end
+
+	if t_type == "translate" then
+		local trans_o = transobj:from(tile_obj)
+		trans_o:applyMatrix(mat)
+		trans_o:send(model)
+	end
+
+	if t_type == "rotate" then
+		--local trans_o = transobj:from(tile_obj)
+		--trans_o:applyMatrix(mat, {rot=true})
+		--trans_o:send(model)
+	end
+
+	if t_type == "scale" or t_type == "flip" then
+		--local trans_o = transobj:from(tile_obj)
+		--trans_o:applyMatrix(mat, {scale=true})
+		--trans_o:send(model)
+	end
+end
+
 function ProvMapEdit:applyActiveTransformationFunction(objs)
 	local trans = self.active_transform
 	if not trans then return function() end end
@@ -1826,17 +1918,25 @@ function ProvMapEdit:applyTransformationFunction(objs, trans)
 	if not trans then return function() end end
 
 	local mat,info = self:getSelectionTransformationModelMatrix(trans)
+	local tile_mat,tile_info = self:getTileTransformationMatrix(trans)
 
-	local __m = cpml.mat4.new()
-	for i=1,16 do __m[i] = mat[i] end
-	local __i = info
+	-- clone
+	local __m_model = cpml.mat4.new()
+	for i=1,16 do __m_model[i] = mat[i] end
+	local __i_model = info
+	local __m_tile = cpml.mat4.new()
+	for i=1,16 do __m_tile[i] = tile_mat[i] end
+	local __i_tile = tile_info
 
 	return function()
 		for i,v in ipairs(objs) do
 			local o_type = v[1]
 			if o_type == "model" then
-				self:applyMapEditTransformOntoModel(v[2], trans, __m, __i)
+				self:applyMapEditTransformOntoModel(v[2], trans, __m_model, __i_model)
+			elseif o_type == "tile" then
+				self:applyMapEditTransformOntoTileVertex(v2[2], trans, __m_tile, __i_tile)
 			else
+				
 			end
 		end
 	end
@@ -1864,15 +1964,123 @@ function ProvMapEdit:getTileTransformationMatrix(transform)
 		return __tempmat4T
 	end
 
+	local g_scale=math.abs(TILE_HEIGHT*0.5)
+	local function granulate(v)
+		if not self.granulate_transform then return v end
+		v.x = int(v.x/g_scale)*g_scale
+		v.y = int(v.y/g_scale)*g_scale
+		v.z = int(v.z/g_scale)*g_scale
+		return v
+	end
+
 	local t_vec = __tempvec3T
 	local mat = __tempmat4T
+	local int = math.floor
 	local info = transform:getTransform(self.props.mapedit_cam)
 	-- tiles can only move up and down
 	t_vec.x = 0
-	t_vec.y = info[2]
+	t_vec.y = int(granulate(info[2]))
 	t_vec.z = 0
-	mat:translate(t_vec)
-	return mat
+	mat:translate(mat, t_vec)
+	return mat, info
+end
+
+local __tileobj_mt = {
+	__eq = function(a,b)
+		return a.x==b.x and
+		       a.z==b.z and
+					 a.vert_i==b.vert_i
+	end
+}
+__tileobj_mt.__index = __tileobj_mt
+-- each tile has 4 vertices, i specifies which vertex going from 1 to 4
+function ProvMapEdit:getTileVertexObject(x,z,i)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	--print(x,z,i,w,h)
+	if x<1 or x>w or z<1 or z>h then return nil end
+	assert(i==1 or i==2 or i==3 or i==4, "ProvMapEdit:getTileVertexObject(): i out of range [1,4]")
+
+	local mapedit = self
+	local tile = {
+		x=x,
+		z=z,
+		vert_i=i,
+
+		getPosition = function(self)
+			return mapedit:getTileVertex(self.x,self.z,self.vert_i)
+		end,
+		getDirection = function(self)
+			return {0,0,-1,"dir"}
+		end,
+		getScale = function(self)
+			return {1,1,1}
+		end,
+
+		setPosition = function(self, pos)
+			mapedit:setTileVertex(self.x,self.z,self.vert_i,pos)
+		end,
+		setDirection = function(self, dir)
+			-- do nothin
+		end,
+		setScale = function(self, scale)
+			-- do nothing
+		end,
+
+		getTransformMode = function(self)
+			return "component"
+		end
+	}
+	setmetatable(tile, __tileobj_mt)
+
+	return tile
+end
+
+local __wallobj_mt = {
+	__eq = function(a,b)
+		return a.x==b.x and
+		       a.z==b.z and
+					 a.side==b.side
+	end
+}
+__wallobj_mt.__index = __wallobj_mt
+function ProvMapEdit:getWallObject(x,z,side)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	--print(x,z,i,w,h)
+	if x<1 or x>w or z<1 or z>h then return nil end
+	assert(side==1 or side==2 or side==3 or side==4, "ProvMapEdit:getWallObject(): i out of range [1,4]")
+
+	local mapedit = self
+	local wall = {
+		x=x,
+		z=z,
+		side=side,
+
+		getPosition = function(self)
+			return {0,0,0}
+		end,
+		getDirection = function(self)
+			return {0,0,-1,"dir"}
+		end,
+		getScale = function(self)
+			return {1,1,1}
+		end,
+
+		setPosition = function(self, pos)
+			-- do nothing
+		end,
+		setDirection = function(self, dir)
+			-- do nothin
+		end,
+		setScale = function(self, scale)
+			-- do nothing
+		end,
+
+		getTransformMode = function(self)
+			return "component"
+		end
+	}
+	setmetatable(wall, __wallobj_mt)
+	return wall
 end
 
 function ProvMapEdit:newCamera()
@@ -1985,6 +2193,7 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			if v2[i] < min then min = v2[i] end
 			if v3[i] < min then min = v3[i] end
 			if v4[i] < min then min = v4[i] end
+			return min
 		end
 		local function get_max(v1,v2,v3,v4, i)
 			local max = -1/0
@@ -1992,6 +2201,7 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			if v2[i] > max then max = v2[i] end
 			if v3[i] > max then max = v3[i] end
 			if v4[i] > max then max = v4[i] end
+			return max
 		end
 
 		if obj_type == "model" then
@@ -2006,7 +2216,8 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			_min_x, _min_y, _min_z = min[1],min[2],min[3]
 			_max_x, _max_y, _max_z = max[1],max[2],max[3]
 		elseif obj_type == "tile" then
-			local v1,v2,v3,v4 = self:getTileVerts(v[2],v[3])
+			--local v1,v2,v3,v4 = self:getTileVerts(v[2],v[3])
+			local v1,v2,v3,v4 = self:getTileVerts(v[2].x,v[2].z)
 			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
@@ -2018,7 +2229,8 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			                         get_max(v1,v2,v3,v4,2),
 			                         get_max(v1,v2,v3,v4,3)
 		elseif obj_type == "wall" then
-			local v1,v2,v3,v4 = self:getWallVerts(v[2],v[3],v[4])
+			--local v1,v2,v3,v4 = self:getWallVerts(v[2],v[3],v[4])
+			local v1,v2,v3,v4 = self:getWallVerts(v[2].x,v[2].z,v[2].side)
 			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
@@ -2124,12 +2336,14 @@ function ProvMapEdit:getObjectCentre(obj)
 		my=my/(count-1)
 		mz=mz/(count-1)
 	elseif obj_type == "tile" then
-		local v1,v2,v3,v4 = self:getTileVerts(obj[2],obj[3])
+		--local v1,v2,v3,v4 = self:getTileVerts(obj[2],obj[3])
+		local v1,v2,v3,v4 = self:getTileVerts(obj[2].x,obj[2].z)
 		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
 	elseif obj_type == "wall" then
-		local v1,v2,v3,v4 = self:getWallVerts(obj[2],obj[3],obj[4])
+		--local v1,v2,v3,v4 = self:getWallVerts(obj[2],obj[3],obj[4])
+		local v1,v2,v3,v4 = self:getWallVerts(obj[2].x,obj[2].z,obj[2].side)
 		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
@@ -2478,9 +2692,11 @@ end
 function ProvMapEdit:highlightObject(obj, highlight_val)
 	local obj_type = obj[1]
 	if obj_type == "tile" then
-		self:highlightTile(obj[2], obj[3], highlight_val)
+		--self:highlightTile(obj[2], obj[3], highlight_val)
+		self:highlightTile(obj[2].x, obj[2].z, highlight_val)
 	elseif obj_type == "wall" then
-		self:highlightWall(obj[2], obj[3], obj[4], highlight_val)
+		--self:highlightWall(obj[2], obj[3], obj[4], highlight_val)
+		self:highlightWall(obj[2].x, obj[2].z, obj[2].side, highlight_val)
 	end
 end
 
@@ -2493,7 +2709,11 @@ function ProvMapEdit:isSelectionEmpty()
 end
 
 function ProvMapEdit:isSelected(obj)
-	local function table_eq(a,b)
+	--[[local function table_eq(a,b)
+		local __mt = getmetatable(a)
+		if __mt then print("hyup") end
+		if __mt and __mt.__eq then return a==b end
+
 		for i,v in ipairs(a) do
 			if v~=b[i] then return false end end
 		return true
@@ -2502,7 +2722,10 @@ function ProvMapEdit:isSelected(obj)
 	for i,v in ipairs(self.active_selection) do
 		if table_eq(obj,v) then return true end
 	end
-	return false
+	return false--]]
+	for i,v in ipairs(self.active_selection) do
+		if obj[2]==v[2] then return true end
+	end
 end
 
 function ProvMapEdit:isGroupSelected(group)

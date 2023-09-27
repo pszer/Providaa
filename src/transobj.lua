@@ -116,7 +116,7 @@ function TransObj:applyMatrix(mat, mat_info)
 		self.direction[2] = d_v[2]
 		self.direction[3] = d_v[3]
 	else
-		
+		-- uuhhhh		
 	end
 
 	-- extract the scale factors for each x,y,z component
