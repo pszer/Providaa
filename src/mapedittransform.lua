@@ -556,6 +556,50 @@ local __flipx = {-1, 1, 1, type="scale"}
 local __flipy = { 1,-1, 1, type="scale"}
 local __flipz = { 1, 1,-1, type="scale"}
 
+local t000 = 0*math.pi/2.0
+local t090 = 1*math.pi/2.0
+local t180 = 2*math.pi/2.0
+local t270 = 3*math.pi/2.0
+
+local quat_x_000 = cpml.quat.from_angle_axis(t000, 1,0,0)
+local quat_x_090 = cpml.quat.from_angle_axis(t090, 1,0,0)
+local quat_x_180 = cpml.quat.from_angle_axis(t180, 1,0,0)
+local quat_x_270 = cpml.quat.from_angle_axis(t270, 1,0,0)
+
+local quat_y_000 = cpml.quat.from_angle_axis(t000, 0,-1,0)
+local quat_y_090 = cpml.quat.from_angle_axis(t090, 0,-1,0)
+local quat_y_180 = cpml.quat.from_angle_axis(t180, 0,-1,0)
+local quat_y_270 = cpml.quat.from_angle_axis(t270, 0,-1,0)
+
+local quat_z_000 = cpml.quat.from_angle_axis(t000, 0,0,1)
+local quat_z_090 = cpml.quat.from_angle_axis(t090, 0,0,1)
+local quat_z_180 = cpml.quat.from_angle_axis(t180, 0,0,1)
+local quat_z_270 = cpml.quat.from_angle_axis(t270, 0,0,1)
+
+local function def_fixed_rot(quat)
+	local T = MapEditTransform:new(0,0)
+	T.getTransform = function(self,cam,g) return {quat, type="rotate"} end
+	T.transformation_type = "rotate"
+	return T
+end
+
+local __flipx = {-1, 1, 1, type="scale"}
+local __flipy = { 1,-1, 1, type="scale"}
+local __flipz = { 1, 1,-1, type="scale"}
+
+MapEditTransform.rot_x_000 = def_fixed_rot(quat_x_000)
+MapEditTransform.rot_x_090 = def_fixed_rot(quat_x_090)
+MapEditTransform.rot_x_180 = def_fixed_rot(quat_x_180)
+MapEditTransform.rot_x_270 = def_fixed_rot(quat_x_270)
+MapEditTransform.rot_y_000 = def_fixed_rot(quat_y_000)
+MapEditTransform.rot_y_090 = def_fixed_rot(quat_y_090)
+MapEditTransform.rot_y_180 = def_fixed_rot(quat_y_180)
+MapEditTransform.rot_y_270 = def_fixed_rot(quat_y_270)
+MapEditTransform.rot_z_000 = def_fixed_rot(quat_z_000)
+MapEditTransform.rot_z_090 = def_fixed_rot(quat_z_090)
+MapEditTransform.rot_z_180 = def_fixed_rot(quat_z_180)
+MapEditTransform.rot_z_270 = def_fixed_rot(quat_z_270)
+
 local FlipXT = MapEditTransform:new(0,0)
 FlipXT.getTransform = function(self,cam,g) return __flipx end
 FlipXT.transformation_type = "scale"

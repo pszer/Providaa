@@ -228,7 +228,7 @@ return {
 
 	models = {
 		{name="shittycrate.iqm", pos={8,1,62}},
-		{name="shittycrate.iqm", pos={4,1,62}},
+		{name="shittycrate.iqm", pos={1,1,62}},
 		{name="shittycrate.iqm", pos={6,3,62}}
 	},
 

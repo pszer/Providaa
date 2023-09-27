@@ -86,6 +86,7 @@ function MapEditContext:define(prototype, ...)
 							bl = MapEditContext.buffer_l
 						end
 						love.graphics.draw(bg,x,y)
+						-- if hoverable
 						if v.hover and not v.disable and (v.action or v.suboptions) then
 							local mode, alphamode = love.graphics.getBlendMode()
 							love.graphics.setColor(255/255,161/255,66/255,0.8)

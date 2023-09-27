@@ -139,7 +139,9 @@ uniform vec4 u_wireframe_colour;
 uniform vec4 u_selection_colour;
 
 uniform bool u_solid_colour_enable;
+uniform bool u_global_coord_uv_enable;
 uniform bool u_highlight_pass;
+uniform float u_time;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -202,7 +204,20 @@ void effect( ) {
 	}
 
 	vec3 light = vec3(1.0,1.0,1.0);
-	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
+	vec2 coords;
+	if (u_global_coord_uv_enable) {
+		vec3 n = frag_normal;
+		float ny = n.y!=0?1:0;
+		float s = dot(frag_normal,vec3(0,0,1));
+		if (s==0) {s=1;}
+		float S = dot(frag_normal,vec3(1,0,0));
+		if (S==0) {s=1;}
+		float u = frag_w_position.x*s + frag_w_position.z*(1.0-ny)*S;
+		float v = frag_w_position.y + frag_w_position.z*ny;
+		coords = vec2((u + 6*u_time)/16.0, (v + 6*u_time)/16.0);
+	} else {
+		coords = calc_tex_coords(vec2(VaryingTexCoord));
+	}
 
 	vec4 texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * vec4(light,1.0);

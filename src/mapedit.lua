@@ -381,6 +381,12 @@ function ProvMapEdit:defineCommands()
 		end -- undo command function
 	)
  
+	local function add_to_set(set, g)
+		for i,v in ipairs(set) do
+			if v==g then return end
+		end
+		table.insert(set, g)
+	end
 
 	coms["transform"] = commands:define(
 		{
@@ -390,12 +396,15 @@ function ProvMapEdit:defineCommands()
 		 {"transform_function", nil, nil, nil}
 		},
 		function(props) -- command function
-			if props.memory[1] == nil then -- if memory hasn't been calculated yet
-				for i,v in ipairs(props.select_objects) do
-					local o_type = v[1]
-					if o_type == "model" then
-						props.memory[i] = transobj:from(v[2])
-					end
+			local groups = {}
+			local calc_mem = props.memory[1] == nil
+			for i,v in ipairs(props.select_objects) do
+				local o_type = v[1]
+				if o_type == "model" then
+					if calc_mem then -- if memory hasn't been calculated yet
+						props.memory[i] = transobj:from(v[2]) end
+					local g = self:isModelInAGroup(v[2])
+					if g then add_to_set(groups,g) end
 				end
 			end
 
@@ -404,14 +413,27 @@ function ProvMapEdit:defineCommands()
 				props.transform_function = self:applyTransformationFunction(props.select_objects, props.transform_info)
 			end
 			props.transform_function()
+
+			self:updateModelMatrices()
+			for i,g in ipairs(groups) do
+				g:calcMinMax()
+			end
 		end, -- command function
 		function(props) -- undo command function
+			local groups = {}
 			for i,v in ipairs(props.select_objects) do
 				local o_type = v[1]
 				if o_type == "model" then
 					local memory = props.memory[i]
 					memory:send(v[2])
+					local g = self:isModelInAGroup(v[2])
+					if g then add_to_set(groups,g) end
 				end
+			end
+
+			self:updateModelMatrices()
+			for i,g in ipairs(groups) do
+				g:calcMinMax()
 			end
 		end -- undo command function
 	)
@@ -442,11 +464,13 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.models) do
 				props.group:addToGroup(v)
 			end
+			group:calcMinMax()
 		end, -- command function
 		function(props) -- undo command function
 			for i,v in ipairs(props.models) do
 				props.group:removeFromGroup(v)
 			end
+			group:calcMinMax()
 		end -- undo command function
 	)
 
@@ -693,9 +717,50 @@ function ProvMapEdit:defineContextMenus()
 			}
 		 	end},
 
-		 {"Reset",     action=function(props)
-		                        self:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
-		               icon = nil}
+		 {"Rotate", suboptions = function(props)
+		 	return {
+			 {"... around ~i~(lred)X~r Axis", suboptions = function(props)
+			 	return {
+					{"~i+90~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_x_090})
+						end},
+					{"~i+180~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_x_180})
+						end},
+					{"~i+270~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_x_270})
+						end}}
+				end},
+			 {"... around ~i~(lgreen)Y~r Axis", suboptions = function(props)
+			 	return {
+					{"~i+90~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_y_090})
+						end},
+					{"~i+180~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_y_180})
+						end},
+					{"~i+270~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_y_270})
+						end}}
+				end},
+			 {"... around ~i~(lblue)Z~r Axis", suboptions = function(props)
+			 	return {
+					{"~i+90~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_z_090})
+						end},
+					{"~i+180~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_z_180})
+						end},
+					{"~i+270~b°", action=function()
+						self:commitCommand("transform", {transform_info=maptransform.rot_z_270})
+						end}}
+				end},
+			}
+		 	end},
+
+		 {"~bReset",action=function(props)
+		   self:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
+		   icon = nil}
 		 )
 end
 
@@ -1080,6 +1145,18 @@ local __GroupMeta = {
 				return
 			end
 		end
+	end,
+
+	calcMinMax = function(self)
+		local insts = self.insts
+		local c,min,max = ProvMapEdit:getObjectsCentreAndMinMax(insts)
+		self.centre = c
+		self.min = min
+		self.max = max
+	end,
+
+	isEmpty = function(self)
+		return self.insts[1] == nil
 	end
 }
 __GroupMeta.__index = __GroupMeta
@@ -1087,6 +1164,10 @@ function ProvMapEdit:createModelGroup(name, insts)
 	local group = {
 		name = nil,
 		insts = {},
+
+		centre = {0,0,0},
+		min = {0,0,0},
+		max = {0,0,0},
 	}
 	for i,v in ipairs(insts) do
 		if not self:isModelInAGroup(v) then
@@ -1105,6 +1186,7 @@ function ProvMapEdit:createModelGroup(name, insts)
 
 	setmetatable(group, __GroupMeta)
 	table.insert(groups, group)
+	group:calcMinMax()
 	return group
 end
 
@@ -1872,6 +1954,14 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 	end
 	self.__cache_recalc_selection_centre = false
 
+	
+	self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max =
+		self:getObjectsCentreAndMinMax(self.active_selection, 
+			self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max)
+	return self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max
+end
+
+function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 	local x,y,z = 0,0,0
 
 	local min_x,min_y,min_z = 1/0,1/0,1/0
@@ -1881,10 +1971,29 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 	local max = math.max
 
 	local count = 0
-	for i,v in ipairs(self.active_selection) do
+	for i,v in ipairs(objs) do
 		local obj_type = v[1]
 
 		local mx,my,mz
+
+		local _min_x,_min_y,_min_z = 1/0,1/0,1/0
+		local _max_x,_max_y,_max_z = -1/0,-1/0,-1/0
+
+		local function get_min(v1,v2,v3,v4, i)
+			local min = 1/0
+			if v1[i] < min then min = v1[i] end
+			if v2[i] < min then min = v2[i] end
+			if v3[i] < min then min = v3[i] end
+			if v4[i] < min then min = v4[i] end
+		end
+		local function get_max(v1,v2,v3,v4, i)
+			local max = -1/0
+			if v1[i] > max then max = v1[i] end
+			if v2[i] > max then max = v2[i] end
+			if v3[i] > max then max = v3[i] end
+			if v4[i] > max then max = v4[i] end
+		end
+
 		if obj_type == "model" then
 			local model = v[2]
 
@@ -1894,36 +2003,67 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 				(min[1] + max[1]) * 0.5,
 				(min[2] + max[2]) * 0.5,
 				(min[3] + max[3]) * 0.5
+			_min_x, _min_y, _min_z = min[1],min[2],min[3]
+			_max_x, _max_y, _max_z = max[1],max[2],max[3]
 		elseif obj_type == "tile" then
 			local v1,v2,v3,v4 = self:getTileVerts(v[2],v[3])
 			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+
+			_min_x, _min_y, _min_z = get_min(v1,v2,v3,v4,1),
+			                         get_min(v1,v2,v3,v4,2),
+			                         get_min(v1,v2,v3,v4,3)
+			_max_x, _max_y, _max_z = get_max(v1,v2,v3,v4,1),
+			                         get_max(v1,v2,v3,v4,2),
+			                         get_max(v1,v2,v3,v4,3)
 		elseif obj_type == "wall" then
 			local v1,v2,v3,v4 = self:getWallVerts(v[2],v[3],v[4])
 			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+			_min_x, _min_y, _min_z = get_min(v1,v2,v3,v4,1),
+			                         get_min(v1,v2,v3,v4,2),
+			                         get_min(v1,v2,v3,v4,3)
+			_max_x, _max_y, _max_z = get_max(v1,v2,v3,v4,1),
+			                         get_max(v1,v2,v3,v4,2),
+			                         get_max(v1,v2,v3,v4,3)
+		elseif provtype(v) == "modelinstance" then
+			local model = v
+			local min,max = model:getBoundingBoxMinMax()
+			mx,my,mz = 
+				(min[1] + max[1]) * 0.5,
+				(min[2] + max[2]) * 0.5,
+				(min[3] + max[3]) * 0.5
+			_min_x, _min_y, _min_z = min[1],min[2],min[3]
+			_max_x, _max_y, _max_z = max[1],max[2],max[3]
+		else
+			error()
 		end
 
 		x,y,z = x + mx, y + my, z + mz
 		count = count + 1
 
-		min_x = min(min_x, mx)
-		min_y = min(min_y, my)
-		min_z = min(min_z, mz)
-		max_x = max(max_x, mx)
-		max_y = max(max_y, my)
-		max_z = max(max_z, mz)
+		min_x = min(min_x, _min_x)
+		min_y = min(min_y, _min_y)
+		min_z = min(min_z, _min_z)
+		max_x = max(max_x, _max_x)
+		max_y = max(max_y, _max_y)
+		max_z = max(max_z, _max_z)
 	end
 
 	if count == 0 then return nil end
 	x = x / count
 	y = y / count
 	z = z / count
-	self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max =
-		{x,y,z}, {min_x,min_y,min_z}, {max_x,max_y,max_z}
-	return self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max
+	local __c   = __c or {}
+	local __min = __min or {}
+	local __max = __max or {}
+	__c[1],__c[2],__c[3] = x,y,z
+	__min[1],__min[2],__min[3] = min_x,min_y,min_z
+	__max[1],__max[2],__max[3] = max_x,max_y,max_z
+	return __c, __min, __max
+	--return {x,y,z},{min_x,min_y,min_z},{max_x,max_y,max_z}
 end
 
 function ProvMapEdit:copySelectionToClipboard()
@@ -2148,6 +2288,7 @@ function ProvMapEdit:drawViewport()
 	
 	shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 	shadersend(shader,"u_selection_colour", self.selection_col)
+	shadersend(shader,"u_time",love.timer.getTime())
 
 	if map_mesh then
 
@@ -2182,12 +2323,40 @@ function ProvMapEdit:drawViewport()
 	self:drawSelectedHighlight()
 	love.graphics.setDepthMode( "less", true  )
 	self:drawModelsInViewport(shader)
+	shadersend(shader,"u_uses_tileatlas", false)
 
+	self:drawGroupBounds(shader)
 end
 
 function ProvMapEdit:invokeDrawMesh()
 	local mesh = self.props.mapedit_map_mesh.mesh
 	love.graphics.draw(mesh)
+end
+
+function ProvMapEdit:drawGroupBounds(shader)
+	if self.props.mapedit_mode ~= "viewport" then
+		return
+	end
+
+	love.graphics.setDepthMode( "lequal", false  )
+	love.graphics.setMeshCullMode("none")
+	love.graphics.setWireframe( true )
+
+	for i,group in ipairs(self.props.mapedit_model_groups) do
+		local min,max = group.min,group.max
+		--guirender:draw3DCube(shader, min,max, {196/255,107/255,255/255,1.0}, true, {196/255,107/255,255/255,0.05})
+		local selected = self:isGroupSelected(group)
+		if selected then
+			local s_col = {self.selection_col[1]*0.8,
+			               self.selection_col[2]*0.8,
+			               self.selection_col[3]*0.8,
+										 1.0}
+			guirender:draw3DCube(shader, min,max, self.selection_col, true, s_col)
+		else
+			guirender:draw3DCube(shader, min,max, {196/255,107/255,255/255,0.5})
+		end
+	end
+	love.graphics.setWireframe( false )
 end
 
 function ProvMapEdit:drawModelsInViewport(shader)
@@ -2336,6 +2505,17 @@ function ProvMapEdit:isSelected(obj)
 	return false
 end
 
+function ProvMapEdit:isGroupSelected(group)
+	for i,v in ipairs(self.active_selection) do
+		if v[1] == "model" then
+			local model_inst = v[2]
+			local g = self:isModelInAGroup(model_inst)
+			if g == group then return true end
+		end
+	end
+	return false
+end
+
 function ProvMapEdit:drawSelectedHighlight(shader)
 	local shader = shader or love.graphics.getShader()
 	shadersend(shader,"u_model", "column", __id)
@@ -2349,11 +2529,6 @@ function ProvMapEdit:drawSelectedHighlight(shader)
 
 	love.graphics.setColor(self.selection_col)
 	love.graphics.setDepthMode( "always", false  )
-	--for i,v in ipairs(self.active_selection) do
-	--	if v[1] == "tile" then
-	--		self:drawSpecificTile(v[2],v[3])
-	--	end
-	--end
 	self:invokeDrawMesh()
 
 	love.graphics.setBlendMode(mode, alphamode)

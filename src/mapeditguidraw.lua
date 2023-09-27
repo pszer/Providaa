@@ -41,9 +41,11 @@ local MapEditGUIRender = {
 	    {
    	     return transform_projection * vertex_position;
    	 }
-	]]
+	]]),
 
-	)
+	cube_mesh = nil,
+	cube_solid_mesh = nil,
+	checkerboard_tex = nil
 }
 MapEditGUIRender.__index = MapEditGUIRender
 
@@ -71,6 +73,9 @@ function MapEditGUIRender:initAssets()
 	self.__cxtm_tr = Loader:getTextureReference("mapedit/cxtm_tr.png")
 	self.__cxtm_tl = Loader:getTextureReference("mapedit/cxtm_tl.png")
 
+	self.checkerboard_tex = Loader:getTextureReference("mapedit/checkerboard.png")
+	self.checkerboard_tex:setWrap("repeat","repeat")
+
 	self.grayscale:send("interp",0.1)
 
 	local icon_list = {
@@ -82,6 +87,65 @@ function MapEditGUIRender:initAssets()
 	for i,v in ipairs(icon_list) do
 		self.icons[v] = Loader:getTextureReference(v)
 	end
+
+	local layout = {
+			{"VertexPosition", "float", 3},
+			{"VertexNormal", "float", 3},
+	}
+	local vertices2 = {
+        -- Top
+        {0, 0, 1,0,0,1}, {1, 0, 1,0,0,1},
+        {1, 1, 1,0,0,1}, {0, 1, 1,0,0,1},
+        -- Bottom
+        {1, 0, 0,0,0,-1}, {0, 0, 0,0,0,-1},
+        {0, 1, 0,0,0,-1}, {1, 1, 0,0,0,-1},
+        -- Front
+        {0, 0, 0,0,-1,0}, {1, 0, 0,0,-1,0},
+        {1, 0, 1,0,-1,0}, {0, 0, 1,0,-1,0},
+        -- Back
+        {1, 1, 0,0,1,0}, {0, 1, 0,0,1,0},
+        {0, 1, 1,0,1,0}, {1, 1, 1,0,1,0},
+        -- Right
+        {1, 0, 0,1,0,0}, {1, 1, 0,1,0,0},
+        {1, 1, 1,1,0,0}, {1, 0, 1,1,0,0},
+        -- Left
+        {0, 1, 0,-1,0,0}, {0, 0, 0,-1,0,0},
+        {0, 0, 1,-1,0,0}, {0, 1, 1,-1,0,0},
+	}
+
+	local indices2 = {
+			1, 2, 3, 3, 4, 1,
+			5, 6, 7, 7, 8, 5,
+			9, 10, 11, 11, 12, 9,
+			13, 14, 15, 15, 16, 13,
+			17, 18, 19, 19, 20, 17,
+			21, 22, 23, 23, 24, 21,
+	}
+	self.cube_solid_mesh = love.graphics.newMesh(layout,vertices2,"triangles","static")
+	self.cube_solid_mesh:setVertexMap(indices2)
+	self.cube_solid_mesh:setTexture(self.checkerboard_tex)
+
+	local vertices = {
+		{0,0,0}, {1,0,0}, {0,1,0}, {0,0,1},
+		{1,1,0}, {1,0,1}, {0,1,1}, {1,1,1}
+	}
+	local indices = {
+		1,2,1,
+		1,3,1,
+		1,4,1,
+		8,7,8,
+		8,6,8,
+		8,5,8,
+		3,7,3,
+		4,7,4,
+		2,5,2,
+		2,6,2,
+		4,6,4,
+		3,5,3
+	}
+
+	self.cube_mesh = love.graphics.newMesh(layout,vertices,"triangles","static")
+	self.cube_mesh:setVertexMap(indices)
 end
 
 --
@@ -322,6 +386,53 @@ function MapEditGUIRender:createContextMenuBackground(w,h, col)
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.setCanvas()
 	return canvas
+end
+
+local cpml = require 'cpml'
+local __tempcubemat4 = cpml.mat4.new()
+local __id = cpml.mat4.new()
+local __tempvec3t = cpml.vec3.new()
+local __tempvec3s = cpml.vec3.new()
+function MapEditGUIRender:draw3DCube(shader, min, max, col, solid, solid_col)
+	local shadersend = require 'shadersend'
+	shadersend(shader, "u_solid_colour_enable", true)
+
+	local model_mat = __tempcubemat4
+	-- initialize to an identity matrix
+	for i=1,16 do
+		model_mat[i] = __id[i]
+	end
+
+	local pos = __tempvec3t
+	pos.x,pos.y,pos.z = min[1],min[2],min[3]
+	local size = __tempvec3s
+	size.x,size.y,size.z = max[1]-min[1],max[2]-min[2],max[3]-min[3]
+
+	model_mat:scale(model_mat, size)
+	model_mat:translate(model_mat, pos)
+	shadersend(shader, "u_model", "column", model_mat)
+	love.graphics.setColor(col)
+	love.graphics.draw(self.cube_mesh)
+
+	shadersend(shader, "u_solid_colour_enable", false)
+
+	if solid then
+		local w = love.graphics.isWireframe()
+		local mode, alphamode = love.graphics.getBlendMode()
+		love.graphics.setColor(solid_col)
+		love.graphics.setBlendMode("screen","premultiplied")
+		love.graphics.setMeshCullMode("front")
+		love.graphics.setWireframe( false )
+		shadersend(shader, "u_global_coord_uv_enable", true)
+		love.graphics.draw(self.cube_solid_mesh)
+		shadersend(shader, "u_global_coord_uv_enable", false)
+		love.graphics.setWireframe( w )
+		love.graphics.setBlendMode(mode,alphamode)
+		love.graphics.setMeshCullMode("none")
+	end
+
+	shadersend(shader, "u_model", "column", __id)
+	love.graphics.setColor(1,1,1,1)
 end
 
 return MapEditGUIRender
