@@ -51,7 +51,7 @@ function MapEditGUI:define(mapedit)
 		    mapedit:copySelectionToClipboard() end,
 		  icon = "mapedit/icon_copy.png"},
 
-		 {"Duplicate",
+		 {"Paste",
 		  action=function(props)
 		    mapedit:pasteClipboard() end,
 		  icon = "mapedit/icon_dup.png"},
@@ -171,6 +171,29 @@ function MapEditGUI:define(mapedit)
 		   mapedit:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
 		   icon = nil}
 		 )
+	
+	context["select_undef_context"] = 
+		contextmenu:define(
+		{
+		}
+		,
+		 {"Paste",
+		  action=function(props)
+		    mapedit:pasteClipboard() end,
+		  icon = "mapedit/icon_dup.png"},
+
+		 {"Undo",
+		  action=function(props)
+		    mapedit:commitUndo() end,
+			disable = false,
+		  icon = nil},
+
+		 {"Redo",
+		  action=function(props)
+		    mapedit:commitRedo() end,
+			disable = false,
+		  icon = nil}
+		 )
 
 	context["main_file_context"] =
 		contextmenu:define(
@@ -196,7 +219,10 @@ function MapEditGUI:define(mapedit)
 		{"Edit",
 		 generate =
 		   function(props)
-			   return context["main_file_context"], {}
+			   --return context["main_file_context"], {}
+				 local cxtn_name, props = mapedit:getSelectionContextMenu()
+				 if not cxtn_name then return nil end
+				 return context[cxtn_name], props
 		   end
 		}
 		)

@@ -1505,6 +1505,8 @@ function ProvMapEdit:getSelectionContextMenu()
 
 		--gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
 		return "select_models_context", {select_objects=self.active_selection, group_info=group_flags}
+	else
+		return "select_undef_context", {}
 	end
 	return nil, nil
 end

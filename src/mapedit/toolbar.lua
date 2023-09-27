@@ -163,7 +163,8 @@ function MapEditToolbar:define(prototype, ...)
 
 				menu.action = function(self)
 					local context_menu_def, context_props = self.generate(self.props)
-					assert(context_menu_def, "MapEditToolbar: recieved no context menu definition in menu:action()")
+					--assert(context_menu_def, "MapEditToolbar: recieved no context menu definition in menu:action()")
+					if not context_menu_def then return end
 					local cx,cy = this.x + menu.x, this.y + menu.y
 					return context_menu_def:new(context_props, cx, cy+self.h)
 				end
