@@ -105,7 +105,7 @@ function MapEditContext:define(prototype, ...)
 						love.graphics.setColor(1,1,1,1)
 						for i,v in ipairs(opts) do
 							local x,y = v.x,v.y
-							draw_option(x,y,v)
+							--draw_option(x,y,v)
 
 							local state
 							if v.hover and not v.disable and (v.action or v.suboptions) then

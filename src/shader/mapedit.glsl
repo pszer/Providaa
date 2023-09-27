@@ -25,8 +25,10 @@ uniform mat4 u_model;
 uniform mat4 u_proj;
 uniform mat4 u_normal_model;
 
-uniform bool u_apply_ab_transformation;
+uniform bool u_apply_a_transformation;
 uniform mat4 u_transform_a;
+uniform bool u_apply_a_mesh_transformation;
+uniform mat4 u_mesh_transform_a;
 
 uniform float curve_coeff;
 uniform bool curve_flag;
@@ -51,10 +53,6 @@ attribute float HighlightAttribute;
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
-//mat4 get_deform_matrix() {
-//	return mat4(1.0);
-//}
-
 mat3 get_normal_matrix(mat4 skin_u) {
 	return mat3(transpose(inverse(skin_u)));
 }
@@ -77,20 +75,21 @@ mat4 get_model_matrix() {
 	}
 }
 
-mat4 apply_ab_transformation(mat4 model) {
-	//return (u_transform_b * model) * u_transform_a;
-	//return u_transform_b * u_transform_a * model;
-	//return u_transform_a * model;
+mat4 apply_a_transformation(mat4 model) {
 	return u_transform_a * model;
+}
+mat4 apply_a_mesh_transformation(mat4 model) {
+	return u_mesh_transform_a * model;
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
 	//mat4 skin_u = get_model_matrix() * get_deform_matrix();
 	mat4 skin_u = get_model_matrix();
 
-	if (u_apply_ab_transformation) {
-		skin_u = apply_ab_transformation(skin_u);
-	}
+	if (u_apply_a_transformation) {
+		skin_u = apply_a_transformation(skin_u); }
+	else if (u_apply_a_mesh_transformation) {
+		skin_u = apply_a_mesh_transformation(skin_u); }
 
 	mat4 skinview_u = u_view * skin_u;
 

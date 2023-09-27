@@ -34,6 +34,7 @@ ProvMapEdit = {
 
 	wireframe_col = {19/255,66/255,72/255,0.8},
 	selection_col = {255/255,161/255,66/255,1.0},
+	mesh_trans_col = {255/255,224/255,194/255,0.8},
 
 	active_selection = {},
 	highlight_mesh = nil,
@@ -1493,9 +1494,11 @@ function ProvMapEdit:openSelectionContextMenu(model,tile,wall)
 				merge_groups_enable = (group_count > 1) and (not model_outside_group_exists),
 				add_to_group_enable = (group_count==1) and (model_outside_group_exists),
 				ungroup_enable = (group_count==1) and (not model_outside_group_exists),
+				models_outside = models_outside,
+				groups = groups
 			}
 
-		gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_flags=group_flags})
+		gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
 	end
 end
 
@@ -2494,7 +2497,7 @@ function ProvMapEdit:updateTransformationMatrix()
 
 	local shader = self.map_edit_shader
 	shader:send("u_transform_a", "column", a)
-	shadersend(shader, "u_mesh_transform_a", "column", tile_a)
+	shader:send("u_mesh_transform_a", "column", tile_a)
 end
 
 function ProvMapEdit:isModelSelected(inst)
@@ -2779,11 +2782,11 @@ function ProvMapEdit:drawModelsInViewport(shader)
 	love.graphics.setColor(1,1,1,1)
 	for i,v in ipairs(models) do
 		if not selected_models[v] then
-			shader:send("u_apply_ab_transformation", false)
+			shader:send("u_apply_a_transformation", false)
 			v:draw(shader, false)
 		else
 			if self.active_transform then
-				shader:send("u_apply_ab_transformation", true)
+				shader:send("u_apply_a_transformation", true)
 			end
 
 			v:draw(shader, false)
@@ -2807,7 +2810,7 @@ function ProvMapEdit:drawModelsInViewport(shader)
 			love.graphics.setWireframe( false )
 		end
 	end
-	shader:send("u_apply_ab_transformation", false)
+	shader:send("u_apply_a_transformation", false)
 end
 
 function ProvMapEdit:updateModelMatrices(subset)
@@ -2816,18 +2819,6 @@ for i,v in ipairs(subset) do
 	v:modelMatrix()
 	end
 end
-
--- no good
---[[function ProvMapEdit:drawSpecificTile(x,z)
-	local mesh_start_index = self:getTilesIndexInMesh(x,z)
-	local mesh = self.props.mapedit_map_mesh.mesh
-	local vmap_length = #mesh:getVertexMap()
-
-	local vmap_start_i = 6*((mesh_start_index-1)/4)+1
-	mesh:setDrawRange(vmap_start_i, 6)
-	love.graphics.draw(mesh)
-	mesh:setDrawRange(1,vmap_length)
-end--]]
 
 function ProvMapEdit:generateMeshHighlightAttributes( mesh )
 	local mesh = mesh or self.props.mapedit_map_mesh.mesh
@@ -2940,17 +2931,28 @@ function ProvMapEdit:drawSelectedHighlight(shader)
 	shadersend(shader,"u_uses_tileatlas", true)
 
 	local mode, alphamode = love.graphics.getBlendMode()
-	love.graphics.setBlendMode("screen","premultiplied")
+	if self.active_transform then
+		shader:send("u_apply_a_mesh_transformation", true)
+		love.graphics.setBlendMode("alpha", "alphamultiply")
+		love.graphics.setColor(self.mesh_trans_col)
+		love.graphics.setMeshCullMode("none")
+	else
+		love.graphics.setBlendMode("screen","premultiplied")
+		love.graphics.setColor(self.selection_col)
+	end
 
-	love.graphics.setColor(self.selection_col)
 	love.graphics.setDepthMode( "always", false  )
 	self:invokeDrawMesh()
 
+	shader:send("u_apply_a_mesh_transformation", false)
 	love.graphics.setBlendMode(mode, alphamode)
 	shadersend(shader,"u_uses_tileatlas", false)
 	love.graphics.setDepthMode( "less", true  )
 	shadersend(shader,"u_highlight_pass", false)
 	love.graphics.setColor(1,1,1,1)
+	if self.active_transform then
+		love.graphics.setMeshCullMode("front")
+	end
 end
 
 

@@ -28,10 +28,12 @@ function MapEditGUI:define(mapedit)
 		contextmenu:define(
 		{
 		 {"select_objects", "table", nil, PropDefaultTable{ProvMapEdit.active_selection}},
-		 {"group_flags", "table", nil, PropDefaultTable{create_enable=false,
-		                                                merge_groups_enable=false,
-		                                                add_to_group_enable=false,
-		                                                ungroup_enable=false}}
+		 {"group_info", "table", nil, PropDefaultTable{create_enable=false,
+		                                               merge_groups_enable=false,
+		                                               add_to_group_enable=false,
+		                                               ungroup_enable=false,
+		                                               models_outside=nil,
+		                                               groups=nil}}
 		}
 		,
 
@@ -51,24 +53,26 @@ function MapEditGUI:define(mapedit)
 		  icon = "mapedit/icon_del.png"},
 
 		 {"Group", suboptions = function(props)
+		  local groups = props.group_info.groups
+			local models_outside = props.group_info.models_outside
 		 	return {
 			 {"~(green)~bCreate",
-			  disable = not props.group_flags.create_enable,
+			  disable = not props.group_info.create_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("create_group", {select_objects=props.select_objects}) end},
 			 {"Merge Groups",
-			  disable = not props.group_flags.merge_groups_enable,
+			  disable = not props.group_info.merge_groups_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("merge_groups", {groups=groups}) end},
 			 {"Add To Group",
-			  disable = not props.group_flags.add_to_group_enable,
+			  disable = not props.group_info.add_to_group_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("add_to_group", {group=groups[1], models=models_outside}) end},
 			 {"~(lpurple)Ungroup",
-			  disable = not props.group_flags.ungroup_enable,
+			  disable = not props.group_info.ungroup_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("dissolve_groups", {groups=groups, models=models_outside}) end},
