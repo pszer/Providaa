@@ -5,7 +5,7 @@
 
 local eyes_atts = require 'cfg/eyes'
 
-require 'cfg/face'
+require 'cfg.face'
 local face_decor_atts = FACE_DECOR_ATTRIBUTES
 local face_atts = FACE_ATTRIBUTES
 
@@ -30,16 +30,11 @@ function faceFromCfg(name)
 	end
 	local decor = ModelDecor:newInstance(decor_model, decor_props)
 
-	--decor.props.decor_reference = decor_model
-
 	local eyes_data = EyesData:fromCfg(face_props.animface_eyesdata_name)
 	if not eyes_data then
 		error(string.format("faceDecorFromCfg: eyes %s couldn't be loaded for face %s in FACE_ATTRIBUTES (cfg/face)",
 			face_props.animface_eyesdata_name, name))
 	end
-
-	--face_props.animface_eyesdata = eyes_data
-	--face_props.animface_decor_reference = decor
 
 	local animface = AnimFace:new(face_props)
 	animface.props.animface_eyesdata = eyes_data

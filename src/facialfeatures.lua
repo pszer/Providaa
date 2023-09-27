@@ -62,7 +62,6 @@ function EyesData:new(props)
 end
 
 function EyesData:release()
-	print("yessir")
 	local source = self:sourceImage()
 	if source then
 		Loader:deref("texture", self.props.eyes_filename) end

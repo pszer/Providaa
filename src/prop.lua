@@ -25,7 +25,10 @@ Props.__type  = "proptableprototype"
 -- argument being a table for a row in the property table
 -- {key, type, default, valid, options}
 -- key       - key for the property
--- type      - lua type for the property, if nil then there is no type checking
+-- type      - lua type for the property, if nil then there is no type checking,
+--             functions are not allowed as property types, if a property table instance is
+--             passed a function as a value to a property then that function is called and
+--             it's result used as the value
 -- default   - default value for the property
 -- valid     - function called when setting the value of a property to check validity
 --             if nil then there is no input validity checking
