@@ -76,11 +76,15 @@ function MapEditContext:define(prototype, ...)
 	local p = Props:prototype(prototype)
 	local obj = {
 		new = function(self, props, X, Y)
-			local this = {
+			local this = { -- this
 				props  = p(props),
 				options = {},
 				x = X or love.mouse.getX(),
 				y = Y or love.mouse.getY(),
+
+				--
+				-- this functions
+				--
 
 				release = function(self)
 					-- recursively delete text&bg objects
@@ -97,23 +101,21 @@ function MapEditContext:define(prototype, ...)
 				end,
 
 				draw = function(self)
-					local function draw_option(x,y,v)
-						local state
-						if v.hover and not v.disable and (v.action or v.suboptions) then
-							state="hover"
-						elseif v.disable then
-							state="disable"
-						else
-							state="normal"
-						end
-						guirender:drawGenericOption(x,y,v.w,v.h, v.bg,v.text,v.icon, v.suboptions~=nil, state, MapEditContext.buffer_info)
-					end
-
 					local function draw_option_list(opts, draw_option_list)
 						love.graphics.setColor(1,1,1,1)
 						for i,v in ipairs(opts) do
 							local x,y = v.x,v.y
 							draw_option(x,y,v)
+
+							local state
+							if v.hover and not v.disable and (v.action or v.suboptions) then
+								state="hover"
+							elseif v.disable then
+								state="disable"
+							else
+								state="normal"
+							end
+							guirender:drawGenericOption(x,y,v.w,v.h, v.bg,v.text,v.icon, v.suboptions~=nil, state, MapEditContext.buffer_info)
 
 							if v.suboptions and v.expand then
 								draw_option_list(v.suboptions, draw_option_list)
@@ -193,7 +195,7 @@ function MapEditContext:define(prototype, ...)
 					if found and found.disable then return nil end
 					return found
 				end
-			}
+			} -- this
 
 			local function fill_out_option(v, fill_out_option)
 				local name = v[1]
