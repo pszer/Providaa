@@ -60,6 +60,7 @@ MAPEDIT_KEY_SETTINGS = {
 
 	["super"]           = { "lshift" , nil    , default = "lshift"},
 	["ctrl"]            = { "lctrl"  , nil    , default = "lctrl"},
+	["alt"]             = { "lalt"   , nil    , default = "lalt"},
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
 
 	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },

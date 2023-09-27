@@ -17,7 +17,7 @@ uniform bool u_wireframe_enabled;
 flat out vec2 texscale;
 flat out vec2 texoffset;
 flat out int  tex_uv_index;
-flat out int  highlight_attr;
+varying float highlight_attr;
 
 uniform mat4 u_view;
 uniform mat4 u_rot;
@@ -27,7 +27,6 @@ uniform mat4 u_normal_model;
 
 uniform bool u_apply_ab_transformation;
 uniform mat4 u_transform_a;
-//uniform mat4 u_transform_b;
 
 uniform float curve_coeff;
 uniform bool curve_flag;
@@ -105,7 +104,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 
 	// in wireframe mode, add a small offset to the vertex to stop z-fighting
 	if (u_wireframe_enabled) {
-		view_v.xyz += frag_normal*0.2;
+		view_v.xyz += frag_normal*0.05;
 	}
 
 	// interpolate fragment position in viewspace and worldspace
@@ -120,7 +119,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 		tex_uv_index = int(TextureUvIndex);
 	}
 
-	highlight_attr = int(floor(HighlightAttribute));
+	highlight_attr = HighlightAttribute;
 
 	return u_proj * view_v;
 }
@@ -131,7 +130,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 flat in vec2 texscale;
 flat in vec2 texoffset;
 flat in int  tex_uv_index;
-flat in int  highlight_attr;
+varying float highlight_attr;
 
 uniform Image MainTex;
 
@@ -183,8 +182,11 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
-	if (u_highlight_pass && (highlight_attr == 0.0)) {
-		discard;
+	if (u_highlight_pass) {
+		if (highlight_attr < 0.5) {
+			love_Canvases[0] = VaryingColor * 2.0*(highlight_attr-0.5);
+			discard;
+		}
 	}
 	if (u_solid_colour_enable) {
 		love_Canvases[0] = VaryingColor;

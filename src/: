@@ -1334,21 +1334,14 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	if test_tiles then
 		for z=1,h do
 			for x=1,w do
-				local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, self.alt_modifier)
+				local intersect, dist = self:testTileAgainstRay(ray, x,z)
 				if intersect and dist < min_dist then
-					if not self.alt_modifier then
-						mesh_test = {"tile",
-												 self:getTileVertexObject(x,z,1),
-												 self:getTileVertexObject(x,z,2),
-												 self:getTileVertexObject(x,z,3),
-												 self:getTileVertexObject(x,z,4)
-												 }
-					else
-						mesh_test = {"tile"}
-						for i,v in ipairs(verts) do
-							mesh_test[i+1] = self:getTileVertexObject(x,z,v)
-						end
-					end
+					mesh_test = {"tile",
+					             self:getTileVertexObject(x,z,1),
+					             self:getTileVertexObject(x,z,2),
+					             self:getTileVertexObject(x,z,3),
+					             self:getTileVertexObject(x,z,4)
+											 }
 					min_dist = dist
 				end
 			end
@@ -1402,8 +1395,6 @@ end
 
 local __tempv1,__tempv2,__tempv3,__tempv4 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
 local __temptri1, __temptri2 = {},{}
-local __tempt1,__tempt2,__tempt3,__tempt4 = {0,0,0},{0,0,0},{0,0,0},{0,0,0}
-local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
 -- returns false
 --         true, dist
 --         true, dist, verts
@@ -1434,44 +1425,7 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, vert_test)
 
 	local verts_t = nil
 	if vert_test and intersect then
-		local function length(v1,V) 
-			local x = v1[1]-V.x
-			local y = v1[2]-V.y
-			local z = v1[3]-V.z
-			return math.sqrt(x*x + y*y + z*z)
-		end
-		local edge1,edge2,edge3,edge4 = __tempt1,__tempt2,__tempt3,__tempt4
-		edge1[1] = (v1[1] + v2[1]) * 0.5
-		edge1[2] = (v1[2] + v2[2]) * 0.5
-		edge1[3] = (v1[3] + v2[3]) * 0.5
-		edge2[1] = (v2[1] + v3[1]) * 0.5
-		edge2[2] = (v2[2] + v3[2]) * 0.5
-		edge2[3] = (v2[3] + v3[3]) * 0.5
-		edge3[1] = (v3[1] + v4[1]) * 0.5
-		edge3[2] = (v3[2] + v4[2]) * 0.5
-		edge3[3] = (v3[3] + v4[3]) * 0.5
-		edge4[1] = (v4[1] + v1[1]) * 0.5
-		edge4[2] = (v4[2] + v1[2]) * 0.5
-		edge4[3] = (v4[3] + v1[3]) * 0.5
-
-		local v1d = length(v1,intersect)
-		local v2d = length(v2,intersect)
-		local v3d = length(v3,intersect)
-		local v4d = length(v4,intersect)
-		local e1d = length(edge1,intersect)
-		local e2d = length(edge2,intersect)
-		local e3d = length(edge3,intersect)
-		local e4d = length(edge4,intersect)
-
-		local list={v1d,v2d,v3d,v4d,e1d,e2d,e3d,e4d}
-		local list_min = 1/0
-		local min_i=1
-		for i=1,8 do
-			local l = list[i]
-			if l < list_min then min_i=i list_min=l end
-		end
-		--local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
-		verts_t = __results_t[min_i]
+		local function dist(x,y,z) return math.sqrt(x*x+y*y)
 	end
 
 	return intersect, dist, verts_t
@@ -1801,40 +1755,8 @@ function ProvMapEdit:getSelectedTilesFromObjs(objs)
 	return x_table,z_table
 end
 
--- returns a table of x-indices and z-indices
-function ProvMapEdit:getSelectedTilesFromObjs_expanded(objs)
-	local x_table = {}
-	local z_table = {}
-
-	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-
-	local function insert_to_set(x,z)
-		if x<1 or x>w or z<1 or z>h then return end
-
-		local S = #x_table
-		for i=1,S do
-			if x_table[i]==x and z_table[i]==z then return end
-		end
-		x_table[S+1] = x
-		z_table[S+1] = z
-	end
-
-	for i,v in ipairs(objs) do
-		local o_type = v[1]
-		if o_type == "tile" then
-			local x,z = v[2].x, v[2].z
-			insert_to_set(x,z)
-			insert_to_set(x+1,z)
-			insert_to_set(x-1,z)
-			insert_to_set(x,z+1)
-			insert_to_set(x,z-1)
-		end
-	end
-	return x_table,z_table
-end
-
 function ProvMapEdit:updateSelectedTileWalls(objs)
-	local x_t,z_t = self:getSelectedTilesFromObjs_expanded(objs)
+	local x_t,z_t = self:getSelectedTilesFromObjs(objs)
 	for i,x in ipairs(x_t) do
 		local z=z_t[i]
 		self:updateWallVerts(x,z)
@@ -2903,8 +2825,7 @@ for i,v in ipairs(subset) do
 	end
 end
 
--- no good
---[[function ProvMapEdit:drawSpecificTile(x,z)
+function ProvMapEdit:drawSpecificTile(x,z)
 	local mesh_start_index = self:getTilesIndexInMesh(x,z)
 	local mesh = self.props.mapedit_map_mesh.mesh
 	local vmap_length = #mesh:getVertexMap()
@@ -2913,7 +2834,7 @@ end
 	mesh:setDrawRange(vmap_start_i, 6)
 	love.graphics.draw(mesh)
 	mesh:setDrawRange(1,vmap_length)
-end--]]
+end
 
 function ProvMapEdit:generateMeshHighlightAttributes( mesh )
 	local mesh = mesh or self.props.mapedit_map_mesh.mesh
