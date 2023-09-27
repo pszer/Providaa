@@ -63,7 +63,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
 
 	["edit_select"]    = { "mouse1"   ,  nil   , default = "mouse1" },
-	["edit_deselect"]  = { "mouse2"   , "esc"  , default = "mouse2" },
+	["edit_deselect"]  = { "mouse2"   , "q"  , default = "mouse2" },
 	["edit_undo"]      = { "pagedown" ,  nil   , default = "mouse2" },
 	["edit_redo"]      = { "pageup"   ,  nil   , default = "mouse2" },
 

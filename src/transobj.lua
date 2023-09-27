@@ -55,7 +55,7 @@ end
 -- functions
 function TransObj:from(obj)
 	local m = obj:getTransformMode()
-	if obj == "component" then
+	if m == "component" then
 		local pos,rot,scale=obj:getPosition(),obj:getDirection(),obj:getScale()
 		return TransObj:new(pos,rot,scale)
 	else

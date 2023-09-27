@@ -5,6 +5,7 @@ require "camera"
 require "render"
 require "angle"
 require "assetloader"
+require "tile"
 
 local maptransform = require "mapedittransform"
 local shadersend   = require "shadersend"
@@ -40,7 +41,7 @@ ProvMapEdit = {
 	highlight_mesh = nil,
 
 	active_transform = nil,
-	active_transform_mesh_mat = nil,
+	active_transform_tile_mat_a = nil,
 	active_transform_model_mat_a = nil,
 	granulate_transform = false,
 
@@ -343,7 +344,7 @@ function ProvMapEdit:defineCommands()
 					--table.insert(props.object_memory, {inst, transf})
 					table.insert(insts, inst)
 				else
-					error()
+					--error()
 				end
 			end
 			-- collecting the models into a table first to 
@@ -361,7 +362,7 @@ function ProvMapEdit:defineCommands()
 					--table.insert(props.object_memory, {inst, transf})
 					table.insert(insts, inst)
 				else
-					error()
+					--error()
 				end
 			end
 
@@ -400,9 +401,12 @@ function ProvMapEdit:defineCommands()
 			local calc_mem = props.memory[1] == nil
 			for i,v in ipairs(props.select_objects) do
 				local o_type = v[1]
+
+				if calc_mem then -- if memory hasn't been calculated yet
+					props.memory[i] = transobj:from(v[2])
+				end
+					
 				if o_type == "model" then
-					if calc_mem then -- if memory hasn't been calculated yet
-						props.memory[i] = transobj:from(v[2]) end
 					local g = self:isModelInAGroup(v[2])
 					if g then add_to_set(groups,g) end
 				end
@@ -418,14 +422,15 @@ function ProvMapEdit:defineCommands()
 			for i,g in ipairs(groups) do
 				g:calcMinMax()
 			end
+			self:updateSelectedTileWalls(props.select_objects)
 		end, -- command function
 		function(props) -- undo command function
 			local groups = {}
 			for i,v in ipairs(props.select_objects) do
 				local o_type = v[1]
+				local memory = props.memory[i]
+				memory:send(v[2])
 				if o_type == "model" then
-					local memory = props.memory[i]
-					memory:send(v[2])
 					local g = self:isModelInAGroup(v[2])
 					if g then add_to_set(groups,g) end
 				end
@@ -435,6 +440,7 @@ function ProvMapEdit:defineCommands()
 			for i,g in ipairs(groups) do
 				g:calcMinMax()
 			end
+			self:updateSelectedTileWalls(props.select_objects)
 		end -- undo command function
 	)
 
@@ -1613,7 +1619,9 @@ function ProvMapEdit:setTileVertex( x,z , vert_i , pos )
 	assert((vert_i==1 or vert_i==2 or vert_i==3 or vert_i==4) and pos)
 
 	local mesh = self.props.mapedit_map_mesh.mesh
-	mesh:setVertexAttribute( index+vert_i-1 , 1 , pos[1], pos[2], pos[3])
+	local X,_,Z = mesh:getVertexAttribute( index+vert_i-1 , 1 )
+	mesh:setVertexAttribute( index+vert_i-1 , 1 , X, pos[2], Z)
+	self:updateTileVertex(x,z, vert_i, X, pos[2], Z)
 	return true
 end
 
@@ -1646,37 +1654,93 @@ function ProvMapEdit:getWallVerts( x,z , side )
 		{x4,y4,z4}
 end
 
-function ProvMapEdit:editTileVerts(x,z, new_heights)
+local __temphtable = {0,0,0,0}
+function ProvMapEdit:updateTileVerts(x,z)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-	if x<1 or x>w or y<1 or y>h then return end
-
-	-- first, update height info the tile heights table
-	local tile_heights = self.props.mapedit_tile_heights
-	local height_info = {}
-	local nh_arg_type = type(new_heights)
-	-- fill out new heights info
-	if nh_arg_type == "table" then
-		assert(#new_heights == 4)
-		for i=1,4 do
-			height_info[i] = new_heights[i]
-		end
-		tile_heights[z][x] = height_info
-	-- if argument is only 1 number, treat it as the height for all vertices
-	elseif nh_arg_type == "number" then
-		for i=1,4 do
-			height_info = new_heights
-		end
-	else
-		error(string.format("ProvMapEdit:editTileVerts: invalid new_heights argument, expected table/string got %s", nh_arg_type))
-	end
+	if x<1 or x>w or z<1 or z>h then return end
 
 	-- update mesh and surrounding walls
 	local mesh = self.props.mapedit_map_mesh.mesh
 	local index = self:getTilesIndexInMesh(x,z)
+	local heights = __temphtable
+	--local heights = {0,0,0,0}
 	for i=0,3 do
 		local x,y,z = mesh:getVertexAttribute(index+i, 1)
-		local y = height_info[i+1] * TILE_HEIGHT
-		mesh:setVertexAttribute(index+i, 1, x,y,z)
+		y = y / TILE_HEIGHT
+		heights[i+1] = y
+	end
+
+	local tile_heights = self.props.mapedit_tile_heights
+	local stored_heights = tile_heights[z][x]
+	if type(stored_heights) ~= "table" then
+		tile_heights[z][x] = {unpack(heights)}
+	else
+		for i=1,4 do
+			stored_heights[i]=heights[i]
+		end
+	end
+end
+
+function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or z<1 or z>h then return end
+	assert(i==1 or i==2 or i==3 or i==4)
+
+	-- update mesh and surrounding walls
+	local mesh = self.props.mapedit_map_mesh.mesh
+	local index = self:getTilesIndexInMesh(x,z)
+	local X,Y,Z
+	if _z then
+		X,Y,Z = _x,_y,_z
+	else
+		X,Y,Z = mesh:getVertexAttribute(index+i, 1)
+	end
+	local height = Y / TILE_HEIGHT
+
+	local tile_heights = self.props.mapedit_tile_heights
+	local stored_heights = tile_heights[z][x]
+	if type(stored_heights) ~= "table" then
+		local h = stored_heights
+		local t = {0,0,0,0}
+		for j=1,4 do
+			t[j] = h
+		end
+		t[i] = height
+
+		tile_heights[z][x] = t
+	else
+		stored_heights[i]=height
+	end
+end
+-- returns a table of x-indices and z-indices
+function ProvMapEdit:getSelectedTilesFromObjs(objs)
+	local x_table = {}
+	local z_table = {}
+
+	local function insert_to_set(x,z)
+		local S = #x_table
+		for i=1,S do
+			if x_table[i]==x and z_table[i]==z then return end
+		end
+		x_table[S+1] = x
+		z_table[S+1] = z
+	end
+
+	for i,v in ipairs(objs) do
+		local o_type = v[1]
+		if o_type == "tile" then
+			local x,z = v[2].x, v[2].z
+			insert_to_set(x,z)
+		end
+	end
+	return x_table,z_table
+end
+
+function ProvMapEdit:updateSelectedTileWalls(objs)
+	local x_t,z_t = self:getSelectedTilesFromObjs(objs)
+	for i,x in ipairs(x_t) do
+		local z=z_t[i]
+		self:updateWallVerts(x,z)
 	end
 end
 
@@ -1890,19 +1954,19 @@ function ProvMapEdit:applyMapEditTransformOntoTileVertex(tile_obj, trans, precom
 	if t_type == "translate" then
 		local trans_o = transobj:from(tile_obj)
 		trans_o:applyMatrix(mat)
-		trans_o:send(model)
+		trans_o:send(tile_obj)
 	end
 
 	if t_type == "rotate" then
 		--local trans_o = transobj:from(tile_obj)
 		--trans_o:applyMatrix(mat, {rot=true})
-		--trans_o:send(model)
+		--trans_o:send(tile_obj)
 	end
 
 	if t_type == "scale" or t_type == "flip" then
 		--local trans_o = transobj:from(tile_obj)
 		--trans_o:applyMatrix(mat, {scale=true})
-		--trans_o:send(model)
+		--trans_o:send(tile_obj)
 	end
 end
 
@@ -1934,7 +1998,7 @@ function ProvMapEdit:applyTransformationFunction(objs, trans)
 			if o_type == "model" then
 				self:applyMapEditTransformOntoModel(v[2], trans, __m_model, __i_model)
 			elseif o_type == "tile" then
-				self:applyMapEditTransformOntoTileVertex(v2[2], trans, __m_tile, __i_tile)
+				self:applyMapEditTransformOntoTileVertex(v[2], trans, __m_tile, __i_tile)
 			else
 				
 			end
@@ -1965,11 +2029,10 @@ function ProvMapEdit:getTileTransformationMatrix(transform)
 	end
 
 	local g_scale=math.abs(TILE_HEIGHT*0.5)
+	local int = math.floor
 	local function granulate(v)
 		if not self.granulate_transform then return v end
-		v.x = int(v.x/g_scale)*g_scale
-		v.y = int(v.y/g_scale)*g_scale
-		v.z = int(v.z/g_scale)*g_scale
+		v = int(v/g_scale)*g_scale
 		return v
 	end
 
@@ -2392,12 +2455,13 @@ function ProvMapEdit:updateTransformationMatrix()
 	local trans = self.active_transform
 	if not trans then return end
 	local a = self:getSelectionTransformationModelMatrix(trans)
+	local tile_a = self:getTileTransformationMatrix(trans)
 	self.active_transform_model_mat_a = a
-	--self.active_transform_model_mat_b = b
+	self.active_transform_tile_mat_a = tile_a
 
 	local shader = self.map_edit_shader
 	shader:send("u_transform_a", "column", a)
-	--shader:send("u_transform_b", "column", b)
+	shadersend(shader, "u_mesh_transform_a", "column", tile_a)
 end
 
 function ProvMapEdit:isModelSelected(inst)
@@ -2423,6 +2487,125 @@ end
 
 function ProvMapEdit:displayPopup(str, ...)
 	self.curr_popup = popup:throw(str, ...)
+end
+
+local __tempwverts = {}
+local __nilvert = {0,0,0,0,0,0,0,-1}
+function ProvMapEdit:updateWallVerts(x,z)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+
+	local map_heights = self.props.mapedit_tile_heights
+	local function get_heights(x,z)
+		if x<1 or x>w or z<1 or z>h then return nil end
+		local ht = map_heights[z][x]
+
+		print("typ",type(ht))
+		if type(ht) == "number" then
+			return {ht,ht,ht,ht}
+		else
+			return ht
+		end
+	end
+
+	local mesh = self.props.mapedit_map_mesh.mesh
+
+	local tile_height  = get_heights ( x   , z   )
+	local west_height  = get_heights ( x-1 , z   )
+	local south_height = get_heights ( x   , z+1 )
+	local east_height  = get_heights ( x+1 , z   )
+	local north_height = get_heights ( x   , z-1 )
+
+	local wall_info = Wall:getWallInfo(nil,
+		tile_height,
+		west_height,
+		south_height,
+		east_height,
+		north_height)
+
+	local function add_wall_verts(wall, side)
+		print("wall",wall,side)
+		local function get_wall_verts()
+			if not wall then return nil end
+
+			local wx,wy,wz = Tile.tileCoordToWorld(x,0,z)
+			local u,v = Wall.u, Wall.v
+
+			local function get_uv_v_max(side) 
+				local m = -1/0
+				for i=1,4 do m = math.max(side[i][2], m) end
+				return m
+			end
+
+			local verts = __tempwverts
+			if side == Wall.westi then
+				if not wall.west then return nil end
+				local vmax = get_uv_v_max(wall.west)
+				for i=1,4 do
+					local wallv = wall.west[i]
+					verts[i] = {wx+wallv[1]*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3]+1)*TILE_SIZE, u[i], wallv[2]-vmax,
+														-1,0,0}
+				end
+			elseif side == Wall.southi then
+				if not wall.south then return nil end
+				local vmax = get_uv_v_max(wall.south)
+				for i=1,4 do
+					local wallv = wall.south[i]
+					verts[i] = {wx+wallv[1]*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3]+1)*TILE_SIZE, u[i], wallv[2]-vmax,
+														0,0,1}
+				end
+			elseif side == Wall.easti then
+				if not wall.east then return nil end
+				local vmax = get_uv_v_max(wall.east)
+				for i=1,4 do
+					local wallv = wall.east[i]
+					verts[i] = {wx+(wallv[1]+1)*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+														1,0,0}
+				end
+			elseif side == Wall.northi then
+				if not wall.north then return nil end
+				local vmax = get_uv_v_max(wall.north)
+				for i=1,4 do
+					local wallv = wall.north[i]
+					verts[i] = {wx+(wallv[1]+1)*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+														0,0,-1}
+				end
+			end
+			
+			return verts
+		end
+
+		local verts = get_wall_verts()
+
+		local mesh_index = self:getWallsIndexInMesh(x,z,side)
+
+		if not verts then
+			verts = __nilvert
+			for i=0,3 do
+				mesh:setVertex(mesh_index+i, verts)
+			end
+			self.props.mapedit_map_mesh.wall_exists[z][x][side] = false
+		else
+			for i=0,3 do
+				mesh:setVertex(mesh_index+i, verts[i+1])
+			end
+			self.props.mapedit_map_mesh.wall_exists[z][x][side] = true
+		end
+
+		--local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+
+		--local tex_height = textures[tex_id]:getHeight() / TILE_HEIGHT
+
+		--local attr = { 1.0, tex_height, 0.0, 0.0, tex_norm_id }
+		--for i=1,4 do
+		--	attr_verts[attr_count + i] = attr
+		--end
+		--attr_count = attr_count + 4
+	end
+
+	add_wall_verts(wall_info,1)
+	add_wall_verts(wall_info,2)
+	add_wall_verts(wall_info,3)
+	add_wall_verts(wall_info,4)
 end
 
 function ProvMapEdit:updatePopupMenu()
@@ -2692,10 +2875,8 @@ end
 function ProvMapEdit:highlightObject(obj, highlight_val)
 	local obj_type = obj[1]
 	if obj_type == "tile" then
-		--self:highlightTile(obj[2], obj[3], highlight_val)
 		self:highlightTile(obj[2].x, obj[2].z, highlight_val)
 	elseif obj_type == "wall" then
-		--self:highlightWall(obj[2], obj[3], obj[4], highlight_val)
 		self:highlightWall(obj[2].x, obj[2].z, obj[2].side, highlight_val)
 	end
 end
