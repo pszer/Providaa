@@ -54,14 +54,15 @@ function MapEditToolbar:define(prototype, ...)
 
 	local p = Props:prototype(prototype)
 	local obj = {
-		new = function(self, props, X, Y, width_func, lock)
-			assert(X and Y and width_func and lock)
+		new = function(self, props, X, Y, lock)
+			assert(X and Y and lock)
 			local this = {
 				props  = p(props),
+				__type = "toolbar",
 				menus = {},
 				x = Y,
 				y = X,
-				w = width_func,
+				w = 0,
 				h = 0,
 				lock = lock,
 
@@ -70,9 +71,9 @@ function MapEditToolbar:define(prototype, ...)
 
 			function this.draw(self)
 				local x,y = self.x,self.y
-				local max_w,max_h = self.w(), self.h
+				local max_w,max_h = self.w, self.h
 
-				love.graphics.setScissor(x,y,max_w,max_h)
+				--love.graphics.setScissor(x,y,max_w,max_h)
 
 				for i,v in ipairs(self.menus) do
 					local menu_x,menu_y = v.x,v.y
@@ -91,15 +92,14 @@ function MapEditToolbar:define(prototype, ...)
 				love.graphics.setScissor()
 			end
 
-			function this.updateHoverInfo(self)
-				--[[local locked = not self.lock()
-				if locked then
-					for i,v in ipairs(self.menus) do
-						v.hover = false
-					end
-					return
-				end--]]
+			function this.unfocus(self)
+				for i,v in ipairs(self.menus) do
+					v.hover = false
+				end
+				return
+			end
 
+			function this.updateHoverInfo(self)
 				local mx,my = love.mouse.getPosition()
 				local hovered = nil
 				for i,v in ipairs(self.menus) do

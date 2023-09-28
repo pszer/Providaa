@@ -10,6 +10,7 @@ function MapEditPopup:throw(str, ...)
 	local txt_obj = guirender:createDrawableText(str)
 
 	local this = {
+		__type  = "popup",
 		txt_obj = txt_obj,
 		bg      = guirender:createContextMenuBackground(txt_obj:getWidth()+4, txt_obj:getHeight()+4),
 		creation_time = love.timer.getTime(),

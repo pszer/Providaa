@@ -300,7 +300,7 @@ function ProvMapEdit:defineCommands()
 			local active_selection = mapedit.active_selection
 			for i,v in ipairs(props.select_objects) do
 				for j,u in ipairs(active_selection) do
-					if obj_eq(v,u) then
+					if v[2] == u[2] then
 						table.remove(active_selection, j)
 						self:highlightObject(v,0.0)
 						break
@@ -342,9 +342,22 @@ function ProvMapEdit:defineCommands()
 	coms["delete_obj"] = commands:define(
 		{
 		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
-		 --{"object_memory", "table", nil, PropDefaultTable()},
+		 {"groups_memory", nil, nil, nil},
 		},
 		function (props) -- command function
+			if props.groups_memory == nil then
+				props.groups_memory = {}
+				for i,v in ipairs(props.select_objects) do
+					local obj_type = v[1]
+					if obj_type == "model" then
+						local g = self:isModelInAGroup(v[2])
+						if g then
+							props.groups_memory[i] = g
+						end
+					end
+				end
+			end
+
 			local insts = {}
 			for i,v in ipairs(props.select_objects) do
 				local obj_type = v[1]
@@ -359,6 +372,7 @@ function ProvMapEdit:defineCommands()
 			-- pass into removeModel should be more efficient for
 			-- large delete operations
 			self:removeModelInstance(insts)
+			self:dissolveEmptyGroups()
 		end, -- command function
 		function (props) -- undo command function
 			local insts = {}
@@ -367,6 +381,12 @@ function ProvMapEdit:defineCommands()
 				if obj_type == "model" then
 					local inst = v[2]
 					table.insert(insts, inst)
+
+					local group = props.groups_memory[i]
+					if group then
+						group:addToGroup(v[2])
+						self:addModelGroup(group)
+					end
 				else
 					--error()
 				end
@@ -991,6 +1011,10 @@ function ProvMapEdit:removeModelInstance(inst)
 		for i=#minsts,1,-1 do
 			for j,u in ipairs(set) do
 				if minsts[i] == u then
+					local group = self:isModelInAGroup(u)
+					if group then
+						group:removeFromGroup(u)
+					end
 					table.remove(set, j)
 					table.remove(minsts, i)
 					set_count = set_count - 1
@@ -1115,6 +1139,18 @@ function ProvMapEdit:dissolveGroup(group)
 		if v == group then
 			table.remove(groups,i)
 			return
+		end
+	end
+end
+
+function ProvMapEdit:dissolveEmptyGroups()
+	local groups = self.props.mapedit_model_groups
+	local count = #groups
+	for i=count,1,-1 do
+		local group = groups[i]
+		print(#group.insts)
+		if #group.insts == 0 then
+			table.remove(groups,i)
 		end
 	end
 end
@@ -2976,7 +3012,10 @@ function ProvMapEdit:draw()
 	self:drawViewport()
 	Renderer.renderScaledDefault()
 
-	love.graphics.reset()
+	--love.graphics.reset()
+	love.graphics.origin()
+	love.graphics.setShader()
+	love.graphics.setColor(1,1,1,1)
 	gui:draw()
 end
 

@@ -225,6 +225,23 @@ function MapEditGUI:define(mapedit)
 		 {"~bReset",disable = true, icon = nil}
 		 end)
 
+	context["help_context"] = 
+		contextmenu:define(
+		{
+		}
+		,
+		function(props) return
+		 {"Keybinds",
+		  action=function(props)
+		    return end,
+			disable = false},
+
+		 {"~iAbout",
+		  action=function(props)
+		    return end,
+			disable = false}
+		 end)
+
 	context["main_file_context"] =
 		contextmenu:define(
 		{
@@ -232,7 +249,7 @@ function MapEditGUI:define(mapedit)
 		},
 		function(props) return
 		{"Save",action=function()end},
-		{"Quit",action=function()love.event.quit()end}
+		{"~iQuit",action=function()love.event.quit()end}
 		end
 		)
 
@@ -260,10 +277,7 @@ function MapEditGUI:define(mapedit)
 		{"Help",
 		 generate =
 		   function(props)
-			   --return context["main_file_context"], {}
-				 local cxtn_name, props = mapedit:getSelectionContextMenu()
-				 if not cxtn_name then return nil end
-				 return context[cxtn_name], props
+				 return context["help_context"], {}
 		   end
 		}
 		)
@@ -272,7 +286,7 @@ function MapEditGUI:define(mapedit)
 		local w,h = love.graphics.getDimensions()
 		return w
 	end
-	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,wf,CONTROL_LOCK.MAPEDIT_PANEL)
+	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,{width_func=wf,lock=CONTROL_LOCK.MAPEDIT_PANEL})
 	--CONTROL_LOCK.MAPEDIT_PANEL.open()
 end
 

@@ -58,7 +58,6 @@ MapEditContext.__index = MapEditContext
 -- contextmenu:new({key=value,...}, x, y)
 --
 
---function MapEditContext:define(prototype, ...)
 function MapEditContext:define(prototype, options)
 	local buffer_info = self.buffer_info
 	--local options = { ... }
@@ -68,6 +67,7 @@ function MapEditContext:define(prototype, options)
 		new = function(self, props, X, Y)
 			local this = { -- this
 				props  = p(props),
+				__type = "contextmenu",
 				options = {},
 				x = X or love.mouse.getX(),
 				y = Y or love.mouse.getY(),
