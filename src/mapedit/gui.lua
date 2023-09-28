@@ -2,7 +2,10 @@ local guirender   = require 'mapedit.guidraw'
 local contextmenu = require 'mapedit.context'
 local toolbar     = require 'mapedit.toolbar'
 local popup       = require 'mapedit.popup'
+local guilayout   = require 'mapedit.layout'
+
 local maptransform = require "mapedit.transform"
+
 local transobj     = require "transobj"
 
 require "inputhandler"
@@ -286,7 +289,7 @@ function MapEditGUI:define(mapedit)
 		local w,h = love.graphics.getDimensions()
 		return w
 	end
-	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,{width_func=wf,lock=CONTROL_LOCK.MAPEDIT_PANEL})
+	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,CONTROL_LOCK.MAPEDIT_PANEL)
 	--CONTROL_LOCK.MAPEDIT_PANEL.open()
 end
 

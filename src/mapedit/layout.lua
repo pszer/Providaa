@@ -56,8 +56,12 @@ function MapEditGUILayout:define(layout, ...)
 			}
 
 			function this:update()
-				local function update_xywh(layout, x,y,w,h, recur)
+				local function update_xywh(layout, x,y,w,h, update_xywh)
+					-- finish recursion
+					if not layout then return end
+
 					local stype = layout.split_type
+					-- leaf region
 					if stype == nil then
 						layout.x,layout.y,layout.w,layout.h = x,y,w,h
 					end
@@ -72,18 +76,60 @@ function MapEditGUILayout:define(layout, ...)
 					end
 
 					if stype == "+x" then
+						-- layout for the left region of the split
+						layout.x = x
+						layout.y = y
+						layout.w = xoffset
+						layout.h = h
 
+						update_xywh(layout.sub,
+						-- right region
+						--  x     y     w       h
+						 xoffset, y, w-xoffset, h)
 					elseif stype == "-x" then
+						-- layout for the right region of the split
+						layout.x = xoffset
+						layout.y = y
+						layout.w = w-xoffset
+						layout.h = h
 
+						update_xywh(layout.sub,
+						-- left region
+						-- x  y     w     h
+						   x, y, xoffset, h)
 					elseif stype == "+y" then
+						-- layout for the top region of the split
+						layout.x = x
+						layout.y = y
+						layout.w = w
+						layout.h = yoffset
 
+						update_xywh(layout.sub,
+						-- bottom region
+						--  x     y     w      h
+						    x, yoffset, w, h-yoffset)
 					elseif stype == "-y" then
-					
+						-- layout for the bottom region of the split
+						layout.x = x
+						layout.y = yoffset
+						layout.w = w
+						layout.h = h-yoffset
+
+						update_xywh(layout.sub,
+						-- top region
+						--  x  y  w     h
+						    x, y, w, yoffset)
 					end
 				end
+				update_xywh(self.layout, self.x,self.y,self.w,self.h, update_xywh)
 
 				for i,v in ipairs(self.elements) do
 					local def = elements_def[i]
+					local region_id = def[1]
+					local xywh_func = def[2]
+					-- calculate new x,y,w,h and give them to the element
+					local x,y,w,h = xywh_func(self.layout_map[region_id])
+					v.x, v.y, v.w, v.h = x,y,w,h
 				end
 			end
 
