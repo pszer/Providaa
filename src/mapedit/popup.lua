@@ -1,5 +1,6 @@
 local guirender = require 'mapedit.guidraw'
 local MapEditPopup = {
+	__type = "mapeditpopup",
 	lifetime = 1.5
 }
 MapEditPopup.__index = MapEditPopup
@@ -18,11 +19,12 @@ function MapEditPopup:throw(str, ...)
 		draw = function(self)
 			local x,y = love.mouse.getPosition()
 			local w,h = self.bg:getDimensions()
+			y=y-h
 			local ww,wh = love.graphics.getDimensions()
 
 			if x+w > ww then
 				x=ww-w end
-			if y+h > wh then
+			if y > wh then
 				y=wh-h end
 
 			love.graphics.draw(self.bg,x,y)
@@ -39,6 +41,16 @@ function MapEditPopup:throw(str, ...)
 		end
 	}
 
+	function this.setX(self,x)
+		self.x=x end
+	function this.setY(self,y)
+		self.y=y end
+	function this.setW(self,w)
+		end
+	function this.setH(self,h)
+		end
+
+	setmetatable(this, MapEditPopup)
 	return this
 end
 

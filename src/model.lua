@@ -217,7 +217,6 @@ function ModelInstance:newInstance(model, props)
 
 	if provtype(props) == "modelinfo" then
 		if props.matrix then
-			print("obv")
 			p = {
 				["model_i_static"] = true,
 				["model_i_matrix"] = props.matrix,

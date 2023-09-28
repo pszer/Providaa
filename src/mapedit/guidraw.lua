@@ -9,10 +9,12 @@ require "math"
 local MapEditGUIRender = {
 	font        = nil,
 	font_bold   = nil,
+	font_ibold   = nil,
 	font_italic = nil,
-	__font_fname        = "LibreBaskerville-Regular.ttf",
-	__font_bold_fname   = "LibreBaskerville-Bold.ttf",
-	__font_italic_fname = "LibreBaskerville-Italic.ttf",
+	__font_fname        = "AnonymousPro-Regular.ttf",
+	__font_bold_fname   = "AnonymousPro-Bold.ttf",
+	__font_italic_fname = "AnonymousPro-Italic.ttf",
+	__font_ibold_fname  = "AnonymousPro-BoldItalic.ttf",
 
 	cxtm_bg_col = {0.094,0.161,0.290},
 	__cxtm_bb = nil, -- bottom border for a context menu box
@@ -53,16 +55,20 @@ function MapEditGUIRender:initAssets()
 	-- get the font filedata from Loader
 	self.font = Loader:getTTFReference(self.__font_fname)
 	-- convert to a love2d font object
-	self.font = love.graphics.newFont(self.font, 16, "light")
+	self.font = love.graphics.newFont(self.font, 12, "normal")
 	assert(self.font)
 
 	self.font_bold = Loader:getTTFReference(self.__font_bold_fname)
-	self.font_bold = love.graphics.newFont(self.font_bold, 16, "light")
+	self.font_bold = love.graphics.newFont(self.font_bold, 12, "normal")
 	assert(self.font_bold)
 
 	self.font_italic = Loader:getTTFReference(self.__font_italic_fname)
-	self.font_italic = love.graphics.newFont(self.font_italic, 16, "light")
+	self.font_italic = love.graphics.newFont(self.font_italic, 12, "normal")
 	assert(self.font_italic)
+
+	self.font_ibold = Loader:getTTFReference(self.__font_ibold_fname)
+	self.font_ibold = love.graphics.newFont(self.font_ibold, 12, "normal")
+	assert(self.font_ibold)
 
 	self.__cxtm_bb = Loader:getTextureReference("mapedit/cxtm_bb.png")
 	self.__cxtm_tt = Loader:getTextureReference("mapedit/cxtm_tt.png")
@@ -171,6 +177,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	local font = font or self.font
 	local font_bold = font_bold or self.font_bold
 	local font_italic = font_italic or self.font_italic
+	local font_ibold = font_ibold or self.font_ibold
 	assert(font and font_bold and font_italic)
 
 	-- gets the position of a non-escaped tilde character
@@ -246,12 +253,20 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 			new_line = true
 			j = j+2
 		elseif char_after_tilde == "B" or char_after_tilde == "b" then
-			if curr_type ~= "bold" then curr_type = "bold"
-			                       else curr_type = "regular" end
+			--if curr_type ~= "bold" then curr_type = "bold"
+			--                       else curr_type = "regular" end
+			if     curr_type == "bold"   then curr_type = "regular"
+			elseif curr_type == "italic" then curr_type = "ibold"
+			elseif curr_type == "regular" then curr_type = "bold"
+			end
 			j = j+2
 		elseif char_after_tilde == "I" or char_after_tilde == "i" then
-			if curr_type ~= "italic" then curr_type = "italic"
-			                         else curr_type = "regular" end
+			--if curr_type ~= "italic" then curr_type = "italic"
+			--                         else curr_type = "regular" end
+			if     curr_type == "bold"   then curr_type = "ibold"
+			elseif curr_type == "italic" then curr_type = "regular"
+			elseif curr_type == "regular" then curr_type = "italic"
+			end
 			j = j+2
 		elseif char_after_tilde == "R" or char_after_tilde == "r" then
 			curr_type = "regular"
@@ -302,6 +317,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		if     ttype == "regular" then f = font
 		elseif ttype == "bold"    then f = font_bold
 		elseif ttype == "italic"  then f = font_italic
+		elseif ttype == "ibold"   then f = font_ibold
 		end
 		local r,g,b = HexToRGB(col)
 		texts[i] = love.graphics.newText(f, {{r/255,g/255,b/255},str})
@@ -476,7 +492,7 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 		love.graphics.setColor(1,1,1,1)
 		love.graphics.setBlendMode("subtract","alphamultiply")
 
-		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+		love.graphics.draw(txt,x+bl,y+buffer_info.t)
 
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
@@ -485,7 +501,7 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 		love.graphics.setBlendMode(mode, alphamode)
 
 	elseif state ~= "disable" then
-		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+		love.graphics.draw(txt,x+bl,y+buffer_info.t)
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
 		end
@@ -493,7 +509,92 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 		love.graphics.setShader(self.grayscale)
 		love.graphics.setColor(0.9,0.9,1,0.3)
 
-		love.graphics.draw(txt,x+bl,y+buffer_info.r)
+		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+
+		love.graphics.setShader()
+	end
+	if arrow then
+		love.graphics.draw(self.icons["mapedit/icon_sub.png"],
+			x + w - buffer_info.arrow_r, y + buffer_info.arrow_t)
+	end
+
+	love.graphics.setColor(1,1,1,1)
+end
+
+function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_info)
+	cxtm_bb = self.__cxtm_bb 
+	cxtm_tt = self.__cxtm_tt 
+	cxtm_rr = self.__cxtm_rr 
+	cxtm_ll = self.__cxtm_ll 
+	cxtm_tr = self.__cxtm_tr 
+	cxtm_tl = self.__cxtm_tl 
+	cxtm_br = self.__cxtm_br 
+	cxtm_bl = self.__cxtm_bl
+
+	local bg_col = self.cxtm_bg_col
+
+	love.graphics.origin()
+	love.graphics.setColor(col[1],col[2],col[3],1)
+
+	love.graphics.translate(x,y)
+
+	love.graphics.draw(cxtm_tl,0  ,0,   0, 1,1)
+	love.graphics.draw(cxtm_tr,w-2,0,   0, 1,1)
+	love.graphics.draw(cxtm_bl,0  ,h-2, 0, 1,1)
+	love.graphics.draw(cxtm_br,w-2,h-2, 0, 1,1)
+
+	local w2 = w-4
+	local h2 = h-4
+	love.graphics.draw(cxtm_ll,0  ,2  , 0, 1 ,h2)
+	love.graphics.draw(cxtm_rr,w-2,2  , 0, 1 ,h2)
+	love.graphics.draw(cxtm_tt,2  ,0  , 0, w2,1 )
+	love.graphics.draw(cxtm_bb,2  ,h-2, 0, w2,1 )
+
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.origin()
+
+	local bl = buffer_info.l_no_icon
+	if icon then
+		bl = buffer_info.l
+	end
+
+	-- if hoverable
+	if state == "hover" then
+		local mode, alphamode = love.graphics.getBlendMode()
+		love.graphics.setColor(255/255,161/255,66/255,0.8)
+		love.graphics.setBlendMode("add","alphamultiply")
+
+		love.graphics.rectangle("fill",x,y,w,h)
+
+		love.graphics.setColor(1,1,1,1)
+		love.graphics.setBlendMode("subtract","alphamultiply")
+
+		if txt then
+			love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		end
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+
+		love.graphics.setBlendMode(mode, alphamode)
+
+	elseif state ~= "disable" then
+		if txt then
+			love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		end
+		if icon then
+			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+		end
+	else
+		love.graphics.setShader(self.grayscale)
+		love.graphics.setColor(0.9,0.9,1,0.3)
+
+		if txt then
+		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		end
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
 		end

@@ -3,6 +3,7 @@ local contextmenu = require 'mapedit.context'
 local toolbar     = require 'mapedit.toolbar'
 local popup       = require 'mapedit.popup'
 local guilayout   = require 'mapedit.layout'
+local guiscreen   = require 'mapedit.screen'
 
 local maptransform = require "mapedit.transform"
 
@@ -15,6 +16,8 @@ local MapEditGUI = {
 
 	context_menus = {},
 	toolbars = {},
+
+	main_panel = nil,
 
 	curr_context_menu = nil,
 	curr_popup = nil,
@@ -81,7 +84,27 @@ function MapEditGUI:define(mapedit)
 		 {"~(lpurple)Group", suboptions = function(props)
 		  local groups = props.group_info.groups
 			local models_outside = props.group_info.models_outside
+			local name_tab = ""
+			if #groups==0 then
+				name_tab = "No group"
+			else
+				local count=#groups
+				for i=1,count do
+					local group = groups[i]
+					name_tab=name_tab..group.name
+					if i~=count then
+						name_tab=name_tab..', '
+					end
+				end
+			end
+			local str_len = #name_tab
+			if str_len > 30 then
+				name_tab=string.sub(name_tab,1,24)
+				name_tab=name_tab.."..."
+			end
+
 		 	return {
+			 {name_tab},
 			 {"~(green)~bCreate",
 			  disable = not props.group_info.create_enable,
 			   action =
@@ -239,6 +262,11 @@ function MapEditGUI:define(mapedit)
 		    return end,
 			disable = false},
 
+		 {"Set Language言語あああああああああああ",
+		  action=function(props)
+		    return end,
+			disable = false},
+
 		 {"~iAbout",
 		  action=function(props)
 		    return end,
@@ -285,12 +313,32 @@ function MapEditGUI:define(mapedit)
 		}
 		)
 
-	local wf = function()
-		local w,h = love.graphics.getDimensions()
-		return w
-	end
-	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,CONTROL_LOCK.MAPEDIT_PANEL)
+	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10,CONTROL_LOCK.MAPEDIT_PANEL)
+	local main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10)
 	--CONTROL_LOCK.MAPEDIT_PANEL.open()
+	--
+
+	local panel_layout = guilayout:define(
+		{id="toolbar_region",
+		 split_type="+y",
+		 split_dist=20,
+		 sub = {
+			id="region1",
+			split_type="+x",
+			split_dist=160,
+		 }
+		},
+
+		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end}
+	)
+
+	local w,h = love.graphics.getDimensions()
+	self.main_panel = guiscreen:new(
+		panel_layout:new(
+		  0,0,w,h,{main_toolbar}),
+			function(o) self:handleTopLevelThrownObject(o) end,
+			CONTROL_LOCK.MAPEDIT_PANEL
+	)
 end
 
 --
@@ -344,29 +392,6 @@ end
 --
 
 --
--- toolbar functions
---
-
-function MapEditGUI:updateMainToolbar()
-	if not self.main_toolbar then return end
-	local x,y = love.mouse.getX(), love.mouse.getY()
-	if self.main_toolbar:updateHoverInfo() then
-		CONTROL_LOCK.MAPEDIT_PANEL.open()
-	else
-		CONTROL_LOCK.MAPEDIT_PANEL.close()
-	end
-end
-
-function MapEditGUI:drawMainToolbar()
-	if not self.main_toolbar then return end
-	self.main_toolbar:draw()
-end
-
---
--- toolbar functions
---
-
---
 -- popup menu functions
 --
 function MapEditGUI:displayPopup(str, ...)
@@ -387,6 +412,19 @@ function MapEditGUI:updatePopupMenu()
 end
 --
 -- popup menu functions
+--
+
+--
+-- main screen panel functions
+--
+function MapEditGUI:updateMainPanel()
+	self.main_panel:update()
+end
+function MapEditGUI:drawMainPanel()
+	self.main_panel:draw()
+end
+--
+--
 --
 
 function MapEditGUI:setupInputHandling()
@@ -412,24 +450,25 @@ function MapEditGUI:setupInputHandling()
 	end)
 	self.cxtm_input:getEvent("cxtm_select", "down"):addHook(cxtm_select_option)
 
+
+
 	self.panel_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_PANEL,
 	                                   {"panel_select"})
 	local panel_select_option = Hook:new(function ()
-		local tb = self.main_toolbar
-		if not tb then
-			return
-		end
-		local hovered_opt = tb:getCurrentlyHoveredOption()
-		if not hovered_opt then
-			return
-		end
-		local action = hovered_opt.action
-		if action then
-			local cxtm = hovered_opt:action()
-			self:loadContextMenu(cxtm)
-		end
+		local m = self.main_panel
+		m:click()
 	end)
 	self.panel_input:getEvent("panel_select", "down"):addHook(panel_select_option)
+
+
+
+end
+
+function MapEditGUI:handleTopLevelThrownObject(obj)
+	local o_type = provtype(obj)
+	if o_type == "mapeditcontextmenu" then
+		self:loadContextMenu(obj)
+	end
 end
 
 function MapEditGUI:poll()
@@ -438,14 +477,14 @@ function MapEditGUI:poll()
 end
 
 function MapEditGUI:update(dt)
-	self:updateContextMenu()
-	self:updateMainToolbar()
+	self:updateMainPanel()
 	self:updatePopupMenu()
+	self:updateContextMenu()
 	self:poll()
 end
 
 function MapEditGUI:draw()
-	self:drawMainToolbar()
+	self:drawMainPanel()
 	self:drawPopup()
 	self:drawContextMenu()
 end

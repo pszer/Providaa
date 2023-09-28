@@ -10,16 +10,16 @@ local contextmenu = require 'mapedit.context'
 local MapEditToolbar = {
 	buffer_info = {
 		l  = 24,
-		l_no_icon  = 6,
+		l_no_icon  = 4,
 		r = 6,
-		t = 4,
-		b = 4,
+		t = 5,
+		b = 3,
 
-		arrow_r = 23,
-		arrow_t = 4,
+		arrow_r = 20,
+		arrow_t = 1,
 
 		icon_l = 2,
-		icon_t = 2,
+		icon_t = 1,
 	}
 }
 MapEditToolbar.__index = MapEditToolbar
@@ -54,25 +54,37 @@ function MapEditToolbar:define(prototype, ...)
 
 	local p = Props:prototype(prototype)
 	local obj = {
-		new = function(self, props, X, Y, lock)
-			assert(X and Y and lock)
+		new = function(self, props, X, Y, w, h, lock)
+			assert(X and Y)
 			local this = {
 				props  = p(props),
 				__type = "toolbar",
 				menus = {},
 				x = Y,
 				y = X,
-				w = 0,
-				h = 0,
+				w = w,
+				h = h,
 				lock = lock,
 
 				scroll_x = 0
 			}
 
+			function this.setX(self,x)
+				self.x = x end
+			function this.setY(self,y)
+				self.y = y end
+			function this.setW(self,w)
+				self.w = w end
+			function this.setH(self,h) -- height is fixed
+				end
+
 			function this.draw(self)
 				local x,y = self.x,self.y
 				local max_w,max_h = self.w, self.h
 
+				love.graphics.setColor(24/290,41/290,74/290,0.9)
+				love.graphics.rectangle("fill",x,y,max_w,max_h)
+				love.graphics.setColor(1,1,1,1)
 				--love.graphics.setScissor(x,y,max_w,max_h)
 
 				for i,v in ipairs(self.menus) do
@@ -118,11 +130,6 @@ function MapEditToolbar:define(prototype, ...)
 				return hovered
 			end
 			function this.getCurrentlyHoveredOption(self)
-				local locked = not self.lock()
-				if locked then
-					return nil
-				end
-
 				for i,v in ipairs(self.menus) do
 					if v.hover then
 						return v
@@ -176,6 +183,13 @@ function MapEditToolbar:define(prototype, ...)
 				this.menus[i] = fill_out_menu(v)
 				local mh = this.menus[i].h
 				if mh > this.h then this.h = mh end
+
+				local function action(self)
+					local def,props = self:generate()
+					if def then
+						return def:new(props)
+					end
+				end
 			end
 
 			return this

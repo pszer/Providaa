@@ -7,18 +7,19 @@ require "prop"
 local guirender = require 'mapedit.guidraw'
 
 local MapEditContext = {
+	__type = "mapeditcontextmenu",
 	buffer_info = {
 		l  = 24,
-		l_no_icon  = 6,
+		l_no_icon  = 4,
 		r = 6,
-		t = 4,
-		b = 4,
+		t = 5,
+		b = 3,
 
-		arrow_r = 23,
-		arrow_t = 4,
+		arrow_r = 20,
+		arrow_t = 1,
 
 		icon_l = 2,
-		icon_t = 2,
+		icon_t = 1,
 	}
 }
 MapEditContext.__index = MapEditContext
@@ -67,7 +68,6 @@ function MapEditContext:define(prototype, options)
 		new = function(self, props, X, Y)
 			local this = { -- this
 				props  = p(props),
-				__type = "contextmenu",
 				options = {},
 				x = X or love.mouse.getX(),
 				y = Y or love.mouse.getY(),
@@ -186,6 +186,15 @@ function MapEditContext:define(prototype, options)
 					return found
 				end
 			} -- this
+
+			function this.setX(self,x)
+				end
+			function this.setY(self,y)
+				end
+			function this.setW(self,w)
+				end
+			function this.setH(self,h) -- height is fixed
+				end
 
 			local function fill_out_option(v, fill_out_option)
 				local name = v[1]
@@ -353,6 +362,7 @@ function MapEditContext:define(prototype, options)
 				calc_xy(this.options, this.x, this.y, calc_xy)
 			end
 
+			setmetatable(this, MapEditContext)
 			return this
 		end
 	}

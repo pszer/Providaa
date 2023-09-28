@@ -7,6 +7,7 @@ require "prop"
 local guirender = require 'mapedit.guidraw'
 
 local MapEditGUILayout = {
+	__type="mapeditlayout"
 }
 MapEditGUILayout.__index = MapEditGUILayout
 
@@ -18,7 +19,7 @@ MapEditGUILayout.__index = MapEditGUILayout
 -- its format is as follows
 --
 -- 1. { id = string, split_type = "+x"/"+y"/"-x"/"-y", split_ratio = (0,1), sub = {...} }
--- 2. { id = string, split_type = "+x"/"+y"/"-x"/"-y", split_dist = [0,...), sub = {...} }
+-- 2. { id = string, split_type = "+x"/"+y"/"-x"/"-y", split_pix = [0,...), sub = {...} }
 -- 3. { id = string, split_type = nil }
 --
 -- the split_type determines the way the region is split, "x" creates two regions
@@ -26,7 +27,7 @@ MapEditGUILayout.__index = MapEditGUILayout
 -- for the left/top region created by a +x/+y split or the right/bottom region created
 -- by a -x/-y split.
 --
--- split_ratio/split_dist determines the way in which the region is split, split_ratio is number from
+-- split_ratio/split_pix determines the way in which the region is split, split_ratio is number from
 -- 0 to 1, increasing in the positive x/y direction, split_ratio=0.5 would split the regions equally in half.
 -- split_dist is a fixed number in pixels.
 --
@@ -42,8 +43,9 @@ function MapEditGUILayout:define(layout, ...)
 	local elements_def = { ... }
 
 	local obj = {
-		new = function(self, props, X, Y, w, h, elements)
+		new = function(self, X, Y, w, h, elements)
 			assert(X and Y)
+
 			local this = {
 				__type = "guilayout",
 				layout = layout,
@@ -55,7 +57,7 @@ function MapEditGUILayout:define(layout, ...)
 				h = h,
 			}
 
-			function this:update()
+			function this:updateXywh()
 				local function update_xywh(layout, x,y,w,h, update_xywh)
 					-- finish recursion
 					if not layout then return end
@@ -85,7 +87,8 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- right region
 						--  x     y     w       h
-						 xoffset, y, w-xoffset, h)
+						 xoffset, y, w-xoffset, h,
+						 update_xywh)
 					elseif stype == "-x" then
 						-- layout for the right region of the split
 						layout.x = xoffset
@@ -96,7 +99,8 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- left region
 						-- x  y     w     h
-						   x, y, xoffset, h)
+						   x, y, xoffset, h,
+						   update_xywh)
 					elseif stype == "+y" then
 						-- layout for the top region of the split
 						layout.x = x
@@ -107,7 +111,8 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- bottom region
 						--  x     y     w      h
-						    x, yoffset, w, h-yoffset)
+						    x, yoffset, w, h-yoffset,
+						    update_xywh)
 					elseif stype == "-y" then
 						-- layout for the bottom region of the split
 						layout.x = x
@@ -118,7 +123,8 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- top region
 						--  x  y  w     h
-						    x, y, w, yoffset)
+						    x, y, w, yoffset,
+						    update_xywh)
 					end
 				end
 				update_xywh(self.layout, self.x,self.y,self.w,self.h, update_xywh)
@@ -129,7 +135,10 @@ function MapEditGUILayout:define(layout, ...)
 					local xywh_func = def[2]
 					-- calculate new x,y,w,h and give them to the element
 					local x,y,w,h = xywh_func(self.layout_map[region_id])
-					v.x, v.y, v.w, v.h = x,y,w,h
+					if v.setX then v:setX(x) end
+					if v.setY then v:setY(y) end
+					if v.setW then v:setW(w) end
+					if v.setH then v:setH(h) end
 				end
 			end
 
@@ -151,7 +160,12 @@ function MapEditGUILayout:define(layout, ...)
 				assert(type(v[2])=="function",string.format("MapEditGUILayout:define(): expected function", v[2]))
 			end
 
+			setmetatable(this, MapEditGUILayout)
 			return this
 		end
 	}
+
+	return obj
 end
+
+return MapEditGUILayout

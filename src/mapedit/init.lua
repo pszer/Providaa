@@ -480,7 +480,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				if v[1] == "model" then table.insert(models, v[2]) end
 			end
-			props.created_group = self:createModelGroup("New Group",models)
+			props.created_group = self:createModelGroup("Group",models)
 		end, -- command function
 		function(props) -- undo command function
 			self:dissolveGroup(props.created_group)
@@ -1627,8 +1627,10 @@ function ProvMapEdit:setTileVertex( x,z , vert_i , pos )
 
 	local mesh = self.props.mapedit_map_mesh.mesh
 	local X,_,Z = mesh:getVertexAttribute( index+vert_i-1 , 1 )
-	mesh:setVertexAttribute( index+vert_i-1 , 1 , X, pos[2], Z)
-	self:updateTileVertex(x,z, vert_i, X, pos[2], Z)
+	local int = math.ceil
+	local new_y = int(pos[2])
+	mesh:setVertexAttribute( index+vert_i-1 , 1 , X, new_y, Z)
+	self:updateTileVertex(x,z, vert_i, X, new_y, Z)
 	return true
 end
 
@@ -3016,6 +3018,9 @@ function ProvMapEdit:draw()
 	love.graphics.origin()
 	love.graphics.setShader()
 	love.graphics.setColor(1,1,1,1)
+	love.graphics.setMeshCullMode("none")
+	love.graphics.setDepthMode()
+	love.graphics.setBlendMode("alpha")
 	gui:draw()
 end
 

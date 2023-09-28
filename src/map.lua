@@ -228,8 +228,6 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
 
-	print("gen_all_verts", gen_all_verts)
-
 	-- generate floor tile vertices for the mesh
 	while I <= map.width * map.height do
 		local x = (I-1) % map.width + 1

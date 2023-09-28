@@ -132,8 +132,6 @@ function Prov:update(dt)
 
 		Loader:cleanupAssets()
 	end
-	local model = theent.props.ent_model
-	local animator = model.props.model_i_animator1
 
 	prof.push("pollinputhandlers")
 	self:pollInputHandlers()

@@ -56,8 +56,8 @@ CONTROL_LOCK = {
 	MENU1        = {9,        0,     0},
 
 	MAPEDIT_CONTEXT   = {100,      0,0},
-	MAPEDIT_DIALOG    = {101,      0,0},
-	MAPEDIT_TRANSFORM = {103,      0,0},
+	MAPEDIT_TRANSFORM = {101,      0,0},
+	MAPEDIT_WINDOW    = {102,      0,0},
 	MAPEDIT_PANEL     = {104,      0,0},
 	MAPEDIT_VIEW      = {105,      0,0},
 
