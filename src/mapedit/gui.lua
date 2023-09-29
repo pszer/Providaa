@@ -5,6 +5,8 @@ local popup       = require 'mapedit.popup'
 local guilayout   = require 'mapedit.layout'
 local guiscreen   = require 'mapedit.screen'
 local guiwindow   = require 'mapedit.window'
+local guitextbox  = require 'mapedit.textelement'
+local guibutton   = require 'mapedit.button'
 
 local maptransform = require "mapedit.transform"
 
@@ -252,14 +254,30 @@ function MapEditGUI:define(mapedit)
 		 {"~bReset",disable = true, icon = nil}
 		 end)
 
+	local region_default_f = function(l) return l.x, l.y, l.w, l.h end
+	local region_middle_f = function(l) return l.x+l.w*0.5, l.y+l.h*0.5, l.w, l.h end
+	local region_offset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+l.h*_y, l.w, l.h end end
+	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+l.h_y, l.w, l.h end end
+
+	-- About window
 	local about_win_layout = guilayout:define(
 		{id="region",
-		 split_type="nil",
-		}
-		--{"region",function(l) return l.x,l.y,l.w,l.h end}
+		 split_type="+y",
+		 split_pix=70,
+		 sub = {
+			id="button_region",
+			split_type=nil
+		 }
+		},
+		{"region", region_default_f},
+		{"button_region", region_offset_f(0.5,0.5)}
 	)
-	local about_win = guiwindow:define({}, about_win_layout)
-	about_win:new({},256,256,256,256,{})
+	local about_win = guiwindow:define({
+		win_min_w=300,
+		win_max_w=300,
+		win_min_h=100,
+		win_max_h=100,
+	}, about_win_layout)
 
 	context["help_context"] = 
 		contextmenu:define(
@@ -279,7 +297,11 @@ function MapEditGUI:define(mapedit)
 
 		 {"~iAbout",
 		  action=function(props)
-		    return about_win:new({},256,256,256,256,{})
+		    return about_win:new({},
+				{
+					guitextbox:new("\nHello :)\nKappa engine map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
+					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end)}
+					,256,256,256,256)
 				end,
 			disable = false}
 		 end)
@@ -326,21 +348,20 @@ function MapEditGUI:define(mapedit)
 
 	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10,CONTROL_LOCK.MAPEDIT_PANEL)
 	local main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10)
-	--CONTROL_LOCK.MAPEDIT_PANEL.open()
-	--
 
 	local panel_layout = guilayout:define(
 		{id="toolbar_region",
 		 split_type="+y",
-		 split_dist=20,
+		 split_pix=20,
 		 sub = {
-			id="region1",
+			id="panel_region",
 			split_type="+x",
-			split_dist=160,
+			split_pix=160,
 		 }
 		},
 
-		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end}
+		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end},
+		{"panel_region", function(l) return l.x,l.y,l.w,l.h end}
 	)
 
 	local w,h = love.graphics.getDimensions()
@@ -468,7 +489,7 @@ function MapEditGUI:setupInputHandling()
 
 
 	self.panel_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_PANEL,
-	                                   {"panel_select"})
+	                                   {"panel_select","window_move"})
 	local panel_select_option = Hook:new(function ()
 		local m = self.main_panel
 		local gui_object = m:click()
@@ -481,15 +502,43 @@ function MapEditGUI:setupInputHandling()
 	self.win_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_WINDOW,
 	                                 {"window_select","window_move"})
 	local window_select_option = Hook:new(function ()
-		local m = self.main_panel:getCurrentlyHoveredOption()
-		if m then
-			local gui_object = m:click()
-			if gui_object then
-				self:handleTopLevelThrownObject(obj)
-			end
-		end
+		local m = self.main_panel:clickOnWindow()
 	end)
 	self.win_input:getEvent("window_select", "down"):addHook(window_select_option)
+
+	local window_move_m_start_x = 0
+	local window_move_m_start_y = 0
+	local window_move_start_x = 0
+	local window_move_start_y = 0
+	local window_move_flag = false
+	local window_move_window = nil
+
+	local window_move_start = Hook:new(function ()
+		local win = self.main_panel:getCurrentlyHoveredWindow()
+		if not win then return end
+		window_move_flag = true
+		window_move_m_start_x, window_move_m_start_y = love.mouse.getPosition()
+		window_move_window = win
+		window_move_start_x, window_move_start_y = win.x, win.y
+	end)
+
+	local window_move_action = Hook:new(function ()
+		if not window_move_flag then return end
+		local win = window_move_window
+		if not win then return end
+		local x,y = love.mouse.getPosition()
+		local dx,dy = x-window_move_m_start_x, y-window_move_m_start_y
+		win:setX(window_move_start_x + dx)
+		win:setY(window_move_start_y + dy)
+	end)
+
+	local window_move_finish = Hook:new(function ()
+		window_move_flag = false
+	end)
+
+	self.win_input:getEvent("window_move", "down"):addHook(window_move_start)
+	self.win_input:getEvent("window_move", "held"):addHook(window_move_action)
+	self.win_input:getEvent("window_move", "up"):addHook(window_move_finish)
 
 end
 
@@ -506,6 +555,7 @@ end
 function MapEditGUI:poll()
 	self.cxtm_input:poll()
 	self.panel_input:poll()
+	self.win_input:poll()
 end
 
 function MapEditGUI:update(dt)

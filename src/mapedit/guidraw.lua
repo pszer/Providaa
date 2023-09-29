@@ -366,6 +366,22 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	return canvas
 end
 
+-- without color/bold/italic formatting (for now)
+function MapEditGUIRender:createDrawableTextLimited(string, limit, align, font, font_bold, font_italic)
+	assert_type(string, "string")
+	assert(limit)
+	local align = align or "left"
+	local font = font or self.font
+	local font_bold = font_bold or self.font_bold
+	local font_italic = font_italic or self.font_italic
+	local font_ibold = font_ibold or self.font_ibold
+	assert(font and font_bold and font_italic)
+
+	local drawable = love.graphics.newText(font, "")
+	drawable:setf(string,limit,align)
+	return drawable
+end
+
 function MapEditGUIRender:drawableFormatString(name, props)
 	assert(name)
 	local input_type = type(name)

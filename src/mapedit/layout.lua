@@ -29,7 +29,7 @@ MapEditGUILayout.__index = MapEditGUILayout
 --
 -- split_ratio/split_pix determines the way in which the region is split, split_ratio is number from
 -- 0 to 1, increasing in the positive x/y direction, split_ratio=0.5 would split the regions equally in half.
--- split_dist is a fixed number in pixels.
+-- split_pix is a fixed number in pixels.
 --
 -- sub specifies the layout of the subregion created by the split, which in turn can create furhter splits.
 --
@@ -57,6 +57,17 @@ function MapEditGUILayout:define(layout, ...)
 				h = h,
 			}
 
+			function this:setX(x)
+				self.x=x end
+			function this:setY(y)
+				self.y=y end
+			function this:setW(w)
+				self.w=w
+			end
+			function this:setH(h)
+				self.h=h
+			end
+
 			function this:updateXywh()
 				local function update_xywh(layout, x,y,w,h, update_xywh)
 					-- finish recursion
@@ -66,15 +77,18 @@ function MapEditGUILayout:define(layout, ...)
 					-- leaf region
 					if stype == nil then
 						layout.x,layout.y,layout.w,layout.h = x,y,w,h
+						return
 					end
 
-					local xoffset,yoffset
+					local xoffset,yoffset=nil,nil
 					if layout.split_ratio then
 						xoffset = layout.split_ratio*w
 						yoffset = layout.split_ratio*h
-					elseif layout.split_dist then
-						xoffset = layout.split_dist
-						yoffset = layout.split_dist
+					elseif layout.split_pix then
+						xoffset = layout.split_pix
+						yoffset = layout.split_pix
+					else
+						error("zomg")
 					end
 
 					if stype == "+x" then
@@ -87,7 +101,7 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- right region
 						--  x     y     w       h
-						 xoffset, y, w-xoffset, h,
+						 x+xoffset, y, w-xoffset, h,
 						 update_xywh)
 					elseif stype == "-x" then
 						-- layout for the right region of the split
@@ -111,7 +125,7 @@ function MapEditGUILayout:define(layout, ...)
 						update_xywh(layout.sub,
 						-- bottom region
 						--  x     y     w      h
-						    x, yoffset, w, h-yoffset,
+						    x, y+yoffset, w, h-yoffset,
 						    update_xywh)
 					elseif stype == "-y" then
 						-- layout for the bottom region of the split
@@ -125,6 +139,8 @@ function MapEditGUILayout:define(layout, ...)
 						--  x  y  w     h
 						    x, y, w, yoffset,
 						    update_xywh)
+					else
+						error("unknown split type")
 					end
 				end
 				update_xywh(self.layout, self.x,self.y,self.w,self.h, update_xywh)

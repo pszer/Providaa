@@ -68,6 +68,18 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		self.window_stack[p] = nil
 		self.stack_pointer = self.stack_pointer - 1
 	end
+	function this:removeWindowMarkedDelete()
+		local stack = self.window_stack
+		for i=#stack,1,-1 do
+			local df = stack[i].props.win_delete
+			if df then
+				table.remove(stack,i)
+				if self.stack_pointer >= i then
+					self.stack_pointer = self.stack_pointer - 1
+				end
+			end
+		end
+	end
 	function this:switchToWindow(win)
 		local found = nil
 		for i,v in ipairs(self.window_stack) do
@@ -94,17 +106,13 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		self.layout.w=w
 		self.layout.h=h
 
+		self:removeWindowMarkedDelete()
 		if self:windowOpen() then
 			local hover = false
-			local top_win = self:topWindow()
-			local wins
-			if top_win.props.win_focus then
-				wins = {top_win}
-			else
-				wins = self.window_stack
-			end
+			local wins = self:getFocusedWindowStack()
 
 			for i,v in ipairs(wins) do
+				v:update()
 				local h_info = v:updateHoverInfo()
 				if h_info then hover = true end
 			end
@@ -114,6 +122,8 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 			else
 				self.win_control_lock.close()
 			end
+		else
+			self.win_control_lock.close()
 		end
 
 		if self.layout then
@@ -122,8 +132,13 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 
 		local hover = false
 		for i,v in ipairs(self.elements) do
-			local h_info = v:updateHoverInfo()
-			if h_info then hover = true end
+			if v.update then
+				v:update()
+			end
+			if v.updateHoverInfo then
+				local h_info = v:updateHoverInfo()
+				if h_info then hover = true end
+			end
 		end
 
 		if hover then
@@ -145,28 +160,78 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		end
 	end
 
-	function this:click()
+	function this:getFocusedWindowStack()
 		if self:windowOpen() then
-				local top_win = self:topWindow()
-				local wins
-				if top_win.props.win_focus then
-					wins = {top_win}
-				else
-					wins = self.window_stack
-				end
+			local top_win = self:topWindow()
+			local wins
+			if top_win.props.win_focus then
+				wins = {top_win}
+			else
+				wins = self.window_stack
+			end
+			return wins
+		end
+		return nil
+	end
+
+	function this:getCurrentlyHoveredOption()
+		if self:windowOpen() then
+			local wins = self:getFocusedWindowStack()
 
 			for i,v in ipairs(wins) do
-				local h_info = v:updateHoverInfo()
-				if h_info then
-					local e = h_info:action()
-					local e_type = provtype(e)
-					if e_type ~= "mapeditwindow" then
-						self.throw_obj(e)
-					end
+				if v.hover then
+					local e = v:getCurrentlyHoveredOption()
+					if e then return e end
+				else
 				end
 			end
 		end
 
+		for i,v in ipairs(self.elements) do
+			local enable,h_info = self.element_status[i],nil
+			if enable and v.getCurrentlyHoveredOption then
+				h_info = v:getCurrentlyHoveredOption()
+			end
+
+			if h_info then
+				return h_info
+			end
+		end
+	end
+
+	function this:getCurrentlyHoveredWindow()
+		if self:windowOpen() then
+			local wins = self:getFocusedWindowStack()
+
+			for i,v in ipairs(wins) do
+				if v.hover then
+					print(v.x,v.y)
+					return v
+				end
+			end
+		end
+	end
+
+	function this:clickOnWindow()
+		if self:windowOpen() then
+			local wins = self:getFocusedWindowStack()
+
+			for i,v in ipairs(wins) do
+				if v.hover then
+					local e = v:click()
+					local e_type = provtype(e)
+					if e_type ~= "mapeditwindow" then
+						self.throw_obj(e)
+					else
+						self:pushWindow(e)
+					end
+				else
+				end
+			end
+		end
+	end
+
+	function this:click()
 		for i,v in ipairs(self.elements) do
 			local enable,h_info = self.element_status[i],nil
 			if enable then
@@ -175,7 +240,6 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 
 			if h_info then
 				local e = h_info:action()
-				print(e)
 				local e_type = provtype(e)
 				if e_type ~= "mapeditwindow" then
 					self.throw_obj(e)

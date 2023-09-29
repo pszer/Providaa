@@ -32,16 +32,18 @@ MapEditGUIWindow.__index = MapEditGUIWindow
 --
 
 local WindowProps = Props:prototype{
-	{"win_min_w"    , "number", 100  , PropIntegerMin(100), "window maximum size (x direction)"},
-	{"win_max_h"    , "number", 100  , PropIntegerMin(100), "window maximum size (x direction)"},
-	{"win_min_w"    , "number", 5000  , PropIntegerMax(5000), "window maximum size (x direction)"},
+	{"win_min_w"    , "number", 10  , PropIntegerMin(10), "window maximum size (x direction)"},
+	{"win_min_h"    , "number", 10  , PropIntegerMin(10), "window maximum size (x direction)"},
+	{"win_max_w"    , "number", 5000  , PropIntegerMax(5000), "window maximum size (x direction)"},
 	{"win_max_h"    , "number", 5000  , PropIntegerMax(5000), "window maximum size (x direction)"},
 	{"win_focus"    , "boolean", false, nil, "flag to force-grab all inputs"},
+
+	{"win_delete"   , "boolean", false, nil, "flag to delete window"}
 }
 
 function MapEditGUIWindow:define(default_props, layout_def)
 	local obj = {
-		new = function (self,props,x,y,w,h,elements)
+		new = function (self, props, elements, x,y,w,h)
 			local this = {
 				props = WindowProps(default_props),
 				layout = nil,
@@ -53,12 +55,13 @@ function MapEditGUIWindow:define(default_props, layout_def)
 				h=h,
 
 				hover = false,
-				delete = false -- delete flag
 			}
-			for i,v in pairs(props) do
-				this.props[i]=v end
 			for i,v in ipairs(elements) do
-				this.elements[i] = elements[i] end
+				this.elements[i] = elements[i]
+			end
+			for i,v in pairs(props) do
+				print(i,v)
+				this.props[i]=v end
 			this.layout = layout_def:new(x,y,w,h,this.elements)
 
 			function this:delete()
@@ -71,22 +74,34 @@ function MapEditGUIWindow:define(default_props, layout_def)
 				self.y=y end
 			function this:setW(w)
 				if w < self.props.win_min_w then w = self.props.win_min_w end
-				if w < self.props.win_max_w then w = self.props.win_max_w end
+				if w > self.props.win_max_w then w = self.props.win_max_w end
 				self.w=w
 			end
 			function this:setH(h)
+				print("m",self.props.win_max_h)
+				print("g",self.props.win_min_h)
 				if h < self.props.win_min_h then h = self.props.win_min_h end
-				if h < self.props.win_max_h then h = self.props.win_max_h end
+				if h > self.props.win_max_h then h = self.props.win_max_h end
 				self.h=h
 			end
 
-			function this:update()
-				self.layout.w=self.w
-				self.layout.h=self.h
+			this:setX(x)
+			this:setY(y)
+			this:setW(w)
+			this:setH(h)
 
+			function this:update()
 				if self.layout then
+					self.layout:setX(self.x)
+					self.layout:setY(self.y)
+					self.layout:setW(self.w)
+					self.layout:setH(self.h)
 					self.layout:updateXywh()
 				end
+			end
+
+			function this:delete()
+				self.props.win_delete = true
 			end
 
 			function this.getCurrentlyHoveredOption(self)
@@ -100,37 +115,67 @@ function MapEditGUIWindow:define(default_props, layout_def)
 
 			function this:updateHoverInfo()
 				local hover = false
+				local x,y,w,h = self.x, self.y, self.w, self.h
 				local mx,my = love.mouse.getPosition()
 				if x<=mx and mx<=x+w and
 				   y<=my and my<=y+h
 				then
+					self.hover = true
 					hover = self
+				else
+					self.hover = false
 				end
 
 				for i,v in ipairs(self.elements) do
-					local h_info = v:updateHoverInfo()
-					if h_info then hover = h_info end
+					if v.updateHoverInfo then
+						local h_info = v:updateHoverInfo()
+						if h_info then
+							hover = h_info
+							self.hover = true
+						end
+					end
 				end
 				return hover
 			end
 
+			function this:getCurrentlyHoveredOption()
+				local hover = nil
+				for i,v in ipairs(self.elements) do
+					if v.hover then
+						if v.getCurrentlyHoveredOption then
+							local h_info = v:getCurrentlyHoveredOption()
+							hover = h_info
+						end
+					end
+				end
+				if hover then
+					return hover
+				end
+				if self.hover then return self end
+				return nil
+			end
+
 			function this:draw()
+				local x,y,w,h = self.x,self.y,self.w,self.h
+				guirender:drawOption(x,y,w,h, nil, nil, nil, nil, MapEditGUIWindow.buffer_info)
 				for i,v in ipairs(self.elements) do
 					v:draw()
 				end
+			end
 
-				local x,y,w,h = self.x,self.y,self.w,self.h
-				guirender:drawOption(x,y,w,h, nil, nil, nil, nil, MapEditGUIWindow.buffer_info)
+			function this:handleEvent(e)
+
 			end
 
 			function this:click()
 				for i,v in ipairs(self.elements) do
-					h_info = v:updateHoverInfo()
-					if h_info then
-						local e = h_info:action()
-						local e_type = provtype(e)
-						if e_type ~= "mapeditwindow" then
-							self.throw_obj(e)
+					if v.getCurrentlyHoveredOption then
+						h_info = v:getCurrentlyHoveredOption()
+						if h_info then
+							if h_info.action then
+								local e = h_info:action(self)
+								return e
+							end
 						end
 					end
 				end
@@ -138,8 +183,7 @@ function MapEditGUIWindow:define(default_props, layout_def)
 
 			setmetatable(this, MapEditGUIWindow)
 			return this
-		end
-	}
+		end}
 	return obj
 end
 
