@@ -236,7 +236,7 @@ function MapEditContext:define(prototype, options)
 				local call_f = nil
 				if action then
 					call_f = function()
-						action(this.props)
+						return action(this.props)
 					end
 				end
 				local o =

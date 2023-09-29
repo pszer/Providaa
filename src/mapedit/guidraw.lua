@@ -535,8 +535,13 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 	cxtm_bl = self.__cxtm_bl
 
 	local bg_col = self.cxtm_bg_col
+	local col = col or {1,1,1}
 
 	love.graphics.origin()
+
+	love.graphics.setColor(bg_col[1], bg_col[2], bg_col[3],1)
+	love.graphics.rectangle("fill",x,y,w,h)
+
 	love.graphics.setColor(col[1],col[2],col[3],1)
 
 	love.graphics.translate(x,y)

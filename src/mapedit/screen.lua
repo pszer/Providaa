@@ -175,6 +175,7 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 
 			if h_info then
 				local e = h_info:action()
+				print(e)
 				local e_type = provtype(e)
 				if e_type ~= "mapeditwindow" then
 					self.throw_obj(e)

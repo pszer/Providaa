@@ -762,11 +762,13 @@ function ProvMapEdit:setupInputHandling()
 		self.view_rotate_mode = true
 		self:captureMouse()
 		self.viewport_input:lockInverse{"cam_rotate","cam_forward","cam_backward","cam_left","cam_right","cam_up","cam_down"}
+		CONTROL_LOCK.MAPEDIT_VIEW.elevate()
 	end)
 	local viewport_rotate_finish = Hook:new(function ()
 		self.view_rotate_mode = false
 		self:releaseMouse()
 		self.viewport_input:unlockAll()
+		CONTROL_LOCK.MAPEDIT_VIEW.open()
 	end)
 	self.viewport_input:getEvent("cam_rotate","down"):addHook(viewport_rotate_start)
 	self.viewport_input:getEvent("cam_rotate","up"):addHook(viewport_rotate_finish)

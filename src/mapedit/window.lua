@@ -9,17 +9,19 @@ local guirender = require 'mapedit.guidraw'
 local MapEditGUIWindow = {
 	__type = "mapeditwindow",
 
-	l  = 24,
-	l_no_icon  = 4,
-	r = 6,
-	t = 5,
-	b = 3,
+	buffer_info = {
+		l  = 24,
+		l_no_icon  = 4,
+		r = 6,
+		t = 5,
+		b = 3,
 
-	arrow_r = 20,
-	arrow_t = 1,
+		arrow_r = 20,
+		arrow_t = 1,
 
-	icon_l = 2,
-	icon_t = 1,
+		icon_l = 2,
+		icon_t = 1,
+	}
 }
 MapEditGUIWindow.__index = MapEditGUIWindow
 
@@ -37,14 +39,13 @@ local WindowProps = Props:prototype{
 	{"win_focus"    , "boolean", false, nil, "flag to force-grab all inputs"},
 }
 
-function MapEditGUIWindow:define(default_props, layout)
+function MapEditGUIWindow:define(default_props, layout_def)
 	local obj = {
-		new = function (props)
+		new = function (self,props,x,y,w,h,elements)
 			local this = {
-				props = WindowProps:new(default_props, x,y,w,h, elements),
-				layout = layout,
+				props = WindowProps(default_props),
+				layout = nil,
 				elements = {},
-				element_status = {},
 
 				x=x,
 				y=y,
@@ -55,8 +56,10 @@ function MapEditGUIWindow:define(default_props, layout)
 				delete = false -- delete flag
 			}
 			for i,v in pairs(props) do
-				this.props[i]=v
-			end
+				this.props[i]=v end
+			for i,v in ipairs(elements) do
+				this.elements[i] = elements[i] end
+			this.layout = layout_def:new(x,y,w,h,this.elements)
 
 			function this:delete()
 				self.delete = true
@@ -117,6 +120,7 @@ function MapEditGUIWindow:define(default_props, layout)
 				end
 
 				local x,y,w,h = self.x,self.y,self.w,self.h
+				guirender:drawOption(x,y,w,h, nil, nil, nil, nil, MapEditGUIWindow.buffer_info)
 			end
 
 			function this:click()

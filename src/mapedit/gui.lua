@@ -4,6 +4,7 @@ local toolbar     = require 'mapedit.toolbar'
 local popup       = require 'mapedit.popup'
 local guilayout   = require 'mapedit.layout'
 local guiscreen   = require 'mapedit.screen'
+local guiwindow   = require 'mapedit.window'
 
 local maptransform = require "mapedit.transform"
 
@@ -251,6 +252,15 @@ function MapEditGUI:define(mapedit)
 		 {"~bReset",disable = true, icon = nil}
 		 end)
 
+	local about_win_layout = guilayout:define(
+		{id="region",
+		 split_type="nil",
+		}
+		--{"region",function(l) return l.x,l.y,l.w,l.h end}
+	)
+	local about_win = guiwindow:define({}, about_win_layout)
+	about_win:new({},256,256,256,256,{})
+
 	context["help_context"] = 
 		contextmenu:define(
 		{
@@ -262,14 +272,15 @@ function MapEditGUI:define(mapedit)
 		    return end,
 			disable = false},
 
-		 {"Set Language言語あああああああああああ",
+		 {"Set Language",
 		  action=function(props)
 		    return end,
 			disable = false},
 
 		 {"~iAbout",
 		  action=function(props)
-		    return end,
+		    return about_win:new({},256,256,256,256,{})
+				end,
 			disable = false}
 		 end)
 
@@ -337,7 +348,8 @@ function MapEditGUI:define(mapedit)
 		panel_layout:new(
 		  0,0,w,h,{main_toolbar}),
 			function(o) self:handleTopLevelThrownObject(o) end,
-			CONTROL_LOCK.MAPEDIT_PANEL
+			CONTROL_LOCK.MAPEDIT_PANEL,
+			CONTROL_LOCK.MAPEDIT_WINDOW
 	)
 end
 
@@ -444,7 +456,10 @@ function MapEditGUI:setupInputHandling()
 		end
 		local action = hovered_opt.action
 		if action then
-			action()
+			local gui_object = action()
+			if gui_object then
+				self:handleTopLevelThrownObject(gui_object)
+			end
 		end
 		self:exitContextMenu()
 	end)
@@ -456,18 +471,35 @@ function MapEditGUI:setupInputHandling()
 	                                   {"panel_select"})
 	local panel_select_option = Hook:new(function ()
 		local m = self.main_panel
-		m:click()
+		local gui_object = m:click()
+		if gui_object then
+			self:handleTopLevelThrownObject(obj)
+		end
 	end)
 	self.panel_input:getEvent("panel_select", "down"):addHook(panel_select_option)
 
-
+	self.win_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_WINDOW,
+	                                 {"window_select","window_move"})
+	local window_select_option = Hook:new(function ()
+		local m = self.main_panel:getCurrentlyHoveredOption()
+		if m then
+			local gui_object = m:click()
+			if gui_object then
+				self:handleTopLevelThrownObject(obj)
+			end
+		end
+	end)
+	self.win_input:getEvent("window_select", "down"):addHook(window_select_option)
 
 end
 
 function MapEditGUI:handleTopLevelThrownObject(obj)
 	local o_type = provtype(obj)
+	print("jaj", o_type)
 	if o_type == "mapeditcontextmenu" then
 		self:loadContextMenu(obj)
+	elseif o_type == "mapeditwindow" then
+		self.main_panel:pushWindow(obj)
 	end
 end
 
