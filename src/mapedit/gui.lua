@@ -306,8 +306,8 @@ function MapEditGUI:define(mapedit)
 		  action=function(props)
 		    return about_win:new({},
 				{
-					guiimage:new("mapedit/ic.png"),
-					guitextbox:new("\n\nHello :)\n\nKappa engine map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
+					guiimage:new("mapedit/ic.png",0,0,function() self:displayPopup("~b~(red)Do not click the kappa.") end),
+					guitextbox:new("\n\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
 					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end)}
 					,256,256,256,256)
 				end,
@@ -552,7 +552,6 @@ end
 
 function MapEditGUI:handleTopLevelThrownObject(obj)
 	local o_type = provtype(obj)
-	print("jaj", o_type)
 	if o_type == "mapeditcontextmenu" then
 		self:loadContextMenu(obj)
 	elseif o_type == "mapeditwindow" then

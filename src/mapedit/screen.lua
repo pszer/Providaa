@@ -205,7 +205,6 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 
 			for i,v in ipairs(wins) do
 				if v.hover then
-					print(v.x,v.y)
 					return v
 				end
 			end

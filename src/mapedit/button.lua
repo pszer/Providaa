@@ -56,8 +56,6 @@ function MapEditGUIButton:new(str,icon,x,y,action)
 	this.w = w
 	this.h = h
 
-	print(this.w, this.h)
-
 	self.bg = guirender:createContextMenuBackground(this.w,this.h)
 
 	function this:updateHoverInfo()
