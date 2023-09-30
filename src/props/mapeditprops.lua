@@ -11,7 +11,7 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_filename", nil, nil, nil, "working map's filename"},
 
 	{"mapedit_mode", "string", "viewport", PropIsOneOf{"viewport","transform"}},
-	{"mapedit_tool", "string", "paint", PropIsOneOf{"edit","paint"}},
+	{"mapedit_tool", "string", "edit", PropIsOneOf{"edit","paint"}},
 	{"mapedit_transform_mode", "string", "translate", PropIsOneOf{"translate","rotate","scale"}},
 
 	{"mapedit_cam", nil, nil, nil, "camera for map edit view" },

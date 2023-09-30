@@ -144,16 +144,21 @@ function ProvMapEdit:loadMap(map_name)
 
 	local models = Map.generateModelInstances( map_file, true )
 	self.props.mapedit_model_insts = models
+	self:updateModelMatrices()
+
+	self:copyPropsFromMap(map_file)
+	self:allocateObjects()
 
 	Map.loadGroups(
+		map_file,
 		models,
 		function(name,insts)
 			self:createModelGroup(name,insts)
 		end
 	)
-
-	self:copyPropsFromMap(map_file)
-	self:allocateObjects()
+	for i,v in ipairs(self.props.mapedit_model_groups) do
+		v:calcMinMax()
+	end
 end
 
 function ProvMapEdit:reloadSkybox()
@@ -3449,7 +3454,7 @@ function ProvMapEdit:transform_mousemoved(x,y,dx,dy)
 end
 
 function ProvMapEdit:exportAndWriteToFile(filename)
-	local result,log = export_map(self.props)
+	local result,log = export_map(self.props, self.props.mapedit_filename, {save_groups=true})
 
 	love.filesystem.createDirectory("exports")
 

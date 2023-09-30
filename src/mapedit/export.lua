@@ -114,11 +114,13 @@ local function MapEditExport(props, name, settings)
 				for i,v in ipairs(group.insts) do
 					local model_i = model_to_index_map[v]
 					if model_i then
-						table.insert(group_entry, model_i)
+						table.insert(group_entry.insts, model_i)
 					else
 						Log(string.format("MapExport: group %s contains non-existance model instance, ignoring", tostring(group.name)))
 					end
 				end
+
+				table.insert(groups, group_entry)
 			else
 				Log(string.format("MapExport: empty group %s found, ignoring", tostring(group.name)))
 			end
