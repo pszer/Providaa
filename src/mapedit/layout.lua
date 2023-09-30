@@ -145,16 +145,17 @@ function MapEditGUILayout:define(layout, ...)
 				end
 				update_xywh(self.layout, self.x,self.y,self.w,self.h, update_xywh)
 
+				local int = math.floor
 				for i,v in ipairs(self.elements) do
 					local def = elements_def[i]
 					local region_id = def[1]
 					local xywh_func = def[2]
 					-- calculate new x,y,w,h and give them to the element
 					local x,y,w,h = xywh_func(self.layout_map[region_id])
-					if v.setX then v:setX(x) end
-					if v.setY then v:setY(y) end
-					if v.setW then v:setW(w) end
-					if v.setH then v:setH(h) end
+					if v.setX then v:setX(int(x)) end
+					if v.setY then v:setY(int(y)) end
+					if v.setW then v:setW(int(w)) end
+					if v.setH then v:setH(int(h)) end
 				end
 			end
 
