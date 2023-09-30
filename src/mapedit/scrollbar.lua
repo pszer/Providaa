@@ -38,7 +38,6 @@ function MapEditGUIScrollbar:new(h)
 			if r < 0 then r = 0 end
 			if r > 1 then r = 1 end
 			self.ratio = r
-			print(r)
 		end
 	end
 

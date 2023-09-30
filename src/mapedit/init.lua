@@ -130,26 +130,7 @@ function ProvMapEdit:loadMap(map_name)
 			v
 		}
 		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		table.insert(textures, entry)
-		--textures[i] = entry
+		textures[i] = entry
 	end
 	self.props.mapedit_texture_list = textures
 

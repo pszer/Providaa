@@ -148,6 +148,7 @@ function MapEditGUIGridSelection:new(img_table, action)
 
 		if txt then
 			local tw,th = txt:getDimensions()
+			if txt_x < 0 then txt_x = 0 end
 			love.graphics.setColor(0,0,0,1)
 			love.graphics.rectangle("fill", txt_x, txt_y, tw, th)
 			love.graphics.setColor(1,1,1,1)

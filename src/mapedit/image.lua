@@ -43,7 +43,7 @@ function MapEditGUIImage:new(img,x,y,w,h,action,align_x,align_y,bg_col)
 	if img then
 		local img_ = Loader:getTextureReference(img)
 		assert(img_)
-		self.img = img_
+		this.img = img_
 		if not w and not h then
 			this.w,this.h = img_:getDimensions()
 		end

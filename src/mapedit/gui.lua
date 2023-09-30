@@ -310,7 +310,7 @@ function MapEditGUI:define(mapedit)
 				{
 					guiimage:new("mapedit/ic.png",0,0,80,120,function() self:displayPopup("~b~(red)Do not click the kappa.") end),
 					guitextbox:new("\n\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
-					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end)}
+					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end,"middle","bottom")}
 					,256,256,256,256)
 				end,
 			disable = false}
