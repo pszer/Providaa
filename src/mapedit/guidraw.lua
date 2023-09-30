@@ -6,6 +6,8 @@ require "string"
 require "bit"
 require "math"
 
+local lang = require 'mapedit.guilang'
+
 local MapEditGUIRender = {
 	font        = nil,
 	font_bold   = nil,
@@ -56,9 +58,29 @@ local MapEditGUIRender = {
 }
 MapEditGUIRender.__index = MapEditGUIRender
 
+function MapEditGUIRender:loadFonts(fonts)
+
+	self.font = Loader:getTTFReference(fonts.regular.fname)
+	self.font = love.graphics.newFont(self.font, fonts.regular.size, fonts.regular.hinting)
+	assert(self.font)
+
+	self.font_bold = Loader:getTTFReference(fonts.bold.fname)
+	self.font_bold = love.graphics.newFont(self.font_bold, fonts.bold.size, fonts.bold.hinting)
+	assert(self.font_bold)
+
+	self.font_italic = Loader:getTTFReference(fonts.italic.fname)
+	self.font_italic = love.graphics.newFont(self.font_italic, fonts.italic.size, fonts.italic.hinting)
+	assert(self.font_italic)
+
+	self.font_ibold = Loader:getTTFReference(fonts.ibold.fname)
+	self.font_ibold = love.graphics.newFont(self.font_ibold, fonts.ibold.size, fonts.ibold.hinting)
+	assert(self.font_ibold)
+
+end
+
 function MapEditGUIRender:initAssets()
 	-- get the font filedata from Loader
-	self.font = Loader:getTTFReference(self.__font_fname)
+	--[[self.font = Loader:getTTFReference(self.__font_fname)
 	-- convert to a love2d font object
 	self.font = love.graphics.newFont(self.font, 12, "normal")
 	assert(self.font)
@@ -73,7 +95,10 @@ function MapEditGUIRender:initAssets()
 
 	self.font_ibold = Loader:getTTFReference(self.__font_ibold_fname)
 	self.font_ibold = love.graphics.newFont(self.font_ibold, 12, "normal")
-	assert(self.font_ibold)
+	assert(self.font_ibold)--]]
+	print(lang)
+	print(lang.getFontInfo)
+	self:loadFonts(lang:getFontInfo())
 
 	self.__cxtm_bb = Loader:getTextureReference("mapedit/cxtm_bb.png")
 	self.__cxtm_tt = Loader:getTextureReference("mapedit/cxtm_tt.png")
@@ -504,9 +529,12 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 	if icon then
 		bl = buffer_info.l
 	end
+
+	love.graphics.origin()
 	love.graphics.draw(bg,x,y)
 
 	-- if hoverable
+	local int = math.floor
 	if state == "hover" then
 
 		local mode, alphamode = love.graphics.getBlendMode()
@@ -518,7 +546,9 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 		love.graphics.setColor(1,1,1,1)
 		love.graphics.setBlendMode("subtract","alphamultiply")
 
-		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		if txt then
+			love.graphics.draw(txt,int(x+bl),int(y+buffer_info.t))
+		end
 
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
@@ -527,15 +557,19 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 		love.graphics.setBlendMode(mode, alphamode)
 
 	elseif state ~= "disable" then
-		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		if txt then
+			love.graphics.draw(txt, int(x+bl), int(y+buffer_info.t))
+		end
 		if icon then
-			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
+			love.graphics.draw(icon,int(x+buffer_info.icon_l),int(y+buffer_info.icon_t))
 		end
 	else
 		love.graphics.setShader(self.grayscale)
 		love.graphics.setColor(0.9,0.9,1,0.3)
 
-		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		if txt then
+			love.graphics.draw(txt,int(x+bl),int(y+buffer_info.t))
+		end
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
 		end
@@ -618,6 +652,7 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 	end
 
 	-- if hoverable
+	local int = math.floor
 	if state == "hover" then
 		local mode, alphamode = love.graphics.getBlendMode()
 		love.graphics.setColor(255/255,161/255,66/255,0.8)
@@ -629,7 +664,7 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 		love.graphics.setBlendMode("subtract","alphamultiply")
 
 		if txt then
-			love.graphics.draw(txt,x+bl,y+buffer_info.t)
+			love.graphics.draw(txt,int(x+bl),int(y+buffer_info.t))
 		end
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
@@ -639,7 +674,7 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 
 	elseif state ~= "disable" then
 		if txt then
-			love.graphics.draw(txt,x+bl,y+buffer_info.t)
+			love.graphics.draw(txt,int(x+bl),int(y+buffer_info.t))
 		end
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)
@@ -649,7 +684,7 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 		love.graphics.setColor(0.9,0.9,1,0.3)
 
 		if txt then
-		love.graphics.draw(txt,x+bl,y+buffer_info.t)
+		love.graphics.draw(txt,int(x+bl),int(y+buffer_info.t))
 		end
 		if icon then
 			love.graphics.draw(icon,x+buffer_info.icon_l,y+buffer_info.icon_t)

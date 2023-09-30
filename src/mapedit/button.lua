@@ -58,7 +58,7 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 	this.w = w
 	this.h = h
 
-	self.bg = guirender:createContextMenuBackground(this.w,this.h)
+	this.bg = guirender:createContextMenuBackground(this.w,this.h)
 
 	function this:updateHoverInfo()
 		local x,y,w,h = self.x, self.y, self.w, self.h
@@ -88,7 +88,6 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 		else
 			state="normal"
 		end
-		--guidraw:drawOption(self.x,self.y,self.w,self.h,self.text,self.icon,nil,state,MapEditGUIButton.buffer_info)
 		guirender:drawGenericOption(self.x,self.y,self.w,self.h, self.bg,self.text,self.icon,nil,state,MapEditGUIButton.buffer_info)
 	end
 

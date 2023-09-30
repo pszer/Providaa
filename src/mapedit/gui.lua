@@ -10,6 +10,7 @@ local guibutton   = require 'mapedit.button'
 local guiimage    = require 'mapedit.image'
 local guiscrollb  = require 'mapedit.scrollbar'
 local guiimggrid  = require 'mapedit.gridselection'
+local lang = require 'mapedit.guilang'
 
 local maptransform = require "mapedit.transform"
 
@@ -58,36 +59,36 @@ function MapEditGUI:define(mapedit)
 		}
 		,
 		function(props) return
-		 {"~bCopy",
+		 {lang["~bCopy"],
 		  action=function(props)
 		    mapedit:copySelectionToClipboard() end,
 			disable = not mapedit:canCopy(),
 		  icon = "mapedit/icon_copy.png"},
 
-		 {"Paste",
+		 {lang["Paste"],
 		  action=function(props)
 		    mapedit:pasteClipboard() end,
 			disable = not mapedit:canPaste(),
 		  icon = "mapedit/icon_dup.png"},
 
-		 {"Undo",
+		 {lang["Undo"],
 		  action=function(props)
 		    mapedit:commitUndo() end,
 			disable = not mapedit:canUndo(),
 		  icon = nil},
 
-		 {"Redo",
+		 {lang["Redo"],
 		  action=function(props)
 		    mapedit:commitRedo() end,
 			disable = not mapedit:canRedo(),
 		  icon = nil},
 
-		 {"~b~(orange)Delete",
+		 {lang["~b~(orange)Delete"],
 		  action=function(props)
 		    mapedit:commitCommand("delete_obj", {select_objects=props.select_objects}) end,
 		  icon = "mapedit/icon_del.png"},
 
-		 {"~(lpurple)Group", suboptions = function(props)
+		 {lang["~(lpurple)Group"], suboptions = function(props)
 		  local groups = props.group_info.groups
 			local models_outside = props.group_info.models_outside
 			local name_tab = ""
@@ -111,22 +112,22 @@ function MapEditGUI:define(mapedit)
 
 		 	return {
 			 {name_tab},
-			 {"~(green)~bCreate",
+			 {lang["~(green)~bCreate"],
 			  disable = not props.group_info.create_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("create_group", {select_objects=props.select_objects}) end},
-			 {"Merge Groups",
+			 {lang["Merge Groups"],
 			  disable = not props.group_info.merge_groups_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("merge_groups", {groups=groups}) end},
-			 {"Add To Group",
+			 {lang["Add To Group"],
 			  disable = not props.group_info.add_to_group_enable,
 			   action =
 			     function()
 			       mapedit:commitCommand("add_to_group", {group=groups[1], models=models_outside}) end},
-			 {"~(lpurple)Ungroup",
+			 {lang["~(lpurple)Ungroup"],
 			  disable = not props.group_info.ungroup_enable,
 			   action =
 			     function()
@@ -135,26 +136,26 @@ function MapEditGUI:define(mapedit)
 			 }
 			end},
 
-		 {"~(lgray)--Transform--"},
+		 {lang["~(lgray)--Transform--"]},
 
-		 {"Flip", suboptions = function(props)
+		 {lang["Flip"], suboptions = function(props)
 		  return {
-			 {"... by ~i~(lred)X~r Axis",
+			 {lang["... by ~i~(lred)X~r Axis"],
 			  action=
 			    function()
 			      mapedit:commitCommand("transform", {transform_info=maptransform.flip_x_const}) end},
-			 {"... by ~i~(lgreen)Y~r Axis",
+			 {lang["... by ~i~(lgreen)Y~r Axis"],
 			  action=
 			    function()
 			       mapedit:commitCommand("transform", {transform_info=maptransform.flip_y_const}) end},
-			 {"... by ~i~(lblue)Z~r Axis", action=function()
+			 {lang["... by ~i~(lblue)Z~r Axis"], action=function()
 			   mapedit:commitCommand("transform", {transform_info=maptransform.flip_z_const}) end},
 			}
 		 end},
 
-		 {"Rotate", suboptions = function(props)
+		 {lang["Rotate"], suboptions = function(props)
 		 	return {
-			 {"... around ~i~(lred)X~r Axis", suboptions = function(props)
+			 {lang["... around ~i~(lred)X~r Axis"], suboptions = function(props)
 			  return {
 			    {"+~i90~b°", 
 			      action=
@@ -169,7 +170,7 @@ function MapEditGUI:define(mapedit)
 			        function()
 			          mapedit:commitCommand("transform", {transform_info=maptransform.rot_x_270}) end}}
 			 end},
-			 {"... around ~i~(lgreen)Y~r Axis", suboptions = function(props)
+			 {lang["... around ~i~(lgreen)Y~r Axis"], suboptions = function(props)
 			  return {
 			    {"+~i90~b°",
 			      action=
@@ -183,7 +184,7 @@ function MapEditGUI:define(mapedit)
 			        function()
 			          mapedit:commitCommand("transform", {transform_info=maptransform.rot_y_270}) end}}
 			 end},
-			 {"... around ~i~(lblue)Z~r Axis", suboptions = function(props)
+			 {lang["... around ~i~(lblue)Z~r Axis"], suboptions = function(props)
 			  return {
 			    {"+~i90~b°",
 			      action=
@@ -201,7 +202,7 @@ function MapEditGUI:define(mapedit)
 			}
 		 end},
 
-		 {"~bReset",action=function(props)
+		 {lang["~bReset"],action=function(props)
 		   mapedit:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
 		   icon = nil}
 		 end)
@@ -212,55 +213,56 @@ function MapEditGUI:define(mapedit)
 		}
 		,
 		function(props) return
-		 {"~bCopy",
+		 {lang["~bCopy"],
 		  action=function(props)
 		    mapedit:copySelectionToClipboard() end,
 			disable = true,
 		  icon = "mapedit/icon_copy.png"},
 
-		 {"Paste",
+		 {lang["Paste"],
 		  action=function(props)
 		    mapedit:pasteClipboard() end,
 			disable = not mapedit:canPaste(),
 		  icon = "mapedit/icon_dup.png"},
 
-		 {"Undo",
+		 {lang["Undo"],
 		  action=function(props)
 		    mapedit:commitUndo() end,
 			disable = not mapedit:canUndo(),
 		  icon = nil},
 
-		 {"Redo",
+		 {lang["Redo"],
 		  action=function(props)
 		    mapedit:commitRedo() end,
 			disable = not mapedit:canRedo(),
 		  icon = nil},
 
-		 {"~b~(orange)Delete",
+		 {lang["~b~(orange)Delete"],
 		  icon = "mapedit/icon_del.png",
 			disable = true},
 
-		 {"~(lpurple)Group", suboptions = function(props) 
+		 {lang["~(lpurple)Group"], suboptions = function(props) 
 	     return {}
 			end, disable = true},
 
-		 {"~(lgray)--Transform--"},
+		 {lang["~(lgray)--Transform--"]},
 
-		 {"Flip", suboptions = function(props) 
+		 {lang["Flip"], suboptions = function(props) 
 		  return {} end,
 		  disable = true},
 
-		 {"Rotate", suboptions = function(props)
+		 {lang["Rotate"], suboptions = function(props)
 		 	return {} end,
 		  disable = true},
 
-		 {"~bReset",disable = true, icon = nil}
+		 {lang["~bReset"],disable = true, icon = nil}
 		 end)
 
 	local region_default_f = function(l) return l.x, l.y, l.w, l.h end
 	local region_middle_f = function(l) return l.x+l.w*0.5, l.y+l.h*0.5, l.w, l.h end
 	local region_offset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+l.h*_y, l.w, l.h end end
 	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+_y, l.w, l.h end end
+	local region_ypixoffset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+_y, l.w, l.h end end
 
 	-- About window
 	local about_win_layout = guilayout:define(
@@ -288,29 +290,59 @@ function MapEditGUI:define(mapedit)
 		win_max_h=120,
 	}, about_win_layout)
 
+	local lang_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_ypixoffset_f(0.5,10)},
+		{"region", region_ypixoffset_f(0.5,35)},
+		{"region", region_ypixoffset_f(0.5,60)},
+		{"region", region_ypixoffset_f(0.5,85)}
+	)
+	local lang_win = guiwindow:define({
+		win_min_w=100,
+		win_max_w=100,
+		win_min_h=115,
+		win_max_h=115,
+		win_focus=true,
+	}, lang_win_layout)
+
 	context["help_context"] = 
 		contextmenu:define(
 		{
 		}
 		,
 		function(props) return
-		 {"Keybinds",
+		 {lang["Keybinds"],
 		  action=function(props)
 		    return end,
 			disable = false},
 
-		 {"Set Language",
+		 {lang["Set Language"],
 		  action=function(props)
-		    return end,
+		    return lang_win:new({},
+				{
+					guitextbox:new(lang["Set Language"],0,0,0,"center"),
+					guibutton:new("English",nil,0,0, function(self,win) lang:setLanguage("eng")
+					                                                    guirender:loadFonts(lang:getFontInfo())
+					                                                    MapEditGUI:define(mapedit) end,"middle","top"),
+					guibutton:new("Polish",nil,0,0, function(self,win) lang:setLanguage("pl")
+					                                                   guirender:loadFonts(lang:getFontInfo())
+					                                                   MapEditGUI:define(mapedit) end,"middle","top"),
+					guibutton:new("Japanese",nil,0,0, function(self,win) lang:setLanguage("jp")
+					                                                     guirender:loadFonts(lang:getFontInfo())
+					                                                     MapEditGUI:define(mapedit) end,"middle","top"),
+				},
+				0,0,100,115)
+				end,
 			disable = false},
 
-		 {"~iAbout",
+		 {lang["~iAbout"],
 		  action=function(props)
 		    return about_win:new({},
 				{
-					guiimage:new("mapedit/ic.png",0,0,80,120,function() self:displayPopup("~b~(red)Do not click the kappa.") end),
-					guitextbox:new("\n\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
-					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end,"middle","bottom")}
+					guiimage:new("mapedit/ic.png",0,0,80,120,function() self:displayPopup(lang["~b~(red)Do not click the kappa."]) end),
+					guitextbox:new(lang["\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"],0,0,300,"center"),
+					guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","bottom")}
 					,256,256,256,256)
 				end,
 			disable = false}
@@ -322,8 +354,8 @@ function MapEditGUI:define(mapedit)
 		 -- props
 		},
 		function(props) return
-		{"Save",action=function()end},
-		{"~iQuit",action=function()love.event.quit()end}
+		{lang["Save"],action=function()end},
+		{lang["~iQuit"],action=function()love.event.quit()end}
 		end
 		)
 
@@ -333,13 +365,13 @@ function MapEditGUI:define(mapedit)
 
 		},
 
-		{"File",
+		{lang["File"],
 		 generate =
 		   function(props)
 			   return context["main_file_context"], {}
 		   end
 		},
-		{"Edit",
+		{lang["Edit"],
 		 generate =
 		   function(props)
 			   --return context["main_file_context"], {}
@@ -348,7 +380,7 @@ function MapEditGUI:define(mapedit)
 				 return context[cxtn_name], props
 		   end
 		},
-		{"Help",
+		{lang["Help"],
 		 generate =
 		   function(props)
 				 return context["help_context"], {}
@@ -394,8 +426,8 @@ function MapEditGUI:define(mapedit)
 		{},
 		{
 			self.grid_info_panel_image,
-			guibutton:new("Import",nil,0,0, function(self,win) end, "left", "top"),
-			guibutton:new("Delete",nil,0,0, function(self,win) end, "left", "top")
+			guibutton:new(lang["Import"],nil,0,0, function(self,win) end, "left", "top"),
+			guibutton:new(lang["Delete"],nil,0,0, function(self,win) end, "left", "top")
 		},
 		0,0,300,100
 	)

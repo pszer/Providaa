@@ -62,7 +62,8 @@ function MapEditGUIWindow:define(default_props, layout_def)
 			end
 			for i,v in pairs(props) do
 				print(i,v)
-				this.props[i]=v end
+				this.props[i]=v
+			end
 
 			function this:delete()
 				self.delete = true
@@ -172,7 +173,7 @@ function MapEditGUIWindow:define(default_props, layout_def)
 				end
 			end
 
-			function this:handleEvent(e)
+			function this:action()
 
 			end
 
