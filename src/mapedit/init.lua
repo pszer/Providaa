@@ -130,8 +130,8 @@ function ProvMapEdit:loadMap(map_name)
 			tex_names[i],
 			v
 		}
-		table.insert(textures, entry)
 		textures[i] = entry
+		textures[entry[1]] = i
 	end
 	self.props.mapedit_texture_list = textures
 
@@ -145,6 +145,73 @@ function ProvMapEdit:loadMap(map_name)
 
 	self:copyPropsFromMap(map_file)
 	self:allocateObjects()
+end
+
+function ProvMapEdit:addTexture(tex_name, tex)
+	assert_type(tex_name, "string")
+	assert(tex)
+	local entry = {tex_name, tex}
+	local texs = self.props.mapedit_texture_list
+	local count = #texs
+	--table.insert(texs, entry)
+	texs[count+1] = entry
+	texs[tex_name] = count+1
+
+	self:regenAtlas()
+end
+
+function ProvMapEdit:textureIsInAnimatedTexture(tex_name)
+	for i,v in pairs(self.props.mapedit_anim_tex) do
+		local texs = v.textures
+		for i,v in ipairs(texs) do
+			if v==tex_name then return true end
+		end
+	end
+	return false
+end
+
+-- returns true is texture removed, otherwise false
+-- it can fail if the texture is not loaded OR the
+-- texture is part of an animated texture, the animated
+-- texture must be deleted first
+function ProvMapEdit:removeTexture(tex_name)
+	local is_in_anim = self:textureIsInAnimatedTexture(tex_name)
+	if is_in_anim then return false end
+
+	local texs = self.props.mapedit_texture_list
+	if not texs[tex_name] then return end -- ignore if not loaded
+	for i,v in ipairs(texs) do
+		if v[1]==tex_name then
+			Loader:deref("texture",tex_name)
+			local count = #texs
+
+			for j=i,count-1 do
+				texs[j]=texs[j+1]
+			end
+			texs[count] = nil
+			self:regenAtlas()
+			return true
+		end
+	end
+
+	return false
+end
+
+function ProvMapEdit:regenAtlas()
+	local texatlas = require 'texatlas'
+
+	local loaded_textures = self.props.mapedit_texture_list
+	local map_mesh = self.props.mapedit_map_mesh
+	local tex_table = {}
+	for i,v in ipairs(loaded_textures) do
+		tex_table[i] = v[2]
+	end
+
+	local atlas, uvs = texatlas(tex_table, 1024, 1024)
+
+	if map_mesh.tex then map_mesh.tex:release() end
+	map_mesh.tex = atlas
+	map_mesh.uvs = uvs
 end
 
 function ProvMapEdit:copyPropsFromMap(map_file)
@@ -169,10 +236,49 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_tileset, map_file.tile_set)
 	clone(props.mapedit_wallset, map_file.wall_set)
 	clone(props.mapedit_tile_heights, map_file.height_map)
-	clone(props.mapedit_tile_map, map_file.tile_map)
-	clone(props.mapedit_wall_map, map_file.wall_map)
+	--clone(props.mapedit_tile_map, map_file.tile_map)
+	--clone(props.mapedit_wall_map, map_file.wall_map)
 	clone(props.mapedit_anim_tex, map_file.anim_tex)
 	clone(props.mapedit_skybox, map_file.skybox)
+
+	-- get the texture names for each of the tile and walls
+	local t_tex = props.mapedit_tile_textures
+	local w_tex = props.mapedit_wall_textures
+	for z=1,map_file.height do
+		t_tex[z] = {}
+		w_tex[z] = {}
+		for x=1,map_file.width do
+			w_tex[z][x] = {}
+
+			local tile_id = map_file.tile_map[z][x]
+			local wall_id = map_file.wall_map[z][x]
+
+			if tile_id then
+				local tex = map_file.tile_set[tile_id]
+				t_tex[z][x] = tex
+			end
+
+			if wall_id then
+				local info_type = type(wall_id)
+				if info_type ~= "table" then
+					local tex = map_file.wall_set[wall_id]
+					w_tex[z][x][1] = tex
+					w_tex[z][x][2] = tex
+					w_tex[z][x][3] = tex
+					w_tex[z][x][4] = tex
+				else
+					local wall_id_table = wall_id
+					for i=1,4 do
+						local wall_id = wall_id_table[i]
+						if wall_id then
+							local tex = map_file.wall_set[wall_id]
+							w_tex[z][x][i] = tex
+						end
+					end
+				end
+			end
+		end
+	end
 end
 
 function ProvMapEdit:allocateObjects()
@@ -857,6 +963,23 @@ function ProvMapEdit:setupInputHandling()
 	local __viewport_select_paint_tool = function()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, false)
+		if not obj then return end
+
+		local gui_texture_grid = gui.texture_grid
+		local tex_select = gui_texture_grid:getGridSelectedObject()
+		if not tex_select then return end
+		local tex_name = tex_select[1]
+
+		if obj[1] == "tile" then
+			local x = obj[2].x
+			local z = obj[2].z
+			self:setTileTexture(x,z,tex_name)
+		elseif obj[1] == "wall" then
+			local x = obj[2].x
+			local z = obj[2].z
+			local side = obj[2].side
+			self:setWallTexture(x,z,side,tex_name)
+		end
 	end
 
 	local viewport_select = Hook:new(function ()
@@ -1769,7 +1892,9 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 		stored_heights[i]=height
 	end
 end
--- returns a table of x-indices and z-indices
+
+-- takes in a list of selected objects in the form {"tile", tile_vertex_obj} (non-tile objects are ignored)
+-- returns two 1:1 tables of unique x-indices and z-indices pairs for all tiles in this set of tile vertex objects
 function ProvMapEdit:getSelectedTilesFromObjs(objs)
 	local x_table = {}
 	local z_table = {}
@@ -1793,7 +1918,9 @@ function ProvMapEdit:getSelectedTilesFromObjs(objs)
 	return x_table,z_table
 end
 
--- returns a table of x-indices and z-indices
+-- takes in a list of selected objects in the form {"tile", tile_vertex_obj} (non-tile objects are ignored)
+-- returns two 1:1 tables of unique x-indices and z-indices pairs for all tiles in this set of tile vertex objects
+-- this expanded version also includes all non-diagonally adjacent tiles
 function ProvMapEdit:getSelectedTilesFromObjs_expanded(objs)
 	local x_table = {}
 	local z_table = {}
@@ -1825,6 +1952,7 @@ function ProvMapEdit:getSelectedTilesFromObjs_expanded(objs)
 	return x_table,z_table
 end
 
+-- regenerates all the appropiate walls for given table of selected object tile vertices {"tile", tile_vertex_object}
 function ProvMapEdit:updateSelectedTileWalls(objs)
 	local x_t,z_t = self:getSelectedTilesFromObjs_expanded(objs)
 	for i,x in ipairs(x_t) do
@@ -1850,8 +1978,44 @@ function ProvMapEdit:translateTileVerts(x,z, height_t)
 			height_info = new_heights
 		end
 	else
-		error(string.format("ProvMapEdit:editTileVerts: invalid new_heights argument, expected table/string got %s", nh_arg_type))
+		error(string.format("ProvMapEdit:translateTileVerts(): invalid new_heights argument, expected table/string got %s", nh_arg_type))
 	end
+end
+
+function ProvMapEdit:setTileTexture(x,z,tex_name)
+	local loaded_textures = self.props.mapedit_texture_list
+	local tex_id = loaded_textures[tex_name]
+	assert(tex_id)
+	tex_id = tex_id - 1 -- shift to 0-index for GLSL
+
+	local index = self:getTilesIndexInMesh( x,z )
+	if not index then return nil end
+
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	mesh:setVertexAttribute(index+0, 3, tex_id)
+	mesh:setVertexAttribute(index+1, 3, tex_id)
+	mesh:setVertexAttribute(index+2, 3, tex_id)
+	mesh:setVertexAttribute(index+3, 3, tex_id)
+	self.props.mapedit_tile_textures[z][x] = tex_name
+	return true
+end
+
+function ProvMapEdit:setWallTexture(x,z,side,tex_name)
+	local loaded_textures = self.props.mapedit_texture_list
+	local tex_id = loaded_textures[tex_name]
+	assert(tex_id)
+	tex_id = tex_id - 1 -- shift to 0-index for GLSL
+
+	local index = self:getWallsIndexInMesh( x,z, side )
+	if not index then return nil end
+
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	mesh:setVertexAttribute(index+0, 3, tex_id)
+	mesh:setVertexAttribute(index+1, 3, tex_id)
+	mesh:setVertexAttribute(index+2, 3, tex_id)
+	mesh:setVertexAttribute(index+3, 3, tex_id)
+	self.props.mapedit_wall_textures[z][x][side] = tex_name
+	return true
 end
 
 function ProvMapEdit:__getScaleByDist()

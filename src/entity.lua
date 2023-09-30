@@ -424,15 +424,21 @@ function Entity:setAnimationInterp(interp)
 	model.props.model_i_animator_interp = interp
 end
 
-function Entity:setAnimationSpeed(speed)
+function Entity:setAnimationSpeed(speed, which)
 	local model = self:getModel()
 	if not model then
 		error(string.format("Entity:setAnimationSpeed(): entity "%s" has no model", self:getIdentifier())) end
 	local anim1,anim2 = self:getAnimator()
 	if not (anim1 and anim2) then
 		error(string.format("Entity:setAnimationSpeed(): entity's \"%s\" model has no animators", self:getIdentifier())) end
-	anim1:setSpeed(speed)
-	anim2:setSpeed(speed)
+	if not which then
+		anim1:setSpeed(speed)
+		anim2:setSpeed(speed)
+	elseif which == 1 then
+		anim1:setSpeed(speed)
+	else
+		anim2:setSpeed(speed)
+	end
 end
 
 function Entity:getAnimationByName(name)

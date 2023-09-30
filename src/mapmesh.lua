@@ -81,7 +81,7 @@ end
 -- returns texture atlas canvas and uvs
 function MapMesh:generateTextureAtlas( imgs )
 	local createTextureAtlas = require "texatlas"
-	local canv, uvs = createTextureAtlas( imgs , 512,512 )
+	local canv, uvs = createTextureAtlas( imgs , 1024,1024 )
 	assert(canv)
 	return canv, uvs
 end

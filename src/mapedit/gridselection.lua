@@ -209,8 +209,17 @@ function MapEditGUIGridSelection:new(img_table, action)
 		local mx,my = love.mouse.getPosition()
 	end
 
+	-- gets the currently selected option in the grid
+	-- makes sure that the selected option still exists
+	-- inside the list of possible options
 	function this:getGridSelectedObject()
-		return self.hovered_selection
+		for i,v in ipairs(self.table) do
+			if v==self.curr_selection then
+				return self.curr_selection
+			end
+		end
+		-- the current selection no longer exists in the grid
+		self.curr_selection = nil
 	end
 
 	function this:action()

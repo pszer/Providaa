@@ -220,6 +220,52 @@ function Map.internalLoadAnimTextureDefinitions(map, anim_textures_info, texture
 	return tex_count
 end
 
+-- not used in map loading, only used in map editting, see mapedit.lua
+function Map.parseAnimTextureDefinitions(anim_textures_def, loaded_textures)
+	-- generate the information needed for animated textures
+	-- if an animated texture requires a texture that's not loaded, this function
+	-- returns nil,anim_textures_info otherwise true,anim_textures_info
+	local anim_textures_info = {}
+	local status = true
+	for i,v in pairs(anim_textures_def) do
+		anim_textures_info[i] = v
+
+		local texs = v.textures
+
+		local seq_length = #v.sequence
+		local tex_count  = #v.textures
+		anim_textures_info[i].seq_length = seq_length
+		anim_textures_info[i].tex_count  = tex_count
+		anim_textures_info[i].delay = v.delay or 8
+
+		local seq = anim_textures_info[i].sequence
+		for j,u in ipairs(seq) do
+			if u > tex_count then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = tex_count
+			elseif u < 1 then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = 1
+			end
+		end
+
+		anim_textures_info[i].indices = {}
+		for j,tex_name in ipairs(texs) do
+			local tex_i = loaded_textures[tex_name]
+			--assert(tex_i)
+			--local index =load_tex(tex_name)
+			if tex_i then
+				anim_textures_info[i].indices[j] = tex_i
+			else
+				anim_textures_info[i].indices[j] = 1
+				status = false
+			end
+		end
+	end
+
+	return status, anim_textures_info
+end
+
 -- returns vert_count, index_count, attr_count
 function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
                                             vert_count, index_count, attr_count,

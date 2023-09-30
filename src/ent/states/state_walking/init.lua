@@ -53,7 +53,7 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 				local walk_speed = state.state_walking_speed
 			local ent_speed  = ent:getSpeed()
 			--ent:setAnimationSpeed(0.75 + 0.25*(anim_speed * ent_speed / walk_speed))
-			ent:setAnimationSpeed(1)
+			ent:setAnimationSpeed(1,1)
 			local diff = (walk_speed - ent_speed) / walk_speed
 			ent:setAnimationInterp(diff * diff)
 
@@ -66,7 +66,7 @@ local StateWalkingPrototype = EntityStatePropPrototype:extend{
 	{"state_enter" , nil, function(GameData)
 		return function(ent,state)
 			local walk_anim  = {"Walk", 0.0, 1.0, true}
-			local stand_anim = {"Stand", 0.0, 1.0, true}
+			local stand_anim = {"Stand", 0.0, 0.75, true}
 			ent:playAnimationInterp(walk_anim, stand_anim, 0.0)
 		end
 	end },
