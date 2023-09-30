@@ -24,23 +24,30 @@ local MapEditGUIImage = {
 }
 MapEditGUIImage.__index = MapEditGUIImage
 
-function MapEditGUIImage:new(img,x,y,action)
+function MapEditGUIImage:new(img,x,y,w,h,action,align_x,align_y,bg_col)
 	local this = {
 		x=x,
 		y=y,
-		w=0,
-		h=0,
+		w=w,
+		h=h,
 		img = nil,
 		action = action,
 		hover = false,
 		disable = false,
+		bg_col = bg_col,
+
+		align_x = align_x or "middle",
+		align_y = align_y or "middle"
 	}
 
-	local img_ = Loader:getTextureReference(img)
-	assert(img_)
-	self.img = img_
-
-	this.w,this.h = img_:getDimensions()
+	if img then
+		local img_ = Loader:getTextureReference(img)
+		assert(img_)
+		self.img = img_
+		if not w and not h then
+			this.w,this.h = img_:getDimensions()
+		end
+	end
 
 	function this:updateHoverInfo()
 		local x,y,w,h = self.x, self.y, self.w, self.h
@@ -55,6 +62,12 @@ function MapEditGUIImage:new(img,x,y,action)
 		return nil
 	end
 
+	function this:setImage(image)
+		if image then
+			self.img = image
+		end
+	end
+
 	function this:getCurrentlyHoveredOption()
 		if self.hover then return self end
 		return nil
@@ -62,7 +75,31 @@ function MapEditGUIImage:new(img,x,y,action)
 
 	function this:draw()
 		love.graphics.origin()
-		love.graphics.draw(self.img, self.x, self.y)
+		if self.bg_col then
+			love.graphics.setColor(self.bg_col)
+			love.graphics.rectangle("fill",self.x,self.y,self.w,self.h)
+			love.graphics.setColor(1,1,1,1)
+		end
+
+		if self.img then
+			local img = self.img
+			local tw,th = img:getDimensions()
+			local Sx,Sy = tw/(self.w),
+										th/(self.h)
+			local offsetx = 0
+			local offsety = 0
+
+			if Sy > Sx then
+				Sx = Sy
+				offsetx = self.w*0.5 - tw*(0.5/Sx)
+			elseif Sx < Sy then
+				Sy = Sx
+				offsety = self.h*0.5 - tw*(0.5/Sy)
+			end
+
+			local x,y,w,h = self.x,self.y,self.w,self.h
+			love.graphics.draw(img, x+offsetx, y+offsety, 0, 1/Sx,1/Sy)
+		end
 	end
 
 	function this.setX(self,x)

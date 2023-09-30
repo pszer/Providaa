@@ -3,6 +3,7 @@
 --
 
 local guiscrollb  = require 'mapedit.scrollbar'
+local guirender   = require 'mapedit.guidraw'
 
 local MapEditGUIGridSelection = {
 	grid_w = 32,
@@ -11,7 +12,7 @@ local MapEditGUIGridSelection = {
 MapEditGUIGridSelection.__index = MapEditGUIGridSelection
 
 -- each entry in img_table is a table {name,image_data}
-function MapEditGUIGridSelection:new(img_table)
+function MapEditGUIGridSelection:new(img_table, action)
 	local this = {
 		x=0,
 		y=0,
@@ -23,6 +24,8 @@ function MapEditGUIGridSelection:new(img_table)
 		grid_h = 1,
 		grid_h_offset = 0,
 		curr_selection = nil,
+		hovered_selection = nil,
+		__action = action,
 
 		scrollbar = guiscrollb:new(100),
 		scroll_r = 0.0,
@@ -49,9 +52,10 @@ function MapEditGUIGridSelection:new(img_table)
 			self.grid_h_offset = 0
 		else
 			local diff = self.h - (self.grid_h * grid_pix_h)
-			self.grid_h_offset = diff * self.scroll_r
+			self.grid_h_offset = -diff * self.scroll_r
 		end
 
+		self.scrollbar:update()
 		self:generateText()
 	end
 
@@ -68,45 +72,88 @@ function MapEditGUIGridSelection:new(img_table)
 	end
 
 	function this:draw()
+		self.scrollbar:draw()
+
 		local x,y,w,h = self.x,self.y,self.w,self.h
 		love.graphics.setScissor(x,y,w,h)
 		love.graphics.setColor(0,0,0,1)
-		love.graphics.rectangle(x,y,w,h)
+		love.graphics.rectangle("fill",x,y,w,h)
 
 		local h_offset = self.grid_h_offset
 		local t = self.table
 		local count = #t
 
-		for i=1,count do
-			local X,Y = i % self.grid_w,
-			            math.floor(i / self.grid_w)
+		local txt,txt_x,txt_y = nil,nil,nil
 
-			local _x,_y = X*grid_pix_w,
-			              Y*grid_pix_h - grid_h_offset
+		for I=0,count-1 do
+			local X,Y = I % self.grid_w,
+			            math.floor(I / self.grid_w)
+			local i = I+1
+
+			local _x,_y = X*grid_pix_w + x,
+			              Y*grid_pix_h - h_offset + y
 
 			local bg_col = nil
 			local border_col = nil
 			if self.curr_selection == t[i] then
 				bg_col = {0.3,0.3,0.3,1}
-				border_col = {1,1,1,1}
+				border_col = {255/255,157/255,0/255,1}
+			else
+				bg_col = {0.0,0.0,0.0,1}
+				border_col = {0.2,0.2,0.2,1}
 			end
-			guirender:drawTile(_x,_y,grid_pix_w,grid_pix_h,bg_col,border_col)
+			guirender:drawTile(_x,_y,grid_pix_w-1,grid_pix_h-1, bg_col,border_col)
 
 			local img = t[i]
-			if img then
-				local img_w,img_h = img:getDimensions()
-				local Sx,Sy = 1/(img_w/(grid_pix_w-2)),
-				              1/(img_h/(grid_pix_h-2))
+			if img[2] then
+				local img_w,img_h = img[2]:getDimensions()
+				--[[local Sx,Sy = 1/(img_w/(grid_pix_w-3)),
+				              1/(img_h/(grid_pix_h-3))
 
-				love.graphics.draw(img, _x+1, _y+1, Sx,Sy)
+				if Sy < Sx then
+					love.graphics.draw(img[2], _x+1 + (grid_pix_w*(1.0-Sy))*0.5, _y+1, 0, Sy,Sy)
+				elseif Sx < Sy then
+					love.graphics.draw(img[2], _x+1, _y+1 + (grid_pix_h*(1.0-Sx))*0.5, 0, Sx,Sx)
+				else
+					love.graphics.draw(img[2], _x+1, _y+1, 0, Sx,Sy)
+				end--]]
+
+				local tw,th = img_w,img_h
+				local Sx,Sy = tw/(grid_pix_w-3),
+											th/(grid_pix_h-3)
+				local offsetx = 0
+				local offsety = 0
+
+				if Sy > Sx then
+					Sx = Sy
+					offsetx = (grid_pix_w-3)*0.5 - tw*(0.5/Sx)
+				elseif Sx < Sy then
+					Sy = Sx
+					offsety = (grid_pix_h-3)*0.5 - tw*(0.5/Sy)
+				end
+
+				love.graphics.draw(img[2], _x+offsetx+1, _y+offsety+1, 0, 1/Sx,1/Sy)
+
 			end
-			if t[i].__text then
-				local txt = t[i].__text
-				love.graphics.draw(txt, _x+1, _y+1)
+			if t[i].__text and t[i] == self.hovered_selection then
+				-- defer drawing the text to the end, so it isn't drawn over
+				-- by other things
+				local tw,th = t[i].__text:getDimensions()
+
+				txt,txt_x,txt_y = t[i].__text,_x+grid_pix_w*0.5-tw*0.5,_y+grid_pix_h*0.5-th*0.5
 			end
 		end
 
 		love.graphics.setScissor()
+
+		if txt then
+			local tw,th = txt:getDimensions()
+			love.graphics.setColor(0,0,0,1)
+			love.graphics.rectangle("fill", txt_x, txt_y, tw, th)
+			love.graphics.setColor(1,1,1,1)
+			love.graphics.draw(txt, txt_x, txt_y)
+		end
+
 	end
 
 	function this:updateHoverInfo()
@@ -121,6 +168,7 @@ function MapEditGUIGridSelection:new(img_table)
 		local hover = scrlb:updateHoverInfo()
 		if hover then
 			self.hover = true
+			self.hovered_selection = nil
 			return scrlb
 		end
 
@@ -129,9 +177,24 @@ function MapEditGUIGridSelection:new(img_table)
 		   y<=my and my<=y+h
 		then
 			self.hover = true
+
+			local mdx,mdy = mx-self.x,my-self.y+self.grid_h_offset
+			local X,Y = math.floor(mdx/grid_pix_w),
+									math.floor(mdy/grid_pix_h)
+			local gw,gh = self.grid_w, self.grid_h
+			local I = Y*gw + X + 1
+
+			local hover_selection = self.table[I]
+			if hover_selection then
+				self.hovered_selection = hover_selection
+			else
+				self.hovered_selection = nil
+			end
+
 			return self
 		end
 		self.hover = false
+		self.hovered_selection = nil
 		return nil
 	end
 
@@ -145,18 +208,39 @@ function MapEditGUIGridSelection:new(img_table)
 		local mx,my = love.mouse.getPosition()
 	end
 
+	function this:getGridSelectedObject()
+		return self.hovered_selection
+	end
+
+	function this:action()
+		local mx,my = love.mouse.getPosition()
+		if self.scrollbar.hover then
+			self.scrollbar:action()
+			return
+		elseif self.hover and self.hovered_selection then
+			self.curr_selection = self.hovered_selection
+		end
+
+		if self.__action then
+			self.__action(self)
+		end
+	end
+
 	function this.setX(self,x)
 		self.x = x end
 	function this.setY(self,y)
 		self.y = y end
 	function this.setW(self,w)
-		w = math.floor(w/grid_w)*grid_w
-		if w == 0 then w = grid_w end
+		w = math.floor(w/grid_pix_w)*grid_pix_w
+		if w == 0 then w = grid_pix_w end
 		self.w = w
 		end
 	function this.setH(self,h)
 		self.scrollbar.h = h
 		self.h = h end
+
+	setmetatable(this, MapEditGUIGridSelection)
+	return this
 end
 
 return MapEditGUIGridSelection

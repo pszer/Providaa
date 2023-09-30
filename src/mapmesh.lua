@@ -41,6 +41,7 @@ function MapMesh:new(args)
 		uvs = nil,
 		uvs_buffer = {},
 		textures = nil,
+		texture_names = nil,
 
 		animated_tex_info = nil or {},
 

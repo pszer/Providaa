@@ -23,7 +23,7 @@ local MapEditGUIButton = {
 }
 MapEditGUIButton.__index = MapEditGUIButton
 
-function MapEditGUIButton:new(str,icon,x,y,action)
+function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 	assert((str or icon) and action)
 
 	local this = {
@@ -37,6 +37,8 @@ function MapEditGUIButton:new(str,icon,x,y,action)
 		action = action,
 		hover = false,
 		disable = false,
+		align_x = align_x or "middle",
+		align_y = align_y or "middle",
 	}
 
 	if this.text ~= "" then
@@ -91,9 +93,23 @@ function MapEditGUIButton:new(str,icon,x,y,action)
 	end
 
 	function this.setX(self,x)
-		self.x = x - self.w*0.5 end
+		if self.align_x == "middle" then
+			self.x = x - self.w*0.5
+		elseif self.align_x == "left" then
+			self.x = x
+		else
+			self.x = x - self.w
+		end
+	end
 	function this.setY(self,y)
-		self.y = y - self.h*0.5 end
+		if self.align_y == "middle" then
+			self.y = y - self.h*0.5
+		elseif self.align_y == "top" then
+			self.y = y
+		else
+			self.y = y - self.h
+		end
+	end
 	function this.setW(self,w)
 		end
 	function this.setH(self,h) 

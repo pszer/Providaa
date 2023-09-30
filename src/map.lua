@@ -752,6 +752,7 @@ function Map.generateMapMesh( map , params )
 	
 	if not keep_textures then
 		textures = nil
+		tex_names = nil
 	end
 
 	return MapMesh:new{
@@ -765,7 +766,8 @@ function Map.generateMapMesh( map , params )
 		wall_vert_map=wall_vert_map,
 		wall_exists=wall_exists,
 
-		textures=textures}
+		textures=textures,
+		texture_names=tex_names}
 
 end
 

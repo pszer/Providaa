@@ -122,6 +122,37 @@ function ProvMapEdit:loadMap(map_name)
 	self:generateMeshHighlightAttributes()
 	self:attachHighlightMesh()
 
+	local textures = {}
+	local tex_names = map_mesh.texture_names
+	for i,v in ipairs(map_mesh.textures) do
+		local entry = {
+			tex_names[i],
+			v
+		}
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		table.insert(textures, entry)
+		--textures[i] = entry
+	end
+	self.props.mapedit_texture_list = textures
+
 	local skybox_img, skybox_fname, skybox_brightness = Map.generateSkybox( map_file )
 	if skybox_img then
 		self.props.mapedit_skybox_img = skybox_img
@@ -176,6 +207,12 @@ function ProvMapEdit:allocateObjects()
 			end
 		end
 	end
+end
+
+function ProvMapEdit:addTexture(tex_name)
+	local tex = Loader:getTextureReference(tex_name)
+	local entry = {tex_name, tex}
+	table.insert(self.props.mapedit_texture_list, entry)
 end
 
 function ProvMapEdit:defineCommands()

@@ -20,6 +20,7 @@ function MapEditGUIScrollbar:new(h)
 
 		__start_mx=0,
 		__start_my=0,
+		__start_ratio = 0.0,
 
 		hover=false
 	}
@@ -30,13 +31,14 @@ function MapEditGUIScrollbar:new(h)
 			self.drag = false
 		end
 
-		if drag then
+		if self.drag then
 			local x,y = love.mouse.getPosition()
 			local H = self.h-20
-			local r = (y - self.__start_my) / H
+			local r = (y - self.__start_my) / H + self.__start_ratio
 			if r < 0 then r = 0 end
 			if r > 1 then r = 1 end
 			self.ratio = r
+			print(r)
 		end
 	end
 
@@ -66,6 +68,10 @@ function MapEditGUIScrollbar:new(h)
 		self.drag = true
 
 		self.__start_mx,self.__start_my = love.mouse.getPosition()
+		local r = (self.__start_my-self.y-10)/(self.h-20)
+		if r < 0 then r = 0 end
+		if r > 1 then r = 1 end
+		self.__start_ratio = r
 	end
 
 	function this.setX(self,x)
@@ -80,3 +86,5 @@ function MapEditGUIScrollbar:new(h)
 	setmetatable(this, MapEditGUIScrollbar)
 	return this
 end
+
+return MapEditGUIScrollbar

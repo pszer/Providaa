@@ -51,6 +51,9 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_wall_vertices", "table", nil, PropDefaultTable{}, [[map_width x map_height mapping of walls to their vertices in map_mesh,
 	                                                              each entry is {west=int/nil, south=int/nil, east=int/nil, north=int/nil;}
 	                                                              each number is a start index, the next 4 vertices starting from that
-																  index in the mesh are the vertices for the tile]]}
+																  index in the mesh are the vertices for the tile]]},
+
+
+	{"mapedit_texture_list", "table", nil, PropDefaultTable{}, "loaded tile/wall textures"}
 
 }

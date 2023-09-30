@@ -308,7 +308,7 @@ function MapEditGUI:define(mapedit)
 		  action=function(props)
 		    return about_win:new({},
 				{
-					guiimage:new("mapedit/ic.png",0,0,function() self:displayPopup("~b~(red)Do not click the kappa.") end),
+					guiimage:new("mapedit/ic.png",0,0,80,120,function() self:displayPopup("~b~(red)Do not click the kappa.") end),
 					guitextbox:new("\n\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
 					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end)}
 					,256,256,256,256)
@@ -356,8 +356,49 @@ function MapEditGUI:define(mapedit)
 		}
 		)
 
-	self.main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10,CONTROL_LOCK.MAPEDIT_PANEL)
 	local main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10)
+
+	self.texture_grid = guiimggrid:new(
+		mapedit.props.mapedit_texture_list,
+
+		function (self)
+			local selection = self.curr_selection
+			if selection then
+				MapEditGUI.grid_info_panel_image:setImage(selection[2])
+			end
+		end
+	)
+	local grid_info_panel_layout = guilayout:define(
+		{id="image_region",
+		 split_type="+x",
+		 split_pix=110,
+		 sub=
+			{id="button_region",
+			 split_pix=nil
+			}
+		},
+		{"image_region", region_middle_f},
+		{"button_region", region_pixoffset_f(0,10)},
+		{"button_region", region_pixoffset_f(0,35)}
+	)
+	local grid_info_panel_window_def = guiwindow:define({
+		win_min_w=212,
+		win_max_w=5000,
+		win_min_h=100,
+		win_max_h=5000,
+	}, grid_info_panel_layout)
+
+	self.grid_info_panel_image = guiimage:new(nil,0,0,96,96,function() self:displayPopup("~b~(red)Do not click the kappa.") end,
+	 "middle","middle",{0,0,0,1})
+	local grid_info_panel_window = grid_info_panel_window_def:new(
+		{},
+		{
+			self.grid_info_panel_image,
+			guibutton:new("Import",nil,0,0, function(self,win) end, "left", "top"),
+			guibutton:new("Delete",nil,0,0, function(self,win) end, "left", "top")
+		},
+		0,0,300,100
+	)
 
 	local panel_layout = guilayout:define(
 		{id="toolbar_region",
@@ -365,19 +406,29 @@ function MapEditGUI:define(mapedit)
 		 split_pix=20,
 		 sub = {
 			id="panel_region",
-			split_type="+x",
-			split_pix=160,
+			split_type="-x",
+			split_pix=192+20,
+			sub = {
+			 id = "grid_info_panel",
+			 split_type="+y",
+			 split_pix=110,
+			 sub = {
+				id = "grid_region",
+				split_type=nil
+			 }
+			}
 		 }
 		},
 
 		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end},
-		{"panel_region", function(l) return l.x,l.y,l.w,l.h end}
+		{"grid_region", function(l) return l.x,l.y,l.w,l.h end},
+		{"grid_info_panel", region_default_f}
 	)
 
 	local w,h = love.graphics.getDimensions()
 	self.main_panel = guiscreen:new(
 		panel_layout:new(
-		  0,0,w,h,{main_toolbar}),
+		  0,0,w,h,{main_toolbar, self.texture_grid, grid_info_panel_window}),
 			function(o) self:handleTopLevelThrownObject(o) end,
 			CONTROL_LOCK.MAPEDIT_PANEL,
 			CONTROL_LOCK.MAPEDIT_WINDOW
