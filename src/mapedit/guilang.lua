@@ -16,7 +16,7 @@ local __lang_fonts = {
 	jp = {
 		regular = {fname = "KH-Dot-Kodenmachou-12.ttf"   ,size=12,hinting="normal"},
 		bold    = {fname = "KH-Dot-Kodenmachou-12-Ki.ttf",size=12,hinting="normal"},
-		italic  = {fname = "KH-Dot-Kodenmachou-12-Ko.ttf",size=12,hinting="normal"},
+		italic  = {fname = "KH-Dot-Kodenmachou-12-Ki.ttf",size=12,hinting="normal"},
 		ibold   = {fname = "KH-Dot-Kodenmachou-12-Ki.ttf",size=12,hinting="normal"},
 	}
 }
@@ -67,44 +67,48 @@ local MapEditGUILanguageStrings = {
 		pl="~(lpurple)Rozgrupuj",
 		jp="モデル組を解く"
 	},
+	["No group"]={
+		pl="Nie ma grupy",
+		jp="選んでされた組はない",
+	},
 
 	["~(lgray)--Transform--"]={
 		pl="~(lgray)--Transformuj--",
 		jp="~(lgray)トランスフォーマー"
 	},
 	["Flip"]={
-		pl="Odzwierciedlić",
-		jp="映す",
+		pl="Odbij",
+		jp="反転する",
 	},
 
 	["... by ~i~(lred)X~r Axis"]={
-		pl="... przez Oś ~i~(lred)X~r",
-		jp="~i~(lred)Xのアクシスで",
+		pl="... względem Osi ~i~(lred)X~r",
+		jp="。。~i~(lred)Ｘ~rの軸に対して",
 	},
 	["... by ~i~(lgreen)Y~r Axis"]={
-		pl="... przez Oś ~i~(lgreen)Y~r",
-		jp="~i~(lgreen)Yのアクシスで",
+		pl="... względem Osi ~i~(lgreen)Y~r",
+		jp="。。~i~(lgreen)Ｙ~rの軸に対して",
 	},
 	["... by ~i~(lblue)Z~r Axis"]={
-		pl="... przez Oś ~i~(lblue)Z~r",
-		jp="~i~(lblue)Xのアクシスでで",
+		pl="... względem Osi ~i~(lblue)Z~r",
+		jp="。。~i~(lblue)Ｚ~rの軸に対して",
 	},
 
 	["Rotate"]={
 		pl="Obróć",
-		jp="回す",
+		jp="~b回転~rする",
 	},
 	["... around ~i~(lred)X~r Axis"]={
 		pl="... dookoła Oś ~i~(lred)X~r",
-		jp="~i~(lred)Xのアクシスに",
+		jp="。。~i~(lred)Ｘ~rの軸を中心に",
 	},
 	["... around ~i~(lgreen)Y~r Axis"]={
 		pl="... dookoła Oś ~i~(lgreen)Y~r",
-		jp="~i~(lgreen)Yのアクシスに",
+		jp="。。~i~(lgreen)Ｙ~rの軸を中心に",
 	},
 	["... around ~i~(lblue)Z~r Axis"]={
 		pl="... dookoła Oś ~i~(lblue)Z~r",
-		jp="~i~(lblue)Zのアクシスに",
+		jp="。。~i~(lblue)Ｚ~rの軸を中心に",
 	},
 	["~bReset"]={
 		pl="Zresetuj",
@@ -128,19 +132,19 @@ local MapEditGUILanguageStrings = {
 	},
 	["\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"]={
 		pl="\nCześć :)\n\nKappa edytor map © 2023 \nMIT licencja\n(zobacz LICENSE.md)",
-		jp="\n いらっしゃいませ :)\n\nカッパのマップのエディター © 2023\nMIT特許\n(LICENSE.mdを検問しますください)",
+		jp="\n いらっしゃいませ :)\n\nカッパのマップのエディター(C) 2023\nMIT特許\n(LICENSE.mdを検問しますください)",
 	},
 	["~bClose."]={
 		pl="~bZamknij",
-		jp="~bしまう",
+		jp="~b閉じる",
 	},
 	["Save"]={
 		pl="Zapisz",
-		jp="セーブする"
+		jp="セーブ"
 	},
 	["~iQuit"]={
-		pl="Wyjdź",
-		jp="出る"
+		pl="~iWyjdź",
+		jp="~i出る"
 	},
 	["File"]={
 		pl="Plik",
@@ -155,12 +159,18 @@ local MapEditGUILanguageStrings = {
 		jp="介助",
 	},
 	["Import"]={
-		pl="Przywóz",
+		pl="Importuj",
 		jp="輸入する",
 	},
 	["Delete"]={
 		pl="Skasuj",
 		jp="削除する",
+	},
+
+	["default_group_name"]={
+		eng="Group",
+		pl ="Grupa",
+		jp ="組",
 	}
 }
 
@@ -186,7 +196,7 @@ MapEditGUILanguage.__index = function(table, key)
 	local curr_lang = MapEditGUILanguage.__curr_lang
 
 	local t = MapEditGUILanguageStrings[key]
-	if t and curr_lang=="eng" then
+	if t and not t["eng"] and curr_lang=="eng" then
 		local key = key
 		if key == "" then return " " end
 		return key

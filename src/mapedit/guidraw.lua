@@ -342,6 +342,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 
 	local texts = {}
 	local tinfo = {}
+	love.graphics.setColor(1,1,1,1)
 	for i,v in ipairs(substrs) do
 		local str   = v[1]
 		local ttype = v[2]
@@ -355,7 +356,8 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		elseif ttype == "ibold"   then f = font_ibold
 		end
 		local r,g,b = HexToRGB(col)
-		texts[i] = love.graphics.newText(f, {{r/255,g/255,b/255},str})
+		local S = 1/255
+		texts[i] = love.graphics.newText(f, {{r*S,g*S,b*S},str})
 		local t = texts[i]
 
 		tinfo[i] = {t:getWidth(), t:getHeight(), nl}
@@ -393,7 +395,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 			x=0
 		end
 
-		love.graphics.draw(text,x,y)
+		love.graphics.draw(text,x,y-1)
 		x,h = x+tw,math.max(h,th)
 	end
 	love.graphics.setCanvas()

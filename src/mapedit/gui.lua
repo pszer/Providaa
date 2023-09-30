@@ -93,7 +93,7 @@ function MapEditGUI:define(mapedit)
 			local models_outside = props.group_info.models_outside
 			local name_tab = ""
 			if #groups==0 then
-				name_tab = "No group"
+				name_tab = lang["No group"]
 			else
 				local count=#groups
 				for i=1,count do

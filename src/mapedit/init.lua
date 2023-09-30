@@ -15,6 +15,7 @@ local transobj     = require "transobj"
 local gui         = require 'mapedit.gui'
 local guirender   = require 'mapedit.guidraw'
 local commands    = require 'mapedit.command'
+local lang        = require 'mapedit.guilang'
 
 ProvMapEdit = {
 
@@ -498,7 +499,7 @@ function ProvMapEdit:defineCommands()
 			for i,v in ipairs(props.select_objects) do
 				if v[1] == "model" then table.insert(models, v[2]) end
 			end
-			props.created_group = self:createModelGroup("Group",models)
+			props.created_group = self:createModelGroup(nil,models)
 		end, -- command function
 		function(props) -- undo command function
 			self:dissolveGroup(props.created_group)
@@ -798,7 +799,8 @@ function ProvMapEdit:setupInputHandling()
 	end))
 
 	local additive_select_obj = nil
-	local viewport_select = Hook:new(function ()
+
+	local __viewport_select_edit_tool = function()
 		local x,y = love.mouse.getPosition()
 		local obj = self:objectAtCursor( x,y , true, true, true)
 
@@ -850,14 +852,28 @@ function ProvMapEdit:setupInputHandling()
 
 		additive_select_obj = nil
 		self:commitCommand("additive_select", {select_objects={self:decomposeObject(obj)}})
-	end)
-	self.viewport_input:getEvent("edit_select","down"):addHook(viewport_select)
+	end
 
-	local viewport_deselect = Hook:new(function ()
-		if not self:selectionEmpty() then
-			self:viewportRightClickAction()
+	local __viewport_select_paint_tool = function()
+		local x,y = love.mouse.getPosition()
+		local obj = self:objectAtCursor( x,y , true, true, false)
+	end
+
+	local viewport_select = Hook:new(function ()
+		local tool = self.props.mapedit_tool
+		if tool == "edit" then
+			__viewport_select_edit_tool()
+		elseif tool == "paint" then
+			__viewport_select_paint_tool()
 		end
 	end)
+	local viewport_deselect = Hook:new(function ()
+		if not self:isSelectionEmpty() then
+			self:viewportRightClickAction()
+			--self:commitCommand("deselect_all", {})
+		end
+	end)
+	self.viewport_input:getEvent("edit_select", "down"):addHook(viewport_select)
 	self.viewport_input:getEvent("edit_deselect", "down"):addHook(viewport_deselect)
 
 	local viewport_undo = Hook:new(function ()
@@ -1133,7 +1149,7 @@ function ProvMapEdit:addModelGroup(group)
 end
 
 function ProvMapEdit:makeUniqueGroupName(name)
-	local name = name or "Group"
+	local name = name or lang["default_group_name"]
 	local groups = self.props.mapedit_model_groups
 	local num = 1
 	local unique_name = name
@@ -1246,26 +1262,66 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	-- test against map mesh
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 
+	local function __test_tile(x,z)
+		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, self.alt_modifier)
+		if intersect and dist < min_dist then
+			if not self.alt_modifier then
+				mesh_test = {"tile",
+										 self:getTileVertexObject(x,z,1),
+										 self:getTileVertexObject(x,z,2),
+										 self:getTileVertexObject(x,z,3),
+										 self:getTileVertexObject(x,z,4)
+										 }
+			else
+				mesh_test = {"tile"}
+				for i,v in ipairs(verts) do
+					mesh_test[i+1] = self:getTileVertexObject(x,z,v)
+				end
+			end
+			min_dist = dist
+		end
+	end
+
+	local function __test_wall(x,z)
+		local intersect, dist = self:testWallSideAgainstRay(ray, x,z, 1)
+		if intersect and dist < min_dist  then
+			mesh_test = {"wall",self:getWallObject(x,z,1)}
+			min_dist = dist
+		end
+		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 2)
+		if intersect and dist < min_dist  then
+			mesh_test = {"wall",self:getWallObject(x,z,2)}
+			min_dist = dist
+		end
+		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 3)
+		if intersect and dist < min_dist  then
+			mesh_test = {"wall",self:getWallObject(x,z,3)}
+			min_dist = dist
+		end
+		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 4)
+		if intersect and dist < min_dist  then
+			mesh_test = {"wall",self:getWallObject(x,z,4)}
+			min_dist = dist
+		end
+	end
+
+	local function __test_model(model)
+		local intersect, dist = self:testModelAgainstRay(ray, model)
+		if intersect and dist < min_dist then
+			local group = self:isModelInAGroup(model)
+			if group then
+				mesh_test = {"model", unpack(group.insts)}
+			else
+				mesh_test = {"model", model}
+			end
+			min_dist = dist
+		end
+	end
+
 	if test_tiles then
 		for z=1,h do
 			for x=1,w do
-				local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, self.alt_modifier)
-				if intersect and dist < min_dist then
-					if not self.alt_modifier then
-						mesh_test = {"tile",
-												 self:getTileVertexObject(x,z,1),
-												 self:getTileVertexObject(x,z,2),
-												 self:getTileVertexObject(x,z,3),
-												 self:getTileVertexObject(x,z,4)
-												 }
-					else
-						mesh_test = {"tile"}
-						for i,v in ipairs(verts) do
-							mesh_test[i+1] = self:getTileVertexObject(x,z,v)
-						end
-					end
-					min_dist = dist
-				end
+				__test_tile(x,z)
 			end
 		end
 	end
@@ -1273,42 +1329,14 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	if test_walls then
 		for z=1,h do
 			for x=1,w do
-				local intersect, dist = self:testWallSideAgainstRay(ray, x,z, 1)
-				if intersect and dist < min_dist  then
-					mesh_test = {"wall",self:getWallObject(x,z,1)}
-					min_dist = dist
-				end
-				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 2)
-				if intersect and dist < min_dist  then
-					mesh_test = {"wall",self:getWallObject(x,z,2)}
-					min_dist = dist
-				end
-				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 3)
-				if intersect and dist < min_dist  then
-					mesh_test = {"wall",self:getWallObject(x,z,3)}
-					min_dist = dist
-				end
-				intersect, dist = self:testWallSideAgainstRay(ray, x,z, 4)
-				if intersect and dist < min_dist  then
-					mesh_test = {"wall",self:getWallObject(x,z,4)}
-					min_dist = dist
-				end
+				__test_wall(x,z)
 			end
 		end
 	end
 
 	if test_models then
 		for i,model in ipairs(self.props.mapedit_model_insts) do
-			local intersect, dist = self:testModelAgainstRay(ray, model)
-			if intersect and dist < min_dist then
-				local group = self:isModelInAGroup(model)
-				if group then
-					mesh_test = {"model", unpack(group.insts)}
-				else
-					mesh_test = {"model", model}
-				end
-				min_dist = dist
-			end
+			__test_model(model)
 		end
 	end
 
@@ -2972,7 +3000,7 @@ function ProvMapEdit:highlightObject(obj, highlight_val)
 end
 
 function ProvMapEdit:selectionCount()
-	return #self:selectionCount()
+	return #self.active_selection
 end
 
 function ProvMapEdit:isSelectionEmpty()
