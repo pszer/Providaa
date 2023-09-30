@@ -1209,6 +1209,24 @@ function Map.__generateSkybox(skybox)
 	return tex, tex_name, brightness
 end
 
+function Map.loadGroups(map, model_insts, create_group_func)
+	local groups = map.groups
+	if not groups then return {} end
+	local g = {}
+	for i,group in ipairs(groups) do
+		local name  = group.name
+		local insts = {}
+		for i,v in ipairs(group.insts) do
+			local m = model_insts[v]
+			if m then
+				table.insert(insts,m)
+			end
+		end
+
+		create_group_func(name, insts)
+	end
+end
+
 -- verifies if map format is correct
 -- returns nil if fine, otherwise returns an error string
 function Map.malformedCheck(map)

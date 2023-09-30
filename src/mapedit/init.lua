@@ -145,6 +145,13 @@ function ProvMapEdit:loadMap(map_name)
 	local models = Map.generateModelInstances( map_file, true )
 	self.props.mapedit_model_insts = models
 
+	Map.loadGroups(
+		models,
+		function(name,insts)
+			self:createModelGroup(name,insts)
+		end
+	)
+
 	self:copyPropsFromMap(map_file)
 	self:allocateObjects()
 end
@@ -1237,23 +1244,27 @@ end
 
 local __GroupMeta = {
 	isInGroup = function(self, inst)
-		for i,v in ipairs(self.insts) do
-			if inst == v then return true end
-		end
-		return false
+		--for i,v in ipairs(self.insts) do
+		--	if inst == v then return true end
+		--end
+		return self.__lookup[inst] ~= nil
+		--return false
 	end,
 
 	addToGroup = function(self, inst)
-		for i,v in ipairs(self.insts) do
+		--[[for i,v in ipairs(self.insts) do
 			if inst == v then return end
-		end
+		end--]]
+		if self.__lookup[inst] then return end
 		table.insert(self.insts, inst)
+		self.__lookup[inst]=true
 	end,
 
 	removeFromGroup = function(self, inst)
 		for i,v in ipairs(self.insts) do
 			if inst == v then
 				table.remove(self.insts, i)
+				self.__lookup[inst]=nil
 				return
 			end
 		end
@@ -1276,6 +1287,7 @@ function ProvMapEdit:createModelGroup(name, insts)
 	local group = {
 		name = nil,
 		insts = {},
+		__lookup = {},
 
 		centre = {0,0,0},
 		min = {0,0,0},
@@ -1284,6 +1296,7 @@ function ProvMapEdit:createModelGroup(name, insts)
 	for i,v in ipairs(insts) do
 		if not self:isModelInAGroup(v) then
 			table.insert(group.insts, v)
+			group.__lookup[v]=true
 		end
 	end
 	-- ignore if empty
@@ -1482,7 +1495,6 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	end
 
 	-- perform tests on each 4x4 section of the grid map
-	print()
 	local grid_size = 3
 	local region_tests = __tempregiontests
 	local g_w,g_h
