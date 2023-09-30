@@ -8,6 +8,8 @@ local guiwindow   = require 'mapedit.window'
 local guitextbox  = require 'mapedit.textelement'
 local guibutton   = require 'mapedit.button'
 local guiimage    = require 'mapedit.image'
+local guiscrollb  = require 'mapedit.scrollbar'
+local guiimggrid  = require 'mapedit.gridselection'
 
 local maptransform = require "mapedit.transform"
 

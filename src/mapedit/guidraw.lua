@@ -565,6 +565,15 @@ function MapEditGUIRender:drawScrollBar(x,y,h,ratio)
 	love.graphics.origin()
 end
 
+function MapEditGUIRender:drawTile(x,y,w,h, bg_col, border_col)
+	local bg_col     = bg_col or {0,0,0,1}
+	local border_col = border_col or {0.6,0.6,0.6,1}
+	love.graphics.setColor(0,0,0,1)
+	love.graphics.rectangle("fill",x,y,w,h)
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.rectangle("line",x,y,w,h)
+end
+
 function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_info)
 	cxtm_bb = self.__cxtm_bb 
 	cxtm_tt = self.__cxtm_tt 
