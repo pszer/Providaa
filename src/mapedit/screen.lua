@@ -149,14 +149,14 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 	end
 
 	function this:draw()
-		for i,v in ipairs(self.window_stack) do
-			v:draw()
-		end
-
 		for i,v in ipairs(self.elements) do
 			if self.element_status[i] then
 				v:draw()
 			end
+		end
+
+		for i,v in ipairs(self.window_stack) do
+			v:draw()
 		end
 	end
 
@@ -178,7 +178,9 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		if self:windowOpen() then
 			local wins = self:getFocusedWindowStack()
 
-			for i,v in ipairs(wins) do
+			local count = #wins
+			for i=count,1,-1 do
+				local v = wins[i]
 				if v.hover then
 					local e = v:getCurrentlyHoveredOption()
 					if e then return e end
@@ -203,7 +205,9 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		if self:windowOpen() then
 			local wins = self:getFocusedWindowStack()
 
-			for i,v in ipairs(wins) do
+			local count = #wins
+			for i=count,1,-1 do
+				local v = wins[i]
 				if v.hover then
 					return v
 				end
@@ -215,8 +219,11 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		if self:windowOpen() then
 			local wins = self:getFocusedWindowStack()
 
-			for i,v in ipairs(wins) do
+			local count = #wins
+			for i=count,1,-1 do
+				local v = wins[i]
 				if v.hover then
+					self:switchToWindow(v)
 					local e = v:click()
 					local e_type = provtype(e)
 					if e_type ~= "mapeditwindow" then
@@ -224,7 +231,7 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 					else
 						self:pushWindow(e)
 					end
-				else
+					return e
 				end
 			end
 		end

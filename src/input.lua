@@ -272,8 +272,6 @@ function queryKeybind(setting, level)
 	end
 end
 
--- code redundancy but who cares
---
 function scancodeStatus(scancode, level)
 	local level = level or CTRL.GAME
 	return queryScancode(scancode, level)

@@ -24,7 +24,12 @@ local MapEditGUIRender = {
 	__cxtm_tr = nil, -- top right corner
 	__cxtm_tl = nil, -- top left corner
 	__cxtm_br = nil, -- bottom right corner
-	__cxtm_bl = nil, -- bottom left 
+	__cxtm_bl = nil, -- bottom left
+
+	__scrlb_tt = nil,
+	__scrlb_mm = nil,
+	__scrlb_bb = nil,
+	__scrlb_b  = nil,
 
 	icons = {},
 
@@ -78,6 +83,11 @@ function MapEditGUIRender:initAssets()
 	self.__cxtm_bl = Loader:getTextureReference("mapedit/cxtm_bl.png")
 	self.__cxtm_tr = Loader:getTextureReference("mapedit/cxtm_tr.png")
 	self.__cxtm_tl = Loader:getTextureReference("mapedit/cxtm_tl.png")
+
+	self.__scrlb_tt = Loader:getTextureReference("mapedit/scrlb_tt.png")
+	self.__scrlb_mm = Loader:getTextureReference("mapedit/scrlb_mm.png")
+	self.__scrlb_bb = Loader:getTextureReference("mapedit/scrlb_bb.png")
+	self.__scrlb_b = Loader:getTextureReference("mapedit/scrlb_b.png")
 
 	self.checkerboard_tex = Loader:getTextureReference("mapedit/checkerboard.png")
 	self.checkerboard_tex:setWrap("repeat","repeat")
@@ -538,6 +548,21 @@ function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state
 	end
 
 	love.graphics.setColor(1,1,1,1)
+end
+
+function MapEditGUIRender:drawScrollBar(x,y,h,ratio)
+	local tt = self.__scrlb_tt
+	local mm = self.__scrlb_mm
+	local bb = self.__scrlb_bb 
+	local b  = self.__scrlb_b
+
+	love.graphics.origin()
+	love.graphics.translate(x,y)
+	love.graphics.draw(tt,0,0)
+	love.graphics.draw(mm,0,2,0,1,(h-4))
+	love.graphics.draw(bb,0,h-2)
+	love.graphics.draw(b,0,(h-20)*ratio)
+	love.graphics.origin()
 end
 
 function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_info)
