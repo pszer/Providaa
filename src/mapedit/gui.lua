@@ -293,7 +293,7 @@ function MapEditGUI:define(mapedit)
 	local lang_win_layout = guilayout:define(
 		{id="region",
 		 split_type=nil},
-		{"region", region_ypixoffset_f(0.5,10)},
+		{"region", region_ypixoffset_f(0.0,10)},
 		{"region", region_ypixoffset_f(0.5,35)},
 		{"region", region_ypixoffset_f(0.5,60)},
 		{"region", region_ypixoffset_f(0.5,85)}
@@ -321,7 +321,7 @@ function MapEditGUI:define(mapedit)
 		  action=function(props)
 		    return lang_win:new({},
 				{
-					guitextbox:new(lang["Set Language"],0,0,0,"center"),
+					guitextbox:new(lang["Set Language"],0,0,100,"center"),
 					guibutton:new("English",nil,0,0, function(self,win) lang:setLanguage("eng")
 					                                                    guirender:loadFonts(lang:getFontInfo())
 					                                                    MapEditGUI:define(mapedit) end,"middle","top"),

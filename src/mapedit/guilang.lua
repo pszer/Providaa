@@ -111,7 +111,7 @@ local MapEditGUILanguageStrings = {
 		jp="リセット",
 	},
 	["Keybinds"]={
-		pl="Ustawienie klawiatury",
+		pl="Ustawienia klawiatury",
 		jp="入力設定",
 	},
 	["Set Language"]={
