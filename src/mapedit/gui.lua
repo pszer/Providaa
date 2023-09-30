@@ -7,6 +7,7 @@ local guiscreen   = require 'mapedit.screen'
 local guiwindow   = require 'mapedit.window'
 local guitextbox  = require 'mapedit.textelement'
 local guibutton   = require 'mapedit.button'
+local guiimage    = require 'mapedit.image'
 
 local maptransform = require "mapedit.transform"
 
@@ -257,26 +258,32 @@ function MapEditGUI:define(mapedit)
 	local region_default_f = function(l) return l.x, l.y, l.w, l.h end
 	local region_middle_f = function(l) return l.x+l.w*0.5, l.y+l.h*0.5, l.w, l.h end
 	local region_offset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+l.h*_y, l.w, l.h end end
-	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+l.h_y, l.w, l.h end end
+	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+_y, l.w, l.h end end
 
 	-- About window
 	local about_win_layout = guilayout:define(
-		{id="region",
-		 split_type="+y",
-		 split_pix=70,
-		 sub = {
-			id="button_region",
-			split_type=nil
-		 }
+		{id="image_region",
+		 split_type="+x",
+		 split_pix=80,
+		 sub=
+			{id="region",
+			 split_type="+y",
+			 split_pix=90,
+			 sub = {
+				id="button_region",
+				split_type=nil
+			 }
+			}
 		},
-		{"region", region_default_f},
-		{"button_region", region_offset_f(0.5,0.5)}
+		{"image_region", region_middle_f},
+		{"region", region_pixoffset_f(-50,0)},
+		{"button_region", region_middle_f}
 	)
 	local about_win = guiwindow:define({
 		win_min_w=300,
 		win_max_w=300,
-		win_min_h=100,
-		win_max_h=100,
+		win_min_h=120,
+		win_max_h=120,
 	}, about_win_layout)
 
 	context["help_context"] = 
@@ -299,7 +306,8 @@ function MapEditGUI:define(mapedit)
 		  action=function(props)
 		    return about_win:new({},
 				{
-					guitextbox:new("\nHello :)\nKappa engine map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
+					guiimage:new("mapedit/ic.png"),
+					guitextbox:new("\n\nHello :)\n\nKappa engine map editor © 2023 \nMIT license (see LICENSE.md)",0,0,300,"center"),
 					guibutton:new("~bClose.",nil,0,0, function(self,win) win:delete() end)}
 					,256,256,256,256)
 				end,

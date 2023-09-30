@@ -43,26 +43,26 @@ local WindowProps = Props:prototype{
 
 function MapEditGUIWindow:define(default_props, layout_def)
 	local obj = {
-		new = function (self, props, elements, x,y,w,h)
+		new = function (self, props, elements, w,h)
 			local this = {
 				props = WindowProps(default_props),
 				layout = nil,
 				elements = {},
 
-				x=x,
-				y=y,
+				x=0,
+				y=0,
 				w=w,
 				h=h,
 
 				hover = false,
 			}
+
 			for i,v in ipairs(elements) do
 				this.elements[i] = elements[i]
 			end
 			for i,v in pairs(props) do
 				print(i,v)
 				this.props[i]=v end
-			this.layout = layout_def:new(x,y,w,h,this.elements)
 
 			function this:delete()
 				self.delete = true
@@ -78,17 +78,18 @@ function MapEditGUIWindow:define(default_props, layout_def)
 				self.w=w
 			end
 			function this:setH(h)
-				print("m",self.props.win_max_h)
-				print("g",self.props.win_min_h)
 				if h < self.props.win_min_h then h = self.props.win_min_h end
 				if h > self.props.win_max_h then h = self.props.win_max_h end
 				self.h=h
 			end
 
-			this:setX(x)
-			this:setY(y)
 			this:setW(w)
 			this:setH(h)
+
+			local winw,winh = love.graphics.getDimensions()
+			this.x = winw*0.5 - this.w*0.5
+			this.y = winh*0.5 - this.h*0.5
+			this.layout = layout_def:new(this.x,this.y,this.w,this.h,this.elements)
 
 			function this:update()
 				if self.layout then
