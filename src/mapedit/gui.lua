@@ -10,6 +10,8 @@ local guibutton   = require 'mapedit.button'
 local guiimage    = require 'mapedit.image'
 local guiscrollb  = require 'mapedit.scrollbar'
 local guiimggrid  = require 'mapedit.gridselection'
+
+local export_map = require 'mapedit.export'
 local lang = require 'mapedit.guilang'
 
 local maptransform = require "mapedit.transform"
@@ -341,7 +343,7 @@ function MapEditGUI:define(mapedit)
 		    return about_win:new({},
 				{
 					guiimage:new("mapedit/ic.png",0,0,80,120,function() self:displayPopup(lang["~b~(red)Do not click the kappa."]) end),
-					guitextbox:new(lang["\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"],0,0,300,"center"),
+					guitextbox:new(lang["\nWelcome!\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"],0,0,300,"center"),
 					guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","bottom")}
 					,256,256,256,256)
 				end,
@@ -354,7 +356,15 @@ function MapEditGUI:define(mapedit)
 		 -- props
 		},
 		function(props) return
-		{lang["Save"],action=function()end},
+		{lang["Save"],action=function()
+			--[[local result, log = export_map(mapedit.props)
+			for i,v in ipairs(log) do
+				print(v)
+			end
+			print()
+			print(result)--]]
+			mapedit:exportAndWriteToFile("test2.lua")
+		end},
 		{lang["~iQuit"],action=function()love.event.quit()end}
 		end
 		)
@@ -437,7 +447,7 @@ function MapEditGUI:define(mapedit)
 		 split_type="+y",
 		 split_pix=20,
 		 sub = {
-			id="panel_region",
+			id="viewport_region",
 			split_type="-x",
 			split_pix=192+20,
 			sub = {
@@ -454,7 +464,8 @@ function MapEditGUI:define(mapedit)
 
 		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end},
 		{"grid_region", function(l) return l.x,l.y,l.w,l.h end},
-		{"grid_info_panel", region_default_f}
+		{"grid_info_panel", region_default_f},
+		{"viewport_region", region_pixoffset_f(0,0)}
 	)
 
 	local w,h = love.graphics.getDimensions()

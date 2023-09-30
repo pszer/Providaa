@@ -99,15 +99,15 @@ local MapEditGUILanguageStrings = {
 		jp="~b回転~rする",
 	},
 	["... around ~i~(lred)X~r Axis"]={
-		pl="... dookoła Oś ~i~(lred)X~r",
+		pl="... dookoła Osi ~i~(lred)X~r",
 		jp="。。~i~(lred)Ｘ~rの軸を中心に",
 	},
 	["... around ~i~(lgreen)Y~r Axis"]={
-		pl="... dookoła Oś ~i~(lgreen)Y~r",
+		pl="... dookoła Osi ~i~(lgreen)Y~r",
 		jp="。。~i~(lgreen)Ｙ~rの軸を中心に",
 	},
 	["... around ~i~(lblue)Z~r Axis"]={
-		pl="... dookoła Oś ~i~(lblue)Z~r",
+		pl="... dookoła Osi ~i~(lblue)Z~r",
 		jp="。。~i~(lblue)Ｚ~rの軸を中心に",
 	},
 	["~bReset"]={
@@ -115,7 +115,7 @@ local MapEditGUILanguageStrings = {
 		jp="リセット",
 	},
 	["Keybinds"]={
-		pl="Ustawienia klawiatury",
+		pl="Ustawienia Klawiatury",
 		jp="入力設定",
 	},
 	["Set Language"]={
@@ -130,9 +130,9 @@ local MapEditGUILanguageStrings = {
 		pl="~b~(red)Nie klikaj kappy.",
 		jp="~b~(red)カッパを押すな",
 	},
-	["\nHello :)\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"]={
-		pl="\nCześć :)\n\nKappa edytor map © 2023 \nMIT licencja\n(zobacz LICENSE.md)",
-		jp="\n いらっしゃいませ :)\n\nカッパのマップのエディター(C) 2023\nMIT特許\n(LICENSE.mdを検問しますください)",
+	["\nWelcome!\n\nKappa map editor © 2023 \nMIT license (see LICENSE.md)"]={
+		pl="\nWitam!\n\nKappa edytor map © 2023 \nMIT licencja\n(zobacz LICENSE.md)",
+		jp="\n いらっしゃいませ！\n\nカッパのマップのエディター(C) 2023\nMIT特許\n(LICENSE.mdを検問しますください)",
 	},
 	["~bClose."]={
 		pl="~bZamknij",

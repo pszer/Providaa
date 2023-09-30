@@ -1194,18 +1194,18 @@ end
 function Map.generateSkybox(map)
 	local skybox = map.skybox
 	assert(skybox)
+	return Map.__generateSkybox(skybox)
+end
 
+function Map.__generateSkybox(skybox)
 	local tex_name = skybox.texture
 	local brightness = skybox.brightness or 1.0
-
 	local tex = Loader:getTextureReference(tex_name)
 	assert(tex)
-
 	local tex_type = tex:getTextureType()
 	if tex_type ~= "cube" then
 		error(string.format("Map.generateSkybox(): map %s, skybox texture %s is not a cubemap.", tostring(map.name), tostring(tex_name)))
 	end
-
 	return tex, tex_name, brightness
 end
 
@@ -1293,7 +1293,7 @@ function Map.malformedCheck(map)
 		for x=1,w do
 			local tile = tile_map[z][x]
 			local wall = wall_map[z][x]
-			if not tile_set[tile] and tile ~= 0 then
+			if tile and (not tile_set[tile]) and tile ~= 0 then
 				return string.format("Map %s: tile (z=%d,x=%d) uses undefined tile [%s]", name, z,x, tostring(tile))
 			end
 			--if wall and not wall_set[wall] and wall ~= 0 then

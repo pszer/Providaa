@@ -3439,13 +3439,8 @@ end
 function ProvMapEdit:exportAndWriteToFile(filename)
 	local result,log = export_map(self.props)
 
-	love.filesystem.createDirectory("exports")
-
 	if result then
-		local fullpath = "exports/"..filename
-
-		print(string.format("ProvMapEdit:exportAndWriteToFile(): exporting to %q",love.filesystem.getSaveDirectory() .. "/" .. fullpath))
-
+		local fullpath = string.sub(love.filesystem.getSourceBaseDirectory(),1,-3) .. "/exports/"..filename
 		local file = love.filesystem.newFile(fullpath)
 		local ok,err = file:open("w")
 		if not ok then
