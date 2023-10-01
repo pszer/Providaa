@@ -303,19 +303,23 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		local x = (I-1) % map.width + 1
 		local z = map.height - int((I-1) / map.width)
 
-		local tile_shape = tile_shapes[z][x]
+		local tile_shape = map.tile_shape[z][x]
 		local tileid = map.tile_map[z][x]
 		local tileid2, tex_id2
+		local tex_id 
 
 		if type(tileid)=="table" then
 			tileid2 = tileid[2]
-			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
-			else tex_id2 = nil end
 			tileid  = tileid[1]
+			tex_id = tileset_id_to_tex[tileid]
+			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
+			else tex_id2 = tex_id end
+		else
+			tex_id = tileset_id_to_tex[tileid]
+			tex_id2 = tex_id
 		end
 
 		-- we only add a floor tile to the mesh if it actually has a texture
-		local tex_id = tileset_id_to_tex[tileid]
 
 		if tex_id or tex_id2 or gen_all_verts then
 			local consec_count = 1
@@ -330,6 +334,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 				gv1,gv2,gv3,gv4,gv5,gv6,indices = Map.getTileVerts(x,z,h1,h2,h3,h4, tile_shape)
 			else
 				gv1,gv2,gv3,gv4 = Map.getLongTileVerts(x,z,h1,h2,h3,h4, consec_count)
+				gv5,gv6 = {0,0,0, 0,0, 0,0,0},{0,0,0, 0,0, 0,0,0}
 			end
 
 			local tex_norm_id, tex_norm_id2 = nil
@@ -354,6 +359,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 				for i=1,4 do
 					verts[vert_count+i] = vert[i]
 				end
+				vert_additions = 4
 			end
 			for i=1,6 do
 				index_map[index_count+i] = vert_count + indices[i]
@@ -362,10 +368,18 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			index_count = index_count + 6
 
 			local attr =  { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
-			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
-			for i=1,vert_additions do
-				if i>4 then attr_verts[attr_count + i] = attr2
-				else attr_verts[attr_count + i] = attr end
+			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id2 }
+			if vert_additions==4 then
+				for i=1,4 do
+					attr_verts[attr_count + i] = attr 
+				end
+			else
+				for i=1,3 do
+					attr_verts[attr_count + i] = attr 
+				end
+				for i=4,6 do
+					attr_verts[attr_count + i] = attr2
+				end
 			end
 			attr_count = attr_count + vert_additions
 
@@ -502,22 +516,12 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 
 		local tile_shape   = map.tile_shape[z][x]
 		local tile_height  = Map.getHeights( map , x   , z   )
-		--[[local west_height  = Map.getHeights( map , x-1 , z   )
-		local south_height = Map.getHeights( map , x   , z+1 )
-		local east_height  = Map.getHeights( map , x+1 , z   )
-		local north_height = Map.getHeights( map , x   , z-1 )--]]
 		local west_height  = Map.getHeightsTriangle ( map , x-1 , z   , "west")
 		local south_height = Map.getHeightsTriangle ( map , x   , z+1 , "south")
 		local east_height  = Map.getHeightsTriangle ( map , x+1 , z   , "east")
 		local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")--]]
 
 		local wall = 
-			--[[Wall:getWallInfo(nil,
-				tile_height,
-				west_height,
-				south_height,
-				east_height,
-				north_height)--]]
 			Wall:getWallInfo2(textures,
 				tile_shape,
 				tile_height,
@@ -669,17 +673,21 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 		local tile_shape = map.tile_shape[z][x]
 		local tileid = map.tile_map[z][x]
 		local tileid2, tex_id2
+		local tex_id 
 
 		if type(tileid)=="table" then
-			tileid2 = tileid[2]
-			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
-			else tex_id2 = nil end
 			tileid  = tileid[1]
+			tileid2 = tileid[2]
+			tex_id = tileset_id_to_tex[tileid]
+			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
+			else tex_id2 = tex_id end
+		else
+			tex_id = tileset_id_to_tex[tileid]
+			tex_id2 = tex_id
 		end
 
 		-- we only add a tile to mesh if it actually has a texture AND is not
 		-- already part of the simplified set
-		local tex_id = tileset_id_to_tex[tileid]
 		if tex_id and not tile_in_simple_set[x + z*map.width] then
 			local square_size = 1
 			if tile_shape == 0 then
@@ -1573,7 +1581,7 @@ function Map.malformedCheck(map)
 		for x=1,w do
 			local tile = tile_map[z][x]
 			local wall = wall_map[z][x]
-			if tile and (not tile_set[tile]) and tile ~= 0 then
+			if tile and (not tile_set[tile]) and tile ~= 0 and type(tile)~="table" then
 				return string.format("Map %s: tile (z=%d,x=%d) uses undefined tile [%s]", name, z,x, tostring(tile))
 			end
 			--if wall and not wall_set[wall] and wall ~= 0 then
