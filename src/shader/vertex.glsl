@@ -297,7 +297,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	float radius = 2000.0; // the smaller, the larger the pcf radius
 	//bias = clamp(bias, 0.00100,0.00230);
 	//bias = bias + (bias * min(angle,3.0))/10.0;
-	bias = mix(bias, 0.001, cosTheta);
+	bias = mix(bias, 0.001, cosTheta)*3;
 
 	float shadow = 1.0;
 
