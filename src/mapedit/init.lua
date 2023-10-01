@@ -1970,7 +1970,11 @@ function ProvMapEdit:getTilesIndexInMesh( x,z )
 
 	local vmap = self.props.mapedit_map_mesh.tile_vert_map
 	local index = vmap[z][x]
-	return index
+	local tile_shape = self.props.mapedit_tile_shapes[z][x]
+	local count = 4
+	if tile_shape > 0 then count = 6 end
+
+	return index, index + count
 end
 
 function ProvMapEdit:getTileVerts( x,z )

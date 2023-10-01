@@ -331,13 +331,13 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			local gv1,gv2,gv3,gv4,gv5,gv6 = nil,nil,nil,nil,nil,nil
 			local indices = rect_I
 			if consec_count == 1 then
-				gv1,gv2,gv3,gv4,gv5,gv6,indices = Map.getTileVerts(x,z,h1,h2,h3,h4, tile_shape)
+				gv1,gv2,gv3,gv4,gv5,gv6,indices = Map.getTileVerts(x,z, h1,h2,h3,h4, tile_shape)
 			else
 				gv1,gv2,gv3,gv4 = Map.getLongTileVerts(x,z,h1,h2,h3,h4, consec_count)
 				gv5,gv6 = {0,0,0, 0,0, 0,0,0},{0,0,0, 0,0, 0,0,0}
 			end
 
-			local tex_norm_id, tex_norm_id2 = nil
+			local tex_norm_id, tex_norm_id2 = nil, nil
 
 			if tex_id then tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
 			else tex_norm_id = (nil_texture_id - 1) end
@@ -676,8 +676,8 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 		local tex_id 
 
 		if type(tileid)=="table" then
-			tileid  = tileid[1]
 			tileid2 = tileid[2]
+			tileid  = tileid[1]
 			tex_id = tileset_id_to_tex[tileid]
 			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
 			else tex_id2 = tex_id end
@@ -1113,15 +1113,15 @@ function Map.getTileVerts(x,z, h1,h2,h3,h4,tile_shape)
 		return norm
 	end
 
-	norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
-	norm2 = calcnorm(norm2, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
-
-	local norm3x = (norm1.x + norm2.x) * 0.5
-	local norm3y = (norm1.y + norm2.y) * 0.5
-	local norm3z = (norm1.z + norm2.z) * 0.5
-
 	local indices
 	if tile_shape == 0 or tile_shape == nil then
+		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
+		norm2 = calcnorm(norm2, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
+
+		local norm3x = (norm1.x + norm2.x) * 0.5
+		local norm3y = (norm1.y + norm2.y) * 0.5
+		local norm3z = (norm1.z + norm2.z) * 0.5
+
 		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
 		v2 = {x2,y2,z2, u[2], v[2], norm3x, norm3y, norm3z }
 		v3 = {x3,y3,z3, u[3], v[3], norm3x, norm3y, norm3z }
@@ -1130,6 +1130,7 @@ function Map.getTileVerts(x,z, h1,h2,h3,h4,tile_shape)
 		v6 = {0,0,0, 0,0, 0,1,0}
 		indices = __rect_I
 	elseif tile_shape == 1 then
+		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
 		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
 		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
 		v3 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
@@ -1266,7 +1267,10 @@ function Map.getIdenticalConsecutiveTilesCount(map, x,z)
 	local X = x + 1
 	while X <= map.width do
 		local tile_id2 = map.tile_map[z][X]
+		local tile_shape2 = map.tile_shape[z][X]
 		if tile_id ~= tile_id2 then
+			break end
+		if tile_shape2 ~= 0 then
 			break end
 		local j1,j2,j3,j4 = unpack(Map.getHeights(map, X,z))
 		if (j1~=j2) or (j1~=j3) or(j1~=j4) then -- we check that the next tile is flat
