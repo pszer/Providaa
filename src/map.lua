@@ -393,7 +393,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 		local tilewalls = Map.getWalls(map, x,z)
 		if tilewalls then
 			local textures_loaded = {}
-			for i = 1,4 do 
+			for i = 1,5 do 
 				local wallid = tilewalls[i]
 				if wallid then
 					textures_loaded[i] = wallset_id_to_tex[wallid]
@@ -403,25 +403,15 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 			end
 
 			local tile_height  = Map.getHeights ( map , x   , z   )
-			--[[local west_height  = Map.getHeights ( map , x-1 , z   )
-			local south_height = Map.getHeights ( map , x   , z+1 )
-			local east_height  = Map.getHeights ( map , x+1 , z   )
-			local north_height = Map.getHeights ( map , x   , z-1 )--]]
 			local west_height  = Map.getHeightsTriangle ( map , x-1 , z   , "west")
 			local south_height = Map.getHeightsTriangle ( map , x   , z+1 , "south")
 			local east_height  = Map.getHeightsTriangle ( map , x+1 , z   , "east")
-			local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")--]]
+			local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")
 
 			local wall = nil
 			local tile_shape = map.tile_shape[z][x]
 			if not gen_all_verts then
 				wall = 
-					--[[Wall:getWallInfo(textures,
-						tile_height,
-						west_height,
-						south_height,
-						east_height,
-						north_height)]]
 					Wall:getWallInfo2(textures,
 						tile_shape,
 						tile_height,
@@ -431,12 +421,6 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 						north_height)
 			else -- if gen_all_walls, we skip testing if a wall has a texture defined and generate vertices for all walls
 				wall = 
-					--[[Wall:getWallInfo(nil,
-						tile_height,
-						west_height,
-						south_height,
-						east_height,
-						north_height)]]
 					Wall:getWallInfo2(textures,
 						tile_shape,
 						tile_height,
@@ -483,6 +467,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 			add_wall_verts(wall, Wall.southi, textures_loaded[2])
 			add_wall_verts(wall, Wall.easti , textures_loaded[3])
 			add_wall_verts(wall, Wall.northi, textures_loaded[4])
+			add_wall_verts(wall, Wall.diagonali, textures_loaded[5])
 		end
 		I = I + 1
 	end
@@ -506,7 +491,7 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 		local textures_loaded = {}
 		if not tilewalls then tilewalls = {} end
 
-		for i = 1,4 do 
+		for i = 1,5 do 
 			local wallid = tilewalls[i]
 			if wallid and wallset_id_to_tex[wallid] then
 				textures_loaded[i] = wallset_id_to_tex[wallid]
@@ -586,6 +571,7 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 		add_wall_verts(wall, Wall.southi, textures_loaded[2])
 		add_wall_verts(wall, Wall.easti , textures_loaded[3])
 		add_wall_verts(wall, Wall.northi, textures_loaded[4])
+		add_wall_verts(wall, Wall.diagonali, textures_loaded[5])
 		I = I + 1
 	end
 
@@ -605,7 +591,7 @@ function Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map
 		local tilewalls = Map.getWalls(map, x,z)
 		if tilewalls then
 			local textures_loaded = {}
-			for i = 1,4 do 
+			for i = 1,5 do 
 				local wallid = tilewalls[i]
 				if wallid then
 					textures_loaded[i] = wallset_id_to_tex[wallid]
@@ -659,6 +645,7 @@ function Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map
 			add_wall_verts(wall, Wall.southi, textures_loaded[2])
 			add_wall_verts(wall, Wall.easti , textures_loaded[3])
 			add_wall_verts(wall, Wall.northi, textures_loaded[4])
+			add_wall_verts(wall, Wall.diagonali, textures_loaded[5])
 		end
 		I = I + 1
 	end
@@ -679,32 +666,60 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 		--local z = map.height - int((I-1) / map.width)
 		local z = int((I-1) / map.width) + 1
 
+		local tile_shape = map.tile_shape[z][x]
 		local tileid = map.tile_map[z][x]
+		local tileid2, tex_id2
+
+		if type(tileid)=="table" then
+			tileid2 = tileid[2]
+			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
+			else tex_id2 = nil end
+			tileid  = tileid[1]
+		end
 
 		-- we only add a tile to mesh if it actually has a texture AND is not
 		-- already part of the simplified set
 		local tex_id = tileset_id_to_tex[tileid]
 		if tex_id and not tile_in_simple_set[x + z*map.width] then
-			local square_size = Map.getIdenticalSquareTilesCount(map, x,z)
+			local square_size = 1
+			if tile_shape == 0 then
+				square_size = Map.getIdenticalSquareTilesCount(map, x,z)
+			end
 			
+			local vert
+			local indices = rect_I
+			local vert_additions = 4
 			-- add all tiles in the square to the simplified set
-			for Z=0,square_size-1 do
-				for X=0,square_size-1 do
-					tile_in_simple_set[x+X + (z+Z)*map.width] = true
+			if square_size > 1 then
+				for Z=0,square_size-1 do
+					for X=0,square_size-1 do
+						tile_in_simple_set[x+X + (z+Z)*map.width] = true
+					end
+				end
+
+				local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
+				local gv1,gv2,gv3,gv4 = Map.getSimpleSquareTileVerts(x,z,h1,h2,h3,h4, square_size,square_size)
+				vert = {gv1,gv2,gv3,gv4}
+			else
+				tile_in_simple_set[x + z*map.width] = true
+				local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
+				local gv1,gv2,gv3,gv4,gv5,gv6,I = Map.getSimpleTileVerts(x,z, tile_shape, h1,h2,h3,h4)
+				indices = I
+				if tile_shape == 0 then
+					vert = {gv1,gv2,gv3,gv4}
+				else
+					vert = {gv1,gv2,gv3,gv4,gv5,gv6}
+					vert_additions = 6
 				end
 			end
 
-			local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
-			local gv1,gv2,gv3,gv4 = Map.getSimpleSquareTileVerts(x,z,h1,h2,h3,h4, square_size,square_size)
-			local vert = {gv1,gv2,gv3,gv4}
-
-			for i=1,4 do
+			for i=1,vert_additions do
 				simple_verts[simple_vert_count + i] = vert[i]
 			end
 			for i=1,6 do
-			simple_index_map[simple_index_count+i] = simple_vert_count + rect_I[i]
+			simple_index_map[simple_index_count+i] = simple_vert_count + indices[i]
 			end
-			simple_vert_count = simple_vert_count + 4
+			simple_vert_count = simple_vert_count + vert_additions
 			simple_index_count = simple_index_count + 6
 		end
 
@@ -983,10 +998,10 @@ function Map.getWalls(map, x,z)
 	if not walls then return nil end
 
 	if type(walls) == "table" then
-		w[1],w[2],w[3],w[4] = walls[1],walls[2],walls[3],walls[4]
+		w[1],w[2],w[3],w[4],w[5] = walls[1],walls[2],walls[3],walls[4],walls[5]
 	else
 		--w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
-		w[1],w[2],w[3],w[4] = walls,walls,walls,walls
+		w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,walls,walls
 	end
 	return w
 end
@@ -1036,6 +1051,14 @@ function Map.getWallVerts(x,z, wall, wall_side)
 			local wallv = wall.north[i]
 			__tempverts[i] = {wx+(wallv[1]+1)*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
 			                  0,0,-1}
+		end
+	elseif wall_side == Wall.diagonali then
+		if not wall.diagonal then return nil,nil,nil,nil end
+		local vmax = get_uv_v_max(wall.diagonal)
+		for i=1,4 do
+			local wallv = wall.diagonal[i]
+			__tempverts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+			                  wall.diagonal_norm[1],wall.diagonal_norm[2],wall.diagonal_norm[3]}
 		end
 	end
 	
@@ -1167,9 +1190,60 @@ function Map.getSimpleSquareTileVerts(x,z, h1,h2,h3,h4, width, height)
 	v4 = {x4,y4,z4}
 
 	return v1,v2,v3,v4
-
 end
 
+function Map.getSimpleTileVerts(x,z, tile_shape, h1,h2,h3,h4)
+	local x1,y1,z1 = Tile.tileCoordToWorld( x+0 , h1 , -(z+0) )
+	local x2,y2,z2 = Tile.tileCoordToWorld( x+1 , h2 , -(z+0) )
+	local x3,y3,z3 = Tile.tileCoordToWorld( x+1 , h3 , -(z+1) )
+	local x4,y4,z4 = Tile.tileCoordToWorld( x+0 , h4 , -(z+1) )
+
+	local indices
+	local v1,v2,v3,v4,v5,v6
+	if tile_shape == 0 or tile_shape == nil then
+		v1 = {x1,y1,z1}
+		v2 = {x2,y2,z2}
+		v3 = {x3,y3,z3}
+		v4 = {x4,y4,z4}
+		v5 = {0,0,0}
+		v6 = {0,0,0}
+		indices = __rect_I
+	elseif tile_shape == 1 then
+		v1 = {x1,y1,z1}
+		v2 = {x2,y2,z2}
+		v3 = {x3,y3,z3}
+		v4 = {x3,y4,z3}
+		v5 = {x4,y4,z4}
+		v6 = {x1,y4,z1}
+		indices = __tri1_I
+	elseif tile_shape == 2 then
+		v1 = {x1,y1,z1}
+		v2 = {x2,y2,z2}
+		v3 = {x4,y4,z4}
+		v4 = {x2,y3,z2}
+		v5 = {x3,y3,z3}
+		v6 = {x4,y3,z4}
+		indices = __tri1_I
+	elseif tile_shape == 3 then
+		v1 = {x1,y2,z1}
+		v2 = {x2,y2,z2}
+		v3 = {x3,y2,z3}
+		v4 = {x3,y3,z3}
+		v5 = {x4,y4,z4}
+		v6 = {x1,y1,z1}
+		indices = __tri1_I
+	else
+		v1 = {x1,y1,z1}
+		v2 = {x2,y1,z2}
+		v3 = {x4,y1,z4}
+		v4 = {x2,y2,z2}
+		v5 = {x3,y3,z3}
+		v6 = {x4,y4,z4}
+		indices = __tri1_I
+	end
+
+	return v1,v2,v3,v4,v5,v6,indices
+end
 
 function Map.getIdenticalConsecutiveTilesCount(map, x,z)
 	local tile_id = map.tile_map[z][x]

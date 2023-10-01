@@ -109,7 +109,7 @@ function love.run()
 
 		sleep_acc = sleep_acc + dt
 		--if sleep_acc > 0.0025 then
-		if sleep_acc > 0.0018 then
+		if sleep_acc > 0.0025 then
 			sleep_acc = 0
 			if love.timer then love.timer.sleep(0.001) end
 		end

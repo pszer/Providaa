@@ -1,6 +1,8 @@
 require "tile"
 require "walltile"
 
+local isqrt2 = 1/(2^0.5)
+
 Wall = {__type = "wall",
 
 		vmap = {1,2,3, 3,4,1},
@@ -11,7 +13,13 @@ Wall = {__type = "wall",
 		westi = 1,
 		southi = 2,
 		easti = 3,
-		northi = 4
+		northi = 4,
+		diagonali = 5,
+
+		diagonal_norm_1 = {-isqrt2,0, isqrt2},
+		diagonal_norm_2 = { isqrt2,0, isqrt2},
+		diagonal_norm_3 = { isqrt2,0,-isqrt2},
+		diagonal_norm_4 = {-isqrt2,0,-isqrt2},
 
 }
 Wall.__index = Wall
@@ -23,6 +31,7 @@ function Wall:new()
 		west = nil,
 		east = nil,
 		diagonal = nil,
+		diagonal_norm = nil
 	}
 
 	setmetatable(this,Wall)
@@ -292,7 +301,7 @@ function Wall:getWallInfo2(textures, tile_shape, tile_heights, west_heights, sou
 
 	--
 	-- GENERATE INTERNAL DIAGONAL WALL
-	if tile_shape	> 0 then
+	if tile_shape	~= 0 then
 		local top_height_a, bottom_height_a = nil,nil
 		local top_height_b, bottom_height_b = nil,nil
 		if     tile_shape == 1 then top_height_a,bottom_height_a = tile_heights[1], tile_heights[4]
@@ -308,28 +317,43 @@ function Wall:getWallInfo2(textures, tile_shape, tile_heights, west_heights, sou
 		                            top_height_b,bottom_height_b = tile_heights[2], tile_heights[1]
 		end
 
-		local x,y,z = {},{},{}
+		-- ensure top_height > bottom_height
+		if top_height_a < bottom_height_a then
+			local temp = top_height_a
+			top_height_a    = bottom_height_a
+			bottom_height_a = top_height_a
+		end
+		if top_height_b < bottom_height_b then
+			local temp = top_height_b
+			top_height_b    = bottom_height_b
+			bottom_height_b = top_height_b
+		end
 
+		local x,y,z = {},{},{}
 		if tile_shape == 1 then
-			x[1],y[1],z[1] = 0,top_height_a,0
-			x[2],y[2],z[2] = 0,bottom_height_a,0
-			x[3],y[3],z[3] = 1,bottom_heightb,1
 			x[4],y[4],z[4] = 1,top_height_b,1
+			x[3],y[3],z[3] = 0,top_height_a,0
+			x[2],y[2],z[2] = 0,bottom_height_a,0
+			x[1],y[1],z[1] = 1,bottom_height_b,1
+			wall.diagonal_norm = Wall.diagonal_norm_1
 		elseif tile_shape == 2 then
-			x[1],y[1],z[1] = 0,top_height_a,1
-			x[2],y[2],z[2] = 0,bottom_height_a,1
-			x[3],y[3],z[3] = 1,bottom_heightb,0
 			x[4],y[4],z[4] = 1,top_height_b,0
+			x[3],y[3],z[3] = 0,top_height_a,1
+			x[2],y[2],z[2] = 0,bottom_height_a,1
+			x[1],y[1],z[1] = 1,bottom_height_b,0
+			wall.diagonal_norm = Wall.diagonal_norm_2
 		elseif tile_shape == 3 then
-			x[1],y[1],z[1] = 1,top_height_a,1
-			x[2],y[2],z[2] = 1,bottom_height_a,1
-			x[3],y[3],z[3] = 0,bottom_heightb,0
 			x[4],y[4],z[4] = 0,top_height_b,0
+			x[3],y[3],z[3] = 1,top_height_a,1
+			x[2],y[2],z[2] = 1,bottom_height_a,1
+			x[1],y[1],z[1] = 0,bottom_height_b,0
+			wall.diagonal_norm = Wall.diagonal_norm_3
 		elseif tile_shape == 4 then
-			x[1],y[1],z[1] = 1,top_height_a,0
-			x[2],y[2],z[2] = 1,bottom_height_a,0
-			x[3],y[3],z[3] = 0,bottom_heightb,1
 			x[4],y[4],z[4] = 0,top_height_b,1
+			x[3],y[3],z[3] = 1,top_height_a,0
+			x[2],y[2],z[2] = 1,bottom_height_a,0
+			x[1],y[1],z[1] = 0,bottom_height_b,1
+			wall.diagonal_norm = Wall.diagonal_norm_4
 		end
 
 		wall.diagonal = {}
@@ -338,9 +362,9 @@ function Wall:getWallInfo2(textures, tile_shape, tile_heights, west_heights, sou
 		end
 	else
 		wall.diagonal = nil
-	end
+	end -- GENERATE INTERNAL DIAGONAL WALL
 
-	if at_least_one_wall then
+	if at_least_one_wall or wall.diagonal then
 		return wall
 	else
 		return nil
