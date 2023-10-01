@@ -1,3 +1,12 @@
+--
+--
+-- 
+-- clusterfuck of code but it works
+--
+--
+--
+
+
 --]]
 -- map format
 --
@@ -27,10 +36,12 @@
 --      {{y1,y2,y3,y4}  ,{y1,y2,y3,y4}, ...}
 --     },
 --
---		 each tile can have 3 shapes, 0,1,2
+--		 each tile can have 3 shapes, 0,1,2,3,4
 --		 0 = square
 --		 1 = triangle, diagonal goes +x +z
 --		 2 = triangle, diagonal goes +x -z
+--		 3 = triangle, diagonal goes -x +z
+--		 4 = triangle, diagonal goes -x -z
 --     tile_shape = {
 --			{0,0,0,0,0,....},
 --			{0,1,0,0,0,....},
@@ -351,7 +362,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			index_count = index_count + 6
 
 			local attr =  { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
-			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id2 }
+			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
 			for i=1,vert_additions do
 				if i>4 then attr_verts[attr_count + i] = attr2
 				else attr_verts[attr_count + i] = attr end
@@ -392,15 +403,27 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 			end
 
 			local tile_height  = Map.getHeights ( map , x   , z   )
-			local west_height  = Map.getHeights ( map , x-1 , z   )
+			--[[local west_height  = Map.getHeights ( map , x-1 , z   )
 			local south_height = Map.getHeights ( map , x   , z+1 )
 			local east_height  = Map.getHeights ( map , x+1 , z   )
-			local north_height = Map.getHeights ( map , x   , z-1 )
+			local north_height = Map.getHeights ( map , x   , z-1 )--]]
+			local west_height  = Map.getHeightsTriangle ( map , x-1 , z   , "west")
+			local south_height = Map.getHeightsTriangle ( map , x   , z+1 , "south")
+			local east_height  = Map.getHeightsTriangle ( map , x+1 , z   , "east")
+			local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")--]]
 
 			local wall = nil
+			local tile_shape = map.tile_shape[z][x]
 			if not gen_all_verts then
 				wall = 
-					Wall:getWallInfo(textures,
+					--[[Wall:getWallInfo(textures,
+						tile_height,
+						west_height,
+						south_height,
+						east_height,
+						north_height)]]
+					Wall:getWallInfo2(textures,
+						tile_shape,
 						tile_height,
 						west_height,
 						south_height,
@@ -408,7 +431,14 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 						north_height)
 			else -- if gen_all_walls, we skip testing if a wall has a texture defined and generate vertices for all walls
 				wall = 
-					Wall:getWallInfo(nil,
+					--[[Wall:getWallInfo(nil,
+						tile_height,
+						west_height,
+						south_height,
+						east_height,
+						north_height)]]
+					Wall:getWallInfo2(textures,
+						tile_shape,
 						tile_height,
 						west_height,
 						south_height,
@@ -485,14 +515,26 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 			end
 		end
 
+		local tile_shape   = map.tile_shape[z][x]
 		local tile_height  = Map.getHeights( map , x   , z   )
-		local west_height  = Map.getHeights( map , x-1 , z   )
+		--[[local west_height  = Map.getHeights( map , x-1 , z   )
 		local south_height = Map.getHeights( map , x   , z+1 )
 		local east_height  = Map.getHeights( map , x+1 , z   )
-		local north_height = Map.getHeights( map , x   , z-1 )
+		local north_height = Map.getHeights( map , x   , z-1 )--]]
+		local west_height  = Map.getHeightsTriangle ( map , x-1 , z   , "west")
+		local south_height = Map.getHeightsTriangle ( map , x   , z+1 , "south")
+		local east_height  = Map.getHeightsTriangle ( map , x+1 , z   , "east")
+		local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")--]]
 
 		local wall = 
-			Wall:getWallInfo(nil,
+			--[[Wall:getWallInfo(nil,
+				tile_height,
+				west_height,
+				south_height,
+				east_height,
+				north_height)--]]
+			Wall:getWallInfo2(textures,
+				tile_shape,
 				tile_height,
 				west_height,
 				south_height,
@@ -570,14 +612,26 @@ function Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map
 				end
 			end
 
+			local tile_shape   = map.tile_shape[z][x]
 			local tile_height  = Map.getHeights ( map , x   , z   )
-			local west_height  = Map.getHeights ( map , x-1 , z   )
+			--[[local west_height  = Map.getHeights ( map , x-1 , z   )
 			local south_height = Map.getHeights ( map , x   , z+1 )
 			local east_height  = Map.getHeights ( map , x+1 , z   )
-			local north_height = Map.getHeights ( map , x   , z-1 )
+			local north_height = Map.getHeights ( map , x   , z-1 )--]]
+			local west_height  = Map.getHeightsTriangle ( map , x-1 , z   , "west")
+			local south_height = Map.getHeightsTriangle ( map , x   , z+1 , "south")
+			local east_height  = Map.getHeightsTriangle ( map , x+1 , z   , "east")
+			local north_height = Map.getHeightsTriangle ( map , x   , z-1 , "north")--]]
 
 			local wall =
-				Wall:getWallInfo(textures,
+				--[[Wall:getWallInfo(textures,
+					tile_height,
+					west_height,
+					south_height,
+					east_height,
+					north_height)--]]
+				Wall:getWallInfo2(textures,
+					tile_shape,
 					tile_height,
 					west_height,
 					south_height,
@@ -861,6 +915,37 @@ function Map.getHeights(map, x,z)
 	return y
 end
 
+function Map.getHeightsTriangle(map, x,z, direction)
+	if x < 1 or x > map.width or z < 1 or z > map.height then
+		return {0,0,0,0} end
+
+	local y = {}
+	local tileh = map.height_map[z][x]
+	if type(tileh) == "table" then
+		y[1],y[2],y[3],y[4] = tileh[1],tileh[2],tileh[3],tileh[4]
+	else
+		y[1],y[2],y[3],y[4] = tileh,tileh,tileh,tileh
+	end
+
+	local shape = map.tile_shape[z][x]
+	if shape == 0 then return y end
+	if shape==1 then
+		if direction=="north" or direction=="east" then
+			y[1],y[3]=y[4],y[4] end
+	elseif shape==2 then
+		if direction=="north" or direction=="west" then
+			y[4],y[2]=y[3],y[3] end
+	elseif shape==3 then
+		if direction=="south" or direction=="west" then
+			y[1],y[3]=y[2],y[2] end
+	else
+		if direction=="south" or direction=="east" then
+			y[4],y[2]=y[1],y[1] end
+	end
+
+	return y
+end
+
 -- unlike Map.getHeights, this function doesn't return {0,0,0,0}
 -- if x and z are out of bounds
 function Map.getHeightsBounded(map, x,z)
@@ -1017,18 +1102,36 @@ function Map.getTileVerts(x,z, h1,h2,h3,h4,tile_shape)
 		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
 		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
 		v3 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
-		v4 = {x3,y4,z3, u[4], v[4], 0, -1, 0 }
+		v4 = {x3,y4,z3, u[3], v[3], 0, -1, 0 }
 		v5 = {x4,y4,z4, u[4], v[4], 0, -1, 0 } 
-		v6 = {x1,y4,z1, u[4], v[4], 0, -1, 0 }
+		v6 = {x1,y4,z1, u[1], v[1], 0, -1, 0 }
 		indices = __tri1_I
-	else
+	elseif tile_shape == 2 then
 		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x4,y4,z4 )
 		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
 		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
-		v3 = {x4,y4,z4, u[3], v[3], norm1.x, norm1.y, norm1.z }
-		v4 = {x2,y2,z2, u[4], v[4], 0, -1, 0 }
-		v5 = {x3,y3,z3, u[4], v[4], 0, -1, 0 } 
-		v6 = {x4,y4,z4, u[4], v[4], 0, -1, 0 }
+		v3 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z }
+		v4 = {x2,y3,z2, u[2], v[2], 0, -1, 0 }
+		v5 = {x3,y3,z3, u[3], v[3], 0, -1, 0 } 
+		v6 = {x4,y3,z4, u[4], v[4], 0, -1, 0 }
+		indices = __tri1_I
+	elseif tile_shape == 3 then
+		norm1 = calcnorm(norm1, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
+		v1 = {x1,y2,z1, u[1], v[1], 0, -1, 0 }
+		v2 = {x2,y2,z2, u[2], v[2], 0, -1, 0 }
+		v3 = {x3,y2,z3, u[3], v[3], 0, -1, 0 }
+		v4 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
+		v5 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z } 
+		v6 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
+		indices = __tri1_I
+	else
+		norm1 = calcnorm(norm1, x2,y2,z2, x3,y3,z3, x4,y4,z4 )
+		v1 = {x1,y1,z1, u[1], v[1], 0, -1, 0 }
+		v2 = {x2,y1,z2, u[2], v[2], 0, -1, 0 }
+		v3 = {x4,y1,z4, u[4], v[4], 0, -1, 0 }
+		v4 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
+		v5 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z } 
+		v6 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z }
 		indices = __tri1_I
 	end
 

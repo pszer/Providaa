@@ -343,6 +343,7 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	--clone(props.mapedit_wall_map, map_file.wall_map)
 	clone(props.mapedit_anim_tex, map_file.anim_tex)
 	clone(props.mapedit_skybox, map_file.skybox)
+	clone(props.mapedit_tile_shapes, map_file.tile_shape)
 
 	-- get the texture names for each of the tile and walls
 	local t_tex = props.mapedit_tile_textures
@@ -3012,15 +3013,48 @@ function ProvMapEdit:updateWallVerts(x,z)
 		end
 	end
 
+	local function get_heights_triangle(x,z,side)
+		if x < 1 or x > w or z < 1 or z > h then
+			return nil end
+
+		local y = {}
+		local tileh = map_heights[z][x]
+		if type(tileh) == "table" then
+			y[1],y[2],y[3],y[4] = tileh[1],tileh[2],tileh[3],tileh[4]
+		else
+			y[1],y[2],y[3],y[4] = tileh,tileh,tileh,tileh
+		end
+
+		local shape = map.tile_shape[z][x]
+		if shape == 0 then return y end
+		if shape==1 then
+			if direction=="north" or direction=="east" then
+				y[1],y[3]=y[4],y[4] end
+		elseif shape==2 then
+			if direction=="north" or direction=="west" then
+				y[4],y[2]=y[3],y[3] end
+		elseif shape==3 then
+			if direction=="south" or direction=="west" then
+				y[1],y[3]=y[2],y[2] end
+		else
+			if direction=="south" or direction=="east" then
+				y[4],y[2]=y[1],y[1] end
+		end
+
+		return y
+	end
+
 	local mesh = self.props.mapedit_map_mesh.mesh
 
+	local tile_shape   = self.props.mapedit_tile_shapes[z][x]
 	local tile_height  = get_heights ( x   , z   )
 	local west_height  = get_heights ( x-1 , z   )
 	local south_height = get_heights ( x   , z+1 )
 	local east_height  = get_heights ( x+1 , z   )
 	local north_height = get_heights ( x   , z-1 )
 
-	local wall_info = Wall:getWallInfo(nil,
+	local wall_info = Wall:getWallInfo2(nil,
+		tile_shape,
 		tile_height,
 		west_height,
 		south_height,
