@@ -27,6 +27,17 @@
 --      {{y1,y2,y3,y4}  ,{y1,y2,y3,y4}, ...}
 --     },
 --
+--		 each tile can have 3 shapes, 0,1,2
+--		 0 = square
+--		 1 = triangle, diagonal goes +x +z
+--		 2 = triangle, diagonal goes +x -z
+--     tile_shape = {
+--			{0,0,0,0,0,....},
+--			{0,1,0,0,0,....},
+--			...
+--			{0,1,2,0,0,....}
+--     },
+--
 --     each entry in the tile_set is a texture name
 --     only the [0] index is allowed to be nil
 --     tile_set = {
@@ -51,12 +62,13 @@
 --     },
 --
 --     maps each tile to a tile defined in tile_set
+--     non-square tiles are a table with two entries
 --     tile_map = {
 --		{0,0,0,0,0,0,0,0,...}--
---		{0,0,1,1,1,1,1,0,...}
+--		{0,{0,1},1,1,1,1,1,0,...}
 --		{0,0,0,0,0,0,0,0,...}
 --		...
---		{0,0,0,0,0,0,0,0,...}
+--		{0,{0,1},{1,1},0,0,0,0,0,...}
 --     },
 --     
 --     maps each tile to table of 4 wall textures defined in wall_set to use when generating walls, entries
@@ -98,8 +110,7 @@
 --
 -- }
 
---require "texture"
-require "grid"
+--require "grid"
 require "wall"
 require "mapmesh"
 require "model"
@@ -270,6 +281,8 @@ end
 function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
                                             vert_count, index_count, attr_count,
 											tileset_id_to_tex, optimise, gen_all_verts, nil_texture_id, tile_vert_map)
+	local tile_shapes = map.tile_shape
+
 	local int = math.floor
 	local I = 1
 	local rect_I = {1,2,3,3,4,1}
@@ -279,50 +292,71 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		local x = (I-1) % map.width + 1
 		local z = map.height - int((I-1) / map.width)
 
+		local tile_shape = tile_shapes[z][x]
 		local tileid = map.tile_map[z][x]
+		local tileid2, tex_id2
 
-		-- we only add a floor tile to mesh if it actually has a texture
+		if type(tileid)=="table" then
+			tileid2 = tileid[2]
+			if tileid2 then tex_id2  = tileset_id_to_tex[tileid2]
+			else tex_id2 = nil end
+			tileid  = tileid[1]
+		end
+
+		-- we only add a floor tile to the mesh if it actually has a texture
 		local tex_id = tileset_id_to_tex[tileid]
-		if tex_id or gen_all_verts then
+
+		if tex_id or tex_id2 or gen_all_verts then
 			local consec_count = 1
 			if optimise then
 				consec_count = Map.getIdenticalConsecutiveTilesCount(map, x,z)
 			end
 
 			local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
-			local gv1,gv2,gv3,gv4 = Map.getTileVerts(x,z,h1,h2,h3,h4)
+			local gv1,gv2,gv3,gv4,gv5,gv6 = nil,nil,nil,nil,nil,nil
+			local indices = rect_I
 			if consec_count == 1 then
-				gv1,gv2,gv3,gv4 = Map.getTileVerts(x,z,h1,h2,h3,h4)
+				gv1,gv2,gv3,gv4,gv5,gv6,indices = Map.getTileVerts(x,z,h1,h2,h3,h4, tile_shape)
 			else
 				gv1,gv2,gv3,gv4 = Map.getLongTileVerts(x,z,h1,h2,h3,h4, consec_count)
-				--gv1,gv2,gv3,gv4 = Map.getTileVerts(x,z,h1,h2,h3,h4)
 			end
-			local tex_norm_id = nil
-			if tex_id then
-				tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
-			else
-				tex_norm_id = (nil_texture_id - 1)
-			end
+
+			local tex_norm_id, tex_norm_id2 = nil
+
+			if tex_id then tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+			else tex_norm_id = (nil_texture_id - 1) end
+			if tex_id2 then tex_norm_id2 = (tex_id2-1) -- this will be the index sent to the shader
+			else tex_norm_id2 = (nil_texture_id - 1) end
 
 			if tile_vert_map then
 				tile_vert_map[z][x] = vert_count+1
 			end
 
-			local vert = {gv1,gv2,gv3,gv4}
-			for i=1,4 do
-				verts[vert_count+i] = vert[i]
+			local vert_additions = 4
+			local vert = {gv1,gv2,gv3,gv4,gv5,gv6}
+			if gen_all_verts or tile_shape~= 0 then
+				for i=1,6 do
+					verts[vert_count+i] = vert[i]
+				end
+				vert_additions = 6
+			else
+				for i=1,4 do
+					verts[vert_count+i] = vert[i]
+				end
 			end
 			for i=1,6 do
-				index_map[index_count+i] = vert_count + rect_I[i]
+				index_map[index_count+i] = vert_count + indices[i]
 			end
-			vert_count  = vert_count  + 4
+			vert_count  = vert_count  + vert_additions
 			index_count = index_count + 6
 
-			local attr = { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
-			for i=1,4 do
-				attr_verts[attr_count + i] = attr
+			local attr =  { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
+			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id2 }
+			for i=1,vert_additions do
+				if i>4 then attr_verts[attr_count + i] = attr2
+				else attr_verts[attr_count + i] = attr end
 			end
-			attr_count = attr_count + 4
+			attr_count = attr_count + vert_additions
 
 			I = I + consec_count
 		else
@@ -744,11 +778,6 @@ function Map.generateMapMesh( map , params )
 		end
 	end
 
-	local int = math.floor
-	local I = 1
-
-	local rect_I = {1,2,3,3,4,1}
-
 	vert_count, index_count, attr_count =
 		Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 		                                   vert_count, index_count, attr_count,
@@ -933,7 +962,11 @@ local __tempavec = cpml.vec3.new()
 local __tempbvec = cpml.vec3.new()
 local __tempnorm1 = cpml.vec3.new()
 local __tempnorm2 = cpml.vec3.new()
-function Map.getTileVerts(x,z, h1,h2,h3,h4)
+
+local __rect_I = {1,2,3,3,4,1}
+local __tri1_I = {1,2,3,4,5,6}
+local __tri2_I = {1,2,3,4,5,6}
+function Map.getTileVerts(x,z, h1,h2,h3,h4,tile_shape)
 	local u = {0,1,1,0}
 	local v = {0,0,1,1}
 
@@ -971,14 +1004,35 @@ function Map.getTileVerts(x,z, h1,h2,h3,h4)
 	local norm3y = (norm1.y + norm2.y) * 0.5
 	local norm3z = (norm1.z + norm2.z) * 0.5
 
+	local indices
+	if tile_shape == 0 or tile_shape == nil then
+		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
+		v2 = {x2,y2,z2, u[2], v[2], norm3x, norm3y, norm3z }
+		v3 = {x3,y3,z3, u[3], v[3], norm3x, norm3y, norm3z }
+		v4 = {x4,y4,z4, u[4], v[4], norm2.x, norm2.y, norm2.z }
+		v5 = {0,0,0, 0,0, 0,1,0}
+		v6 = {0,0,0, 0,0, 0,1,0}
+		indices = __rect_I
+	elseif tile_shape == 1 then
+		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
+		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
+		v3 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
+		v4 = {x3,y4,z3, u[4], v[4], 0, -1, 0 }
+		v5 = {x4,y4,z4, u[4], v[4], 0, -1, 0 } 
+		v6 = {x1,y4,z1, u[4], v[4], 0, -1, 0 }
+		indices = __tri1_I
+	else
+		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x4,y4,z4 )
+		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
+		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
+		v3 = {x4,y4,z4, u[3], v[3], norm1.x, norm1.y, norm1.z }
+		v4 = {x2,y2,z2, u[4], v[4], 0, -1, 0 }
+		v5 = {x3,y3,z3, u[4], v[4], 0, -1, 0 } 
+		v6 = {x4,y4,z4, u[4], v[4], 0, -1, 0 }
+		indices = __tri1_I
+	end
 
-	
-	v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
-	v2 = {x2,y2,z2, u[2], v[2], norm3x, norm3y, norm3z }
-	v3 = {x3,y3,z3, u[3], v[3], norm3x, norm3y, norm3z }
-	v4 = {x4,y4,z4, u[4], v[4], norm2.x, norm2.y, norm2.z }
-
-	return v1,v2,v3,v4
+	return v1,v2,v3,v4,v5,v6,indices
 end
 
 function Map.getLongTileVerts(x,z, h1,h2,h3,h4, length)
@@ -1016,8 +1070,11 @@ end
 
 function Map.getIdenticalConsecutiveTilesCount(map, x,z)
 	local tile_id = map.tile_map[z][x]
+	local tile_shape = map.tile_shape[z][x]
 	local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
 
+	if tile_shape ~= 0 then
+		return 1 end
 	if (h1~=h2) or (h1~=h3) or(h1~=h4) then -- we check that the start tile is flat
 		return 1 end
 
@@ -1040,7 +1097,11 @@ end
 
 function Map.getIdenticalSquareTilesCount(map, x,z)
 	local tile_id = map.tile_map[z][x]
+	local tile_shape = map.tile_shape[z][x]
+
 	if map.tile_set[tile_id].tile_texture == nil then
+		return 1,1 end
+	if tile_shape ~= 0 then
 		return 1,1 end
 
 	local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
@@ -1055,7 +1116,10 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 		for X=x,x+i do
 			local Z = z+i
 			local tile_id2 = map.tile_map[Z][X]
+			local tile_shape2 = map.tile_shape[Z][X]
 			if map.tile_set[tile_id].tile_texture == nil then -- check that the next tile is renderable
+				pass = false break end
+			if tile_shape2 ~= 0 then
 				pass = false break end
 			local j1,j2,j3,j4 = unpack(Map.getHeights(map, X,Z))
 			if (j1~=j2) or (j1~=j3) or(j1~=j4) then -- we check that the next tile is flat
@@ -1068,7 +1132,10 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 		for Z=z,z+i-1 do
 			local X = x+i
 			local tile_id2 = map.tile_map[Z][X]
+			local tile_shape2 = map.tile_shape[Z][X]
 			if map.tile_set[tile_id].tile_texture == nil then -- check that the next tile is renderable
+				pass = false break end
+			if tile_shape2 ~= 0 then
 				pass = false break end
 			local j1,j2,j3,j4 = unpack(Map.getHeights(map, X,Z))
 			if (j1~=j2) or (j1~=j3) or(j1~=j4) then -- we check that the next tile is flat
@@ -1257,9 +1324,22 @@ function Map.malformedCheck(map)
 	if not tile_map then
 		return string.format("Map %s is missing a tile map", name) end
 
+	local tile_shape = map.tile_shape
+	if not tile_shape then
+		return string.format("Map %s is missing a tile shape map", name) end
+
 	local models   = map.models
 	if not models then
 		return string.format("Map %s is missing a model table, add an empty [\"models\"]={} if not needed", name) end
+
+	--[[
+	local tile_tex_info = map.tile_tex_info
+	if not tile_tex_info then
+		return string.format("Map %s is missing a tile texture info table") end
+
+	local wall_tex_info = map.wall_tex_info
+	if not wall_tex_info then
+		return string.format("Map %s is missing a wall texture info table") end--]]
 
 	for i,v in ipairs(models) do
 		local mod_name   = v.name
@@ -1296,6 +1376,8 @@ function Map.malformedCheck(map)
 		return string.format("Map %s has mismatching height and height_map array size (height=%d, #height_map=%d)", name, h, #height_map) end
 	if #tile_map ~= h then
 		return string.format("Map %s has mismatching height and tile_map array size (height=%d, #tile_map=%d)", name, h, #tile_map) end
+	if #tile_shape ~= h then
+		return string.format("Map %s has mismatching height and tile_shape array size (height=%d, #tile_map=%d)", name, h, #tile_shape) end
 
 	for z = 1,h do
 		if #(height_map[z]) ~= w then
@@ -1306,6 +1388,9 @@ function Map.malformedCheck(map)
 		end
 		if #(wall_map[z]) ~= w then
 			return string.format("Map %s has mismatching width and wall_map array size (width=%d, #wall_map[%d]=%d)", name, h,z,#height_map[z])
+		end
+		if #(tile_shape[z]) ~= w then
+			return string.format("Map %s has mismatching width and tile_shape array size (width=%d, #tile_shape[%d]=%d)", name, h,z,#tile_shape[z])
 		end
 	
 		for x=1,w do

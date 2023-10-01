@@ -86,6 +86,8 @@ function ProvMapEdit:load(args)
 
 	self.props = MapEditPropPrototype()
 
+	self:loadConfig()
+
 	local map_name = lvledit_arg[1]
 	self:loadMap(map_name)
 
@@ -96,9 +98,49 @@ function ProvMapEdit:load(args)
 	gui:init(self)
 end
 
+function ProvMapEdit:quit()
+	self:saveConfig()
+end
+
 function ProvMapEdit:unload()
 	CONTROL_LOCK.MAPEDIT_VIEW.close()
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.close()
+end
+
+function ProvMapEdit:loadConfig(conf_fpath)
+	local fpath = conf_fpath or "mapeditcfg.lua"
+
+	local file = love.filesystem.newFile(fpath)
+	if not file then return end
+
+	local conf_str = file:read()
+	local status, conf = pcall(function() return loadstring(conf_str)() end)
+	if status and conf then
+		local lang_setting = conf.lang_setting
+		lang:setLanguage(lang_setting)
+	end
+	file:close()
+end
+
+function ProvMapEdit:saveConfig(conf_fpath)
+	local fpath = conf_fpath or "mapeditcfg.lua"
+
+	local file = love.filesystem.newFile(fpath)
+	if not file then return end
+
+	local status, err = file:open("w")
+	if not status then
+		print(err)
+		return
+	end
+
+	local conf_table = {
+		lang_setting = lang.__curr_lang
+	}
+	local serialise = require 'serialise'
+	local str = "return "..serialise(conf_table)
+	file:write(str)
+	file:close()
 end
 
 function ProvMapEdit:loadMap(map_name)
@@ -183,6 +225,22 @@ function ProvMapEdit:addTexture(tex_name, tex)
 	self:regenAtlas()
 end
 
+-- each entry is {texture_name, texture_data}
+function ProvMapEdit:addTextures(tex_table)
+	assert_type(tex_table, "table")
+	for i,v in ipairs(tex_table) do
+		assert_type(v[1], "string")
+		assert(v2[2]:typeOf("Texture"))
+		local entry = {v[1],v[2]}
+		local texs = self.props.mapedit_texture_list
+		local count = #texs
+		texs[count+1] = entry
+		texs[tex_name] = count+1
+	end
+
+	self:regenAtlas()
+end
+
 function ProvMapEdit:textureIsInAnimatedTexture(tex_name)
 	for i,v in pairs(self.props.mapedit_anim_tex) do
 		local texs = v.textures
@@ -193,13 +251,35 @@ function ProvMapEdit:textureIsInAnimatedTexture(tex_name)
 	return false
 end
 
--- returns true is texture removed, otherwise false
--- it can fail if the texture is not loaded OR the
--- texture is part of an animated texture, the animated
--- texture must be deleted first
+function ProvMapEdit:textureIsAppliedToMesh(tex_name)
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	for z=1,h do
+		for x=1,w do
+			local t_tex = self.props.mapedit_tile_textures[z][x]
+			if t_tex == tex_name then return true end
+			local w_tex = self.props.mapedit_wall_textures[z][x]
+			if type(w_tex)~="table" then
+				if w_tex == tex_name then return true end
+			else
+				if w_tex[1] == tex_name then return true end
+				if w_tex[2] == tex_name then return true end
+				if w_tex[3] == tex_name then return true end
+				if w_tex[4] == tex_name then return true end
+			end
+		end
+	end
+	return false
+end
+
+-- returns true is texture removed, otherwise false,info_str
+-- it can fail if the texture is not loaded,the
+-- texture is part of an animated texture, or the texture
+-- is currently applied to a tile,wall
 function ProvMapEdit:removeTexture(tex_name)
 	local is_in_anim = self:textureIsInAnimatedTexture(tex_name)
-	if is_in_anim then return false end
+	if is_in_anim then return false, tex_name..lang[" is part of an animated texture, can't be deleted."] end
+	local is_applied = self:textureIsAppliedToMesh(tex_name)
+	if is_applied then return false, tex_name..lang[" is applied to the map mesh, can't be deleted."] end
 
 	local texs = self.props.mapedit_texture_list
 	if not texs[tex_name] then return end -- ignore if not loaded
@@ -342,7 +422,7 @@ function ProvMapEdit:defineCommands()
 			-- first we inverse the selection if already selected
 			for i,v in ipairs(props.select_objects) do
 				for j,u in ipairs(active_selection) do
-					if v == u then
+					if v[2] == u[2] then
 						skip[i] = true
 						table.remove(active_selection, j)
 						self:highlightObject(v,0.0)
@@ -355,7 +435,7 @@ function ProvMapEdit:defineCommands()
 				if not skip[i] then
 					local unique = true
 					for j,u in ipairs(active_selection) do
-						if v == u then
+						if v[2] == u[2] then
 							unique = false
 							break
 						end
@@ -573,14 +653,18 @@ function ProvMapEdit:defineCommands()
 		function(props) -- command function
 			local groups = {}
 			local calc_mem = props.memory[1] == nil
+			print()
 			for i,v in ipairs(props.select_objects) do
 				local o_type = v[1]
+				if o_type=="tile" then
+					print(o_type, v[2].x, v[2].z, v[2].vert_i)
+				end
 
 				if calc_mem then -- if memory hasn't been calculated yet
 					props.memory[i] = transobj:from(v[2])
 				end
 					
-				if o_type == "model" then
+				if o_type == "model" then -- remember any groups models are in, their bounding box has to be updated
 					local g = self:isModelInAGroup(v[2])
 					if g then add_to_set(groups,g) end
 				end
@@ -1908,7 +1992,7 @@ end
 function ProvMapEdit:getTileVertex( x,z , vert_i )
 	local index = self:getTilesIndexInMesh( x,z )
 	if not index then return nil end
-	assert(vert_i==1 or vert_i==2 or vert_i==3 or vert_i==4)
+	assert(vert_i>=1 and vert_i<=6)
 
 	local mesh = self.props.mapedit_map_mesh.mesh
 	local x,y,z = mesh:getVertexAttribute( index+vert_i-1, 1 )
@@ -1921,7 +2005,7 @@ function ProvMapEdit:setTileVertex( x,z , vert_i , pos )
 	local index = self:getTilesIndexInMesh( x,z )
 	if not index then
 		return false end
-	assert((vert_i==1 or vert_i==2 or vert_i==3 or vert_i==4) and pos)
+	assert((vert_i>=1 and vert_i<=6) and pos)
 
 	local mesh = self.props.mapedit_map_mesh.mesh
 	local X,_,Z = mesh:getVertexAttribute( index+vert_i-1 , 1 )

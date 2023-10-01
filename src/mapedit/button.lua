@@ -33,7 +33,7 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 		h=0,
 		text = str or "",
 		bg = nil,
-		icon = icon or nil,
+		icon = guirender.icons[icon] or nil,
 		action = action,
 		hover = false,
 		disable = false,

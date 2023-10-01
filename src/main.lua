@@ -149,6 +149,8 @@ function love.resize( w,h )
 end
 
 function love.quit()
+	if GAMESTATE.quit then GAMESTATE:quit() end
+
 	prof.write("prof.mpack")
 end
 

@@ -1,11 +1,12 @@
 local guirender = require 'mapedit.guidraw'
 local MapEditPopup = {
 	__type = "mapeditpopup",
-	lifetime = 1.5
+	lifetime = 1.5,
 }
 MapEditPopup.__index = MapEditPopup
 
-function MapEditPopup:throw(str, ...)
+function MapEditPopup:throw(str, lifetime, ...)
+	local lifetime = lifetime or MapEditPopup.lifetime
 	local args = {...}
 	local str = string.format(str, unpack(args))
 	local txt_obj = guirender:createDrawableText(str)
@@ -15,6 +16,7 @@ function MapEditPopup:throw(str, ...)
 		txt_obj = txt_obj,
 		bg      = guirender:createContextMenuBackground(txt_obj:getWidth()+4, txt_obj:getHeight()+4),
 		creation_time = love.timer.getTime(),
+		lifetime = lifetime,
 
 		draw = function(self)
 			local x,y = love.mouse.getPosition()
@@ -32,7 +34,7 @@ function MapEditPopup:throw(str, ...)
 		end,
 
 		expire = function(self)
-			return love.timer.getTime()-self.creation_time > MapEditPopup.lifetime
+			return love.timer.getTime()-self.creation_time > self.lifetime
 		end,
 
 		release = function(self)

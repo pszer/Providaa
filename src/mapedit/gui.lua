@@ -324,13 +324,13 @@ function MapEditGUI:define(mapedit)
 		    return lang_win:new({},
 				{
 					guitextbox:new(lang["Set Language"],0,0,100,"center"),
-					guibutton:new("English",nil,0,0, function(self,win) lang:setLanguage("eng")
+					guibutton:new("English","mapedit/flag_en.png",0,0, function(self,win) lang:setLanguage("eng")
 					                                                    guirender:loadFonts(lang:getFontInfo())
 					                                                    MapEditGUI:define(mapedit) end,"middle","top"),
-					guibutton:new("Polish",nil,0,0, function(self,win) lang:setLanguage("pl")
+					guibutton:new("Polish","mapedit/flag_pl.png",0,0, function(self,win) lang:setLanguage("pl")
 					                                                   guirender:loadFonts(lang:getFontInfo())
 					                                                   MapEditGUI:define(mapedit) end,"middle","top"),
-					guibutton:new("Japanese",nil,0,0, function(self,win) lang:setLanguage("jp")
+					guibutton:new("Japanese","mapedit/flag_jp.png",0,0, function(self,win) lang:setLanguage("jp")
 					                                                     guirender:loadFonts(lang:getFontInfo())
 					                                                     MapEditGUI:define(mapedit) end,"middle","top"),
 				},
@@ -436,8 +436,21 @@ function MapEditGUI:define(mapedit)
 		{},
 		{
 			self.grid_info_panel_image,
-			guibutton:new(lang["Import"],nil,0,0, function(self,win) end, "left", "top"),
-			guibutton:new(lang["Delete"],nil,0,0, function(self,win) end, "left", "top")
+			guibutton:new(lang["Import"],nil,0,0,
+				function(self,win)
+				end, "left", "top"),
+			guibutton:new(lang["Delete"],nil,0,0,
+				function(self,win)
+					local g_sel = MapEditGUI.texture_grid:getGridSelectedObject()
+					if g_sel then
+						local tex_name=g_sel[1]
+						local ok, status = mapedit:removeTexture(tex_name)
+						if not ok then
+							MapEditGUI:displayPopup(status,3.0)
+						end
+					end
+				end,
+				"left", "top")
 		},
 		0,0,300,100
 	)

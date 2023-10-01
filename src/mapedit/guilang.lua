@@ -23,7 +23,7 @@ local __lang_fonts = {
 
 local MapEditGUILanguage = {
 	__supported = {"eng","pl","jp"},
-	__curr_lang = "jp",
+	__curr_lang = "eng",
 }
 
 local MapEditGUILanguageStrings = {
@@ -167,6 +167,15 @@ local MapEditGUILanguageStrings = {
 		jp="削除する",
 	},
 
+	[" is part of an animated texture, can't be deleted."]={
+		pl=" jest część animowanej tekstury, nie można usunąć.",
+		jp="はアニメーションテクスチャの一部であり、削除できません。"
+	},
+	[" is applied to the map mesh, can't be deleted."]={
+		pl=" jest część siatka mapy, nie można usunąć.",
+		jp="はマップのメッシュに付いてあります、削除できません。"
+	},
+
 	["default_group_name"]={
 		eng="Group",
 		pl ="Grupa",
@@ -181,7 +190,9 @@ function MapEditGUILanguage:setLanguage(lang)
 		if v == lang then supported = true break end
 	end
 	if not supported then
-		error(string.format("Unsupported language %s",lang))
+		print(string.format("Unsupported language %s",lang))
+		self.__curr_lang = "eng"
+		return
 	end
 
 	self.__curr_lang = lang

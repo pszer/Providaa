@@ -123,7 +123,11 @@ function MapEditGUIRender:initAssets()
 		"mapedit/icon_del.png",
 		"mapedit/icon_dup.png",
 		"mapedit/icon_copy.png",
-		"mapedit/icon_sub.png"
+		"mapedit/icon_sub.png",
+
+		"mapedit/flag_en.png",
+		"mapedit/flag_pl.png",
+		"mapedit/flag_jp.png",
 	}
 	for i,v in ipairs(icon_list) do
 		self.icons[v] = Loader:getTextureReference(v)

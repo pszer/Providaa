@@ -41,10 +41,12 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_map_height", "number", 0, nil, "active map height"},
 
 	{"mapedit_tile_heights", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile heights"},
-	--{"mapedit_tile_map", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of tiles to the tileset"},
-	--{"mapedit_wall_map", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of walls to the wallset"},
+	{"mapedit_tile_shapes" , "table", nil, PropDefaultTable{}, "map_width x map_height table of tile shapes" },
 	{"mapedit_tile_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each tile"},
 	{"mapedit_wall_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each wall"},
+
+	{"mapedit_tile_tex_info", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture info, {tex_offset, tex_scale} (each is a vec2, tex_scale.xy~=0)"},
+	{"mapedit_wall_tex_info", "table", nil, PropDefaultTable{}, "map_width x map_height table of wall texture info, {tex_offset, tex_scale} (each is a vec2, tex_scale.xy~=0)"},
 
 	{"mapedit_anim_tex", "table", nil, PropDefaultTable{}, "active map animated texture definitions"},
 
