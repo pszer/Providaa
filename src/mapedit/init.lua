@@ -1664,7 +1664,13 @@ end
 local __tempv1,__tempv2,__tempv3,__tempv4,__tempv5,__tempv6 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
 local __temptri1, __temptri2 = {},{}
 local __tempt1,__tempt2,__tempt3,__tempt4,__tempt5,__tempt6 = {0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0}
-local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1},{5},{6},{5,6}}
+local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
+local __shape_map = {
+{1,2,3,4,nil,nil},
+{1,2,3,5,4,6},
+{1,2,4,5,3,6},
+{6,2,5,3,4,1},
+{1,5,6,2,3,4}}
 -- returns false
 --         true, dist
 --         true, dist, verts
@@ -1678,12 +1684,12 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, test_type)
 	V2.x,V2.y,V2.z = v2[1],v2[2],v2[3]
 	V3.x,V3.y,V3.z = v3[1],v3[2],v3[3]
 	V4.x,V4.y,V4.z = v4[1],v4[2],v4[3]
-	if v5 then
+	local tile_shape = self:getTileShape(x,z)
+	if tile_shape > 0 then
 		V5.x,V5.y,V5.z = v5[1],v5[2],v5[3]
 		V6.x,V6.y,V6.z = v6[1],v6[2],v6[3]
 	end
 
-	local tile_shape = self:getTileShape(x,z)
 	if tile_shape == 0 then
 	__temptri1[1], __temptri1[2], __temptri1[3] = V1, V2, V3
 	__temptri2[1], __temptri2[2], __temptri2[3] = V3, V4, V1
@@ -1711,38 +1717,112 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, test_type)
 			local z = v1[3]-V.z
 			return math.sqrt(x*x + y*y + z*z)
 		end
-		local edge1,edge2,edge3,edge4 = __tempt1,__tempt2,__tempt3,__tempt4
-		edge1[1] = (v1[1] + v2[1]) * 0.5
-		edge1[2] = (v1[2] + v2[2]) * 0.5
-		edge1[3] = (v1[3] + v2[3]) * 0.5
-		edge2[1] = (v2[1] + v3[1]) * 0.5
-		edge2[2] = (v2[2] + v3[2]) * 0.5
-		edge2[3] = (v2[3] + v3[3]) * 0.5
-		edge3[1] = (v3[1] + v4[1]) * 0.5
-		edge3[2] = (v3[2] + v4[2]) * 0.5
-		edge3[3] = (v3[3] + v4[3]) * 0.5
-		edge4[1] = (v4[1] + v1[1]) * 0.5
-		edge4[2] = (v4[2] + v1[2]) * 0.5
-		edge4[3] = (v4[3] + v1[3]) * 0.5
 
-		local v1d = length(v1,intersect)
-		local v2d = length(v2,intersect)
-		local v3d = length(v3,intersect)
-		local v4d = length(v4,intersect)
-		local e1d = length(edge1,intersect)
-		local e2d = length(edge2,intersect)
-		local e3d = length(edge3,intersect)
-		local e4d = length(edge4,intersect)
+		if tile_shape == 0 then
+			local edge1,edge2,edge3,edge4,edge5,edge6 = __tempt1,__tempt2,__tempt3,__tempt4,__tempt5,__tempt6
 
-		local list={v1d,v2d,v3d,v4d,e1d,e2d,e3d,e4d}
-		local list_min = 1/0
-		local min_i=1
-		for i=1,8 do
-			local l = list[i]
-			if l < list_min then min_i=i list_min=l end
+			edge1[1] = (v1[1] + v2[1]) * 0.5
+			edge1[2] = (v1[2] + v2[2]) * 0.5
+			edge1[3] = (v1[3] + v2[3]) * 0.5
+
+			edge2[1] = (v2[1] + v3[1]) * 0.5
+			edge2[2] = (v2[2] + v3[2]) * 0.5
+			edge2[3] = (v2[3] + v3[3]) * 0.5
+
+			edge3[1] = (v3[1] + v4[1]) * 0.5
+			edge3[2] = (v3[2] + v4[2]) * 0.5
+			edge3[3] = (v3[3] + v4[3]) * 0.5
+
+			edge4[1] = (v4[1] + v1[1]) * 0.5
+			edge4[2] = (v4[2] + v1[2]) * 0.5
+			edge4[3] = (v4[3] + v1[3]) * 0.5
+
+			local v1d = length(v1,intersect)*1.15 -- multiply by 1.25 so edges are easier to grab
+			local v2d = length(v2,intersect)*1.15
+			local v3d = length(v3,intersect)*1.15
+			local v4d = length(v4,intersect)*1.15
+			local e1d = length(edge1,intersect)
+			local e2d = length(edge2,intersect)
+			local e3d = length(edge3,intersect)
+			local e4d = length(edge4,intersect)
+
+			local list={v1d,v2d,v3d,v4d,e1d,e2d,e3d,e4d}
+			local list_min = 1/0
+			local min_i=1
+			for i=1,8 do
+				local l = list[i]
+				if l < list_min then min_i=i list_min=l end
+			end
+			verts_t = __results_t[min_i]
+		else
+			local verts={v1,v2,v3,v4,v5,v6}
+
+			local edge1,edge2,edge3,edge4,edge5,edge6 = __tempt1,__tempt2,__tempt3,__tempt4,__tempt5,__tempt6
+			local map = __shape_map[tile_shape+1]
+
+			local vm1 = verts[map[1]]
+			local vm2 = verts[map[2]]
+			local vm3 = verts[map[3]]
+			local vm4 = verts[map[4]]
+			local vm5 = verts[map[5]]
+			local vm6 = verts[map[6]]
+
+			local edge_verts_order = {
+				{1,2},{2,3},{3,1},{4,5},{5,6},{6,4}
+			}
+
+			edge1[1] = (vm1[1] + vm2[1]) * 0.5
+			edge1[2] = (vm1[2] + vm2[2]) * 0.5
+			edge1[3] = (vm1[3] + vm2[3]) * 0.5
+
+			edge2[1] = (vm2[1] + vm3[1]) * 0.5
+			edge2[2] = (vm2[2] + vm3[2]) * 0.5
+			edge2[3] = (vm2[3] + vm3[3]) * 0.5
+
+			edge3[1] = (vm3[1] + vm1[1]) * 0.5
+			edge3[2] = (vm3[2] + vm1[2]) * 0.5
+			edge3[3] = (vm3[3] + vm1[3]) * 0.5
+
+			edge4[1] = (vm4[1] + vm5[1]) * 0.5
+			edge4[2] = (vm4[2] + vm5[2]) * 0.5
+			edge4[3] = (vm4[3] + vm5[3]) * 0.5
+
+			edge5[1] = (vm5[1] + vm6[1]) * 0.5
+			edge5[2] = (vm5[2] + vm6[2]) * 0.5
+			edge5[3] = (vm5[3] + vm6[3]) * 0.5
+
+			edge6[1] = (vm6[1] + vm4[1]) * 0.5
+			edge6[2] = (vm6[2] + vm4[2]) * 0.5
+			edge6[3] = (vm6[3] + vm4[3]) * 0.5
+
+
+			local v1d = length(v1,intersect)*1.15 -- multiply by 1.25 so edges are easier to grab
+			local v2d = length(v2,intersect)*1.15
+			local v3d = length(v3,intersect)*1.15
+			local v4d = length(v4,intersect)*1.15
+			local v5d = length(v5,intersect)*1.15
+			local v6d = length(v6,intersect)*1.15
+			local e1d = length(edge1,intersect)
+			local e2d = length(edge2,intersect)
+			local e3d = length(edge3,intersect)
+			local e4d = length(edge4,intersect)
+			local e5d = length(edge5,intersect)
+			local e6d = length(edge6,intersect)
+
+			local list={v1d,v2d,v3d,v4d,v5d,v6d,e1d,e2d,e3d,e4d,e5d,e6d}
+			local list_min = 1/0
+			local min_i=1
+			for i=1,12 do
+				local l = list[i]
+				if l < list_min then min_i=i list_min=l end
+			end
+			if min_i <= 6 then
+				verts_t = {min_i}
+			else
+				local edge_i = min_i-6
+				verts_t = {map[edge_verts_order[edge_i][1]], map[edge_verts_order[edge_i][2]]}
+			end
 		end
-		--local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
-		verts_t = __results_t[min_i]
 	elseif test_type=="face" and intersect then
 		if tile_shape == 0 then
 			verts_t = {1,2,3,4}
@@ -3122,7 +3202,7 @@ function ProvMapEdit:updateWallVerts(x,z)
 	local map_heights = self.props.mapedit_tile_heights
 	local tile_shapes = self.props.mapedit_tile_shapes
 
-	local function get_heights_triangle(x,z,side)
+	local function get_heights_triangle(x,z,direction)
 		if x < 1 or x > w or z < 1 or z > h then
 			return nil end
 
@@ -3221,7 +3301,7 @@ function ProvMapEdit:updateWallVerts(x,z)
 				local vmax = get_uv_v_max(wall.diagonal)
 				for i=1,4 do
 					local wallv = wall.diagonal[i]
-					verts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+					verts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, 1.0-u[i], wallv[2]-vmax,
 														wall.diagonal_norm[1],wall.diagonal_norm[2],wall.diagonal_norm[3]}
 				end
 			end

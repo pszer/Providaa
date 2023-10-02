@@ -91,29 +91,37 @@ function Wall:getWallInfo(textures, tile_shape, tile_heights, west_heights, sout
 		if tile_shape==0 then
 			height_a,height_b = tile_heights[ height_i[i][1] ], tile_heights[ height_i[i][2] ]
 		elseif tile_shape==1 then
+
 			if i==2 then -- south or west
 				height_a,height_b = tile_heights[4], tile_heights[5]
 			elseif i==1 then
 				height_a,height_b = tile_heights[6] , tile_heights[4]
 			else height_a,height_b = tile_heights[ height_i[i][1] ], tile_heights[ height_i[i][2] ] end
+
 		elseif tile_shape==2 then
+
 			if i==2 then -- south or west
 				height_a,height_b = tile_heights[6], tile_heights[3]
 			elseif i==3 then
 				height_a,height_b = tile_heights[3] , tile_heights[5]
 			else height_a,height_b = tile_heights[ height_i[i][1] ], tile_heights[ height_i[i][2] ] end
+
 		elseif tile_shape==3 then
+
 			if i==3 then -- east or south
 				height_a,height_b = tile_heights[5], tile_heights[2]
 			elseif i==4 then
 				height_a,height_b = tile_heights[2], tile_heights[6]
 			else height_a,height_b = tile_heights[ height_i[i][1] ], tile_heights[ height_i[i][2] ] end
+
 		elseif tile_shape==4 then
+
 			if i==4 then -- west or north
-				height_a,height_b = tile_heights[6], tile_heights[1]
+				height_a,height_b = tile_heights[5], tile_heights[1]
 			elseif i==1 then
-				height_a,height_b = tile_heights[1], tile_heights[5]
+				height_a,height_b = tile_heights[1], tile_heights[6]
 			else height_a,height_b = tile_heights[ height_i[i][1] ], tile_heights[ height_i[i][2] ] end
+
 		end
 
 		local oppheight_a,oppheight_b = opptile[height_i[i][3]], opptile[height_i[i][4]]
@@ -162,8 +170,8 @@ function Wall:getWallInfo(textures, tile_shape, tile_heights, west_heights, sout
 	if tile_shape	~= 0 then
 		local top_height_a, bottom_height_a = nil,nil
 		local top_height_b, bottom_height_b = nil,nil
-		if     tile_shape == 1 then top_height_a,bottom_height_a = tile_heights[1], tile_heights[6]
-		                            top_height_b,bottom_height_b = tile_heights[3], tile_heights[5]
+		if     tile_shape == 1 then top_height_a,bottom_height_a = tile_heights[1], tile_heights[5]
+		                            top_height_b,bottom_height_b = tile_heights[3], tile_heights[6]
 
 		elseif tile_shape == 2 then top_height_a,bottom_height_a = tile_heights[2], tile_heights[5]
 		                            top_height_b,bottom_height_b = tile_heights[4], tile_heights[6]
@@ -171,8 +179,8 @@ function Wall:getWallInfo(textures, tile_shape, tile_heights, west_heights, sout
 		elseif tile_shape == 3 then top_height_a,bottom_height_a = tile_heights[3], tile_heights[6]
 		                            top_height_b,bottom_height_b = tile_heights[1], tile_heights[5]
 
-		elseif tile_shape == 4 then top_height_a,bottom_height_a = tile_heights[4], tile_heights[5]
-		                            top_height_b,bottom_height_b = tile_heights[2], tile_heights[6]
+		elseif tile_shape == 4 then top_height_a,bottom_height_a = tile_heights[4], tile_heights[6]
+		                            top_height_b,bottom_height_b = tile_heights[2], tile_heights[5]
 		end
 
 		-- ensure top_height > bottom_height
@@ -189,28 +197,28 @@ function Wall:getWallInfo(textures, tile_shape, tile_heights, west_heights, sout
 
 		local x,y,z = {},{},{}
 		if tile_shape == 1 then
-			x[4],y[4],z[4] = 1,top_height_b,1
-			x[3],y[3],z[3] = 0,top_height_a,0
-			x[2],y[2],z[2] = 0,bottom_height_a,0
-			x[1],y[1],z[1] = 1,bottom_height_b,1
+			x[4],y[4],z[4] = 1,top_height_a,1
+			x[3],y[3],z[3] = 0,top_height_b,0
+			x[2],y[2],z[2] = 0,bottom_height_b,0
+			x[1],y[1],z[1] = 1,bottom_height_a,1
 			wall.diagonal_norm = Wall.diagonal_norm_1
 		elseif tile_shape == 2 then
-			x[4],y[4],z[4] = 1,top_height_b,0
-			x[3],y[3],z[3] = 0,top_height_a,1
-			x[2],y[2],z[2] = 0,bottom_height_a,1
-			x[1],y[1],z[1] = 1,bottom_height_b,0
+			x[4],y[4],z[4] = 1,top_height_a,0
+			x[3],y[3],z[3] = 0,top_height_b,1
+			x[2],y[2],z[2] = 0,bottom_height_b,1
+			x[1],y[1],z[1] = 1,bottom_height_a,0
 			wall.diagonal_norm = Wall.diagonal_norm_2
 		elseif tile_shape == 3 then
-			x[4],y[4],z[4] = 0,top_height_b,0
-			x[3],y[3],z[3] = 1,top_height_a,1
-			x[2],y[2],z[2] = 1,bottom_height_a,1
-			x[1],y[1],z[1] = 0,bottom_height_b,0
+			x[4],y[4],z[4] = 0,top_height_a,0
+			x[3],y[3],z[3] = 1,top_height_b,1
+			x[2],y[2],z[2] = 1,bottom_height_b,1
+			x[1],y[1],z[1] = 0,bottom_height_a,0
 			wall.diagonal_norm = Wall.diagonal_norm_3
 		elseif tile_shape == 4 then
-			x[4],y[4],z[4] = 0,top_height_b,1
-			x[3],y[3],z[3] = 1,top_height_a,0
-			x[2],y[2],z[2] = 1,bottom_height_a,0
-			x[1],y[1],z[1] = 0,bottom_height_b,1
+			x[4],y[4],z[4] = 0,top_height_a,1
+			x[3],y[3],z[3] = 1,top_height_b,0
+			x[2],y[2],z[2] = 1,bottom_height_b,0
+			x[1],y[1],z[1] = 0,bottom_height_a,1
 			wall.diagonal_norm = Wall.diagonal_norm_4
 		end
 

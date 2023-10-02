@@ -117,14 +117,24 @@ local function MapEditExport(props, name, settings)
 		for x=1,w do
 			local t_tex = tile_texs[z][x]
 			if t_tex then
-				local id = tex_to_tile_set[t_tex]
-				tile_map[z][x] = id
-				if not id then
-					tile_map[z][x] = 1
-					Log(string.format("MapExport: tile (%d,%d) uses texture outside of texture list. Defaulting to tile_set[1]",x,z))
+				if type(t_tex) ~= "table" then
+					local id = tex_to_tile_set[t_tex]
+					tile_map[z][x] = id
+					if not id then
+						tile_map[z][x] = {1,1}
+						Log(string.format("MapExport: tile (%d,%d) uses texture outside of texture list. Defaulting to tile_set[1]",x,z))
+					end
+				else
+					local id1 = t_tex[1] and tex_to_tile_set[t_tex[1]]
+					local id2 = t_tex[2] and tex_to_tile_set[t_tex[2]]
+					tile_map[z][x] = {id1,id2}
+					if not id1 or not id2 then
+						tile_map[z][x] = {1,1}
+						Log(string.format("MapExport: tile (%d,%d) uses texture outside of texture list. Defaulting to tile_set[1]",x,z))
+					end
 				end
 			else
-				tile_map[z][x] = 1
+				tile_map[z][x] = {1,1}
 				Log(string.format("MapExport: tile (%d,%d) untextured.",x,z))
 			end
 
@@ -133,11 +143,11 @@ local function MapEditExport(props, name, settings)
 			if w_tex_type=="string" then
 				local id = tex_to_wall_set[w_tex]
 				if not id then
-					wall_map[z][x] = {1,1,1,1}
+					wall_map[z][x] = {1,1,1,1,1}
 					Log(string.format("MapExport: wall (%d,%d) uses texture outside of texture list (%s). Defaulting to wall_set[1]",x,z,tostring(w_tex)))
 				end
 			elseif w_tex_type=="table" then
-				for i=1,4 do
+				for i=1,5 do
 					local w_tex = w_tex[i]
 					if w_tex then
 						local id = tex_to_wall_set[w_tex]

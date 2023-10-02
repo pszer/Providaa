@@ -469,7 +469,7 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				vert_count  = vert_count  + 4
 				index_count = index_count + 6
 
-				local tex_height = textures[tex_id]:getHeight() / TILE_HEIGHT
+				local tex_height = textures[tex_id]:getHeight()/TILE_HEIGHT
 
 				local attr = { 1.0, tex_height, 0.0, 0.0, tex_norm_id }
 				for i=1,4 do
@@ -1076,7 +1076,7 @@ function Map.getWallVerts(x,z, wall, wall_side)
 		local vmax = get_uv_v_max(wall.diagonal)
 		for i=1,4 do
 			local wallv = wall.diagonal[i]
-			__tempverts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+			__tempverts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, 1.0-u[i], wallv[2]-vmax,
 			                  wall.diagonal_norm[1],wall.diagonal_norm[2],wall.diagonal_norm[3]}
 		end
 	end
