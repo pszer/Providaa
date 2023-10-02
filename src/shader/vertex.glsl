@@ -214,7 +214,7 @@ vec3 diffuse_lighting_2( vec3 normal, vec3 light_dir, vec4 light_col) {
 }
 
 vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
-	float specular_strength = 1.5;
+	float specular_strength = 1.2;
 
 	vec3 view_dir = normalize( view_pos - frag_w_position );
 	vec3 light_dir_n = normalize( light_dir);
@@ -297,7 +297,7 @@ float shadow_calculation( vec4 pos , mat4 lightspace, sampler2DShadow shadow_map
 	float radius = 2000.0; // the smaller, the larger the pcf radius
 	//bias = clamp(bias, 0.00100,0.00230);
 	//bias = bias + (bias * min(angle,3.0))/10.0;
-	bias = mix(bias, 0.001, cosTheta)*3;
+	bias = mix(bias, 0.0001, cosTheta)*1.2;
 
 	float shadow = 1.0;
 

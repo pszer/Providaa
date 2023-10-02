@@ -663,11 +663,9 @@ function ProvMapEdit:defineCommands()
 		function(props) -- command function
 			local groups = {}
 			local calc_mem = props.memory[1] == nil
-			print()
 			for i,v in ipairs(props.select_objects) do
 				local o_type = v[1]
 				if o_type=="tile" then
-					print(o_type, v[2].x, v[2].z, v[2].vert_i)
 				end
 
 				if calc_mem then -- if memory hasn't been calculated yet
@@ -2086,6 +2084,12 @@ function ProvMapEdit:getWallVerts( x,z , side )
 end
 
 local __temphtable = {0,0,0,0}
+local __shape_map = {
+{1,2,3,4,nil,nil},
+{1,2,3,5,4,6},
+{1,2,4,5,3,6},
+{6,2,5,3,4,1},
+{1,5,6,2,3,4}}
 function ProvMapEdit:updateTileVerts(x,z)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	if x<1 or x>w or z<1 or z>h then return end
@@ -2106,8 +2110,12 @@ function ProvMapEdit:updateTileVerts(x,z)
 	if type(stored_heights) ~= "table" then
 		tile_heights[z][x] = {unpack(heights)}
 	else
-		for i=1,index_end-index do
-			stored_heights[i]=heights[i]
+		local tile_shape = self:getTileShape(x,z)
+		local shape_map = __shape_map[tile_shape+1]
+		for i=1,6 do
+			local I = shape_map[i]
+			if not I then break end
+			stored_heights[i]=heights[I]
 		end
 	end
 end
@@ -2128,6 +2136,9 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 	end
 	local height = Y / TILE_HEIGHT
 
+	local tile_shape = self:getTileShape(x,z)
+	local vertex_to_height_table_index = __shape_map[tile_shape+1]
+
 	local tile_heights = self.props.mapedit_tile_heights
 	local stored_heights = tile_heights[z][x]
 	if type(stored_heights) ~= "table" then
@@ -2136,14 +2147,15 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 		for j=1,6 do
 			t[j] = h
 		end
-		t[i] = height
+		local I = vertex_to_height_table_index[i]
+		assert(I)
+		t[I] = height
 
 		tile_heights[z][x] = t
 	else
-		stored_heights[i]=height
+		local I = vertex_to_height_table_index[i]
+		stored_heights[I]=height
 	end
-
-	print("vert",i, height)
 end
 
 -- takes in a list of selected objects in the form {"tile", tile_vertex_obj} (non-tile objects are ignored)
@@ -3204,7 +3216,7 @@ function ProvMapEdit:updateWallVerts(x,z)
 					verts[i] = {wx+(wallv[1]+1)*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
 														0,0,-1}
 				end
-			elseif wall_side == Wall.diagonali then
+			elseif side == Wall.diagonali then
 				if not wall.diagonal then return nil,nil,nil,nil end
 				local vmax = get_uv_v_max(wall.diagonal)
 				for i=1,4 do
