@@ -1020,7 +1020,6 @@ function Map.getWalls(map, x,z)
 	if type(walls) == "table" then
 		w[1],w[2],w[3],w[4],w[5] = walls[1],walls[2],walls[3],walls[4],walls[5]
 	else
-		--w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,nil,nil
 		w[1],w[2],w[3],w[4],w[5] = walls,walls,walls,walls,walls
 	end
 	return w

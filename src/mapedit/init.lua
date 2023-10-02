@@ -358,8 +358,14 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 			local wall_id = map_file.wall_map[z][x]
 
 			if tile_id then
-				local tex = map_file.tile_set[tile_id]
-				t_tex[z][x] = tex
+				if type(tile_id)=="table" then
+					local tex1 = map_file.tile_set[tile_id[1]]
+					local tex2 = map_file.tile_set[tile_id[2]]
+					t_tex[z][x] = {tex1,tex2}
+				else
+					local tex = map_file.tile_set[tile_id]
+					t_tex[z][x] = {tex,tex}
+				end
 			end
 
 			if wall_id then
@@ -370,9 +376,10 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 					w_tex[z][x][2] = tex
 					w_tex[z][x][3] = tex
 					w_tex[z][x][4] = tex
+					w_tex[z][x][5] = tex
 				else
 					local wall_id_table = wall_id
-					for i=1,4 do
+					for i=1,5 do
 						local wall_id = wall_id_table[i]
 						if wall_id then
 							local tex = map_file.wall_set[wall_id]
@@ -393,8 +400,10 @@ function ProvMapEdit:allocateObjects()
 		for x=1,w do
 			self.tilevertex_objs[z][x]={}
 			self.wall_objs[z][x]={}
-			for i=1,4 do
+			for i=1,6 do
 				self.tilevertex_objs[z][x][i]=self:getTileVertexObject(x,z,i)
+			end
+			for i=1,5 do
 				self.wall_objs[z][x][i]=self:getWallObject(x,z,i)
 			end
 		end
@@ -1049,10 +1058,20 @@ function ProvMapEdit:setupInputHandling()
 				for x=x1,x2 do
 					for z=z1,z2 do
 						--table.insert(objs_in_range, {"tile",x,z})
-						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
-						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
-						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
-						table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
+						local tile_shape = self:getTileShape(x,z)
+						if tile_shape==0 then
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
+						else
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,5)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,6)})
+						end
 					end
 				end
 
@@ -1081,7 +1100,9 @@ function ProvMapEdit:setupInputHandling()
 		if obj[1] == "tile" then
 			local x = obj[2].x
 			local z = obj[2].z
-			self:setTileTexture(x,z,tex_name)
+			local vert_i = obj[2].vert_i
+			--self:setTileTexture(x,z,tex_name)
+			self:setTileVertexTexture(x,z,vert_i,tex_name)
 		elseif obj[1] == "wall" then
 			local x = obj[2].x
 			local z = obj[2].z
@@ -1529,45 +1550,26 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 
 	local function __test_tile(x,z)
-		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, self.alt_modifier)
+		local test_type = "face"
+		if self.alt_modifier then test_type = "vert" end
+		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, test_type)
 		if intersect and dist < min_dist then
-			if not self.alt_modifier then
-				mesh_test = {"tile",
-										 self:getTileVertexObject(x,z,1),
-										 self:getTileVertexObject(x,z,2),
-										 self:getTileVertexObject(x,z,3),
-										 self:getTileVertexObject(x,z,4)
-										 }
-			else
-				mesh_test = {"tile"}
-				for i,v in ipairs(verts) do
-					mesh_test[i+1] = self:getTileVertexObject(x,z,v)
-				end
+			mesh_test = {"tile"}
+			for i,v in ipairs(verts) do
+				mesh_test[i+1] = self:getTileVertexObject(x,z,v)
 			end
 			min_dist = dist
 		end
 	end
 
 	local function __test_wall(x,z)
-		local intersect, dist = self:testWallSideAgainstRay(ray, x,z, 1)
-		if intersect and dist < min_dist  then
-			mesh_test = {"wall",self:getWallObject(x,z,1)}
-			min_dist = dist
-		end
-		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 2)
-		if intersect and dist < min_dist  then
-			mesh_test = {"wall",self:getWallObject(x,z,2)}
-			min_dist = dist
-		end
-		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 3)
-		if intersect and dist < min_dist  then
-			mesh_test = {"wall",self:getWallObject(x,z,3)}
-			min_dist = dist
-		end
-		intersect, dist = self:testWallSideAgainstRay(ray, x,z, 4)
-		if intersect and dist < min_dist  then
-			mesh_test = {"wall",self:getWallObject(x,z,4)}
-			min_dist = dist
+		local intersect, dist
+		for i=1,5 do
+			intersect, dist = self:testWallSideAgainstRay(ray, x,z, i)
+			if intersect and dist < min_dist  then
+				mesh_test = {"wall",self:getWallObject(x,z,i)}
+				min_dist = dist
+			end
 		end
 	end
 
@@ -1661,26 +1663,36 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	return mesh_test
 end
 
-local __tempv1,__tempv2,__tempv3,__tempv4 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
+local __tempv1,__tempv2,__tempv3,__tempv4,__tempv5,__tempv6 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
 local __temptri1, __temptri2 = {},{}
-local __tempt1,__tempt2,__tempt3,__tempt4 = {0,0,0},{0,0,0},{0,0,0},{0,0,0}
-local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
+local __tempt1,__tempt2,__tempt3,__tempt4,__tempt5,__tempt6 = {0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0},{0,0,0}
+local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1},{5},{6},{5,6}}
 -- returns false
 --         true, dist
 --         true, dist, verts
 -- where verts is a table containing at least one of [1,2,3,4], corresponding
 -- to the nearest vertices/edge selected, if vert_test argument is true
-function ProvMapEdit:testTileAgainstRay(ray, x,z, vert_test)
+function ProvMapEdit:testTileAgainstRay(ray, x,z, test_type)
 	local ray_triangle = cpml.intersect.ray_triangle
-	local v1,v2,v3,v4 = self:getTileVerts(x,z)
-	local V1,V2,V3,V4 = __tempv1, __tempv2, __tempv3, __tempv4
+	local v1,v2,v3,v4,v5,v6 = self:getTileVerts(x,z)
+	local V1,V2,V3,V4,V5,V6 = __tempv1, __tempv2, __tempv3, __tempv4,__tempv5,__tempv6
 	V1.x,V1.y,V1.z = v1[1],v1[2],v1[3]
 	V2.x,V2.y,V2.z = v2[1],v2[2],v2[3]
 	V3.x,V3.y,V3.z = v3[1],v3[2],v3[3]
 	V4.x,V4.y,V4.z = v4[1],v4[2],v4[3]
+	if v5 then
+		V5.x,V5.y,V5.z = v5[1],v5[2],v5[3]
+		V6.x,V6.y,V6.z = v6[1],v6[2],v6[3]
+	end
 
+	local tile_shape = self:getTileShape(x,z)
+	if tile_shape == 0 then
 	__temptri1[1], __temptri1[2], __temptri1[3] = V1, V2, V3
 	__temptri2[1], __temptri2[2], __temptri2[3] = V3, V4, V1
+	elseif tile_shape > 0 then
+		__temptri1[1], __temptri1[2], __temptri1[3] = V1, V2, V3
+		__temptri2[1], __temptri2[2], __temptri2[3] = V4, V5, V6
+	end
 
 	local intersect1, dist1 = ray_triangle(ray, __temptri1, false) 
 	local intersect2, dist2 = ray_triangle(ray, __temptri2, false)
@@ -1694,7 +1706,7 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, vert_test)
 	end
 
 	local verts_t = nil
-	if vert_test and intersect then
+	if test_type=="vert" and intersect then
 		local function length(v1,V) 
 			local x = v1[1]-V.x
 			local y = v1[2]-V.y
@@ -1733,6 +1745,16 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, vert_test)
 		end
 		--local __results_t = {{1},{2},{3},{4},{1,2},{2,3},{3,4},{4,1}}
 		verts_t = __results_t[min_i]
+	elseif test_type=="face" and intersect then
+		if tile_shape == 0 then
+			verts_t = {1,2,3,4}
+		else
+			if intersect1 then
+				verts_t = {1,2,3}
+			else
+				verts_t = {4,5,6}
+			end
+		end
 	end
 
 	return intersect, dist, verts_t
@@ -1971,27 +1993,40 @@ function ProvMapEdit:getTilesIndexInMesh( x,z )
 	local vmap = self.props.mapedit_map_mesh.tile_vert_map
 	local index = vmap[z][x]
 	local tile_shape = self.props.mapedit_tile_shapes[z][x]
-	local count = 4
-	if tile_shape > 0 then count = 6 end
+	local count = 3
+	if tile_shape > 0 then count = 5 end
 
 	return index, index + count
 end
 
+function ProvMapEdit:getTileShape( x,z )
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or z<1 or z>h then
+		return nil end
+	local shapes = self.props.mapedit_tile_shapes
+	return shapes[z][x]
+end
+
+function ProvMapEdit:getTileVertCount( x,z )
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	if x<1 or x>w or z<1 or z>h then
+		return nil end
+	local shapes = self.props.mapedit_tile_shapes
+	local s = shapes[z][x]
+	if s==0 then return 4
+	else return 6 end
+end
+
 function ProvMapEdit:getTileVerts( x,z )
-	local index = self:getTilesIndexInMesh( x,z )
-	if not index then return nil,nil,nil,nil end
+	local index, index_end = self:getTilesIndexInMesh( x,z )
+	if not index then return nil,nil,nil,nil,nil,nil end
 
 	local mesh = self.props.mapedit_map_mesh.mesh
-	local x1,y1,z1 = mesh:getVertexAttribute( index+0, 1 )
-	local x2,y2,z2 = mesh:getVertexAttribute( index+1, 1 )
-	local x3,y3,z3 = mesh:getVertexAttribute( index+2, 1 )
-	local x4,y4,z4 = mesh:getVertexAttribute( index+3, 1 )
-
-	return
-		{x1,y1,z1},
-		{x2,y2,z2},
-		{x3,y3,z3},
-		{x4,y4,z4}
+	local v = {}
+	for i=index, index_end do
+		v[i-index+1] = {mesh:getVertexAttribute( i, 1 )}
+	end
+	return v[1],v[2],v[3],v[4],v[5],v[6]
 end
 
 function ProvMapEdit:getTileVertex( x,z , vert_i )
@@ -2026,7 +2061,7 @@ function ProvMapEdit:getWallsIndexInMesh( x,z , side )
 	if x<1 or x>w or z<1 or z>h then
 		return nil end
 
-	assert(side==1 or side==2 or side==3 or side==4)
+	assert(side>=1 and side<=5)
 	local wmap = self.props.mapedit_map_mesh.wall_vert_map
 	local index = wmap[z][x][side]
 	return index
@@ -2057,11 +2092,11 @@ function ProvMapEdit:updateTileVerts(x,z)
 
 	-- update mesh and surrounding walls
 	local mesh = self.props.mapedit_map_mesh.mesh
-	local index = self:getTilesIndexInMesh(x,z)
+	local index, index_end = self:getTilesIndexInMesh(x,z)
 	local heights = __temphtable
 	--local heights = {0,0,0,0}
-	for i=0,3 do
-		local x,y,z = mesh:getVertexAttribute(index+i, 1)
+	for i=0, index_end-index-1 do
+		local x,y,z = mesh:getVertexAttribute(index + i, 1)
 		y = y / TILE_HEIGHT
 		heights[i+1] = y
 	end
@@ -2071,7 +2106,7 @@ function ProvMapEdit:updateTileVerts(x,z)
 	if type(stored_heights) ~= "table" then
 		tile_heights[z][x] = {unpack(heights)}
 	else
-		for i=1,4 do
+		for i=1,index_end-index do
 			stored_heights[i]=heights[i]
 		end
 	end
@@ -2080,7 +2115,7 @@ end
 function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	if x<1 or x>w or z<1 or z>h then return end
-	assert(i==1 or i==2 or i==3 or i==4)
+	assert(i>=1 and i<=6)
 
 	-- update mesh and surrounding walls
 	local mesh = self.props.mapedit_map_mesh.mesh
@@ -2089,7 +2124,7 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 	if _z then
 		X,Y,Z = _x,_y,_z
 	else
-		X,Y,Z = mesh:getVertexAttribute(index+i, 1)
+		X,Y,Z = mesh:getVertexAttribute(index+i-1, 1)
 	end
 	local height = Y / TILE_HEIGHT
 
@@ -2097,8 +2132,8 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 	local stored_heights = tile_heights[z][x]
 	if type(stored_heights) ~= "table" then
 		local h = stored_heights
-		local t = {0,0,0,0}
-		for j=1,4 do
+		local t = {0,0,0,0,0,0}
+		for j=1,6 do
 			t[j] = h
 		end
 		t[i] = height
@@ -2107,6 +2142,8 @@ function ProvMapEdit:updateTileVertex(x,z,i, _x,_y,_z)
 	else
 		stored_heights[i]=height
 	end
+
+	print("vert",i, height)
 end
 
 -- takes in a list of selected objects in the form {"tile", tile_vertex_obj} (non-tile objects are ignored)
@@ -2177,27 +2214,6 @@ function ProvMapEdit:updateSelectedTileWalls(objs)
 	end
 end
 
-function ProvMapEdit:translateTileVerts(x,z, height_t)
-	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-	if x<1 or x>w or y<1 or y>h then return end
-	local tile_heights = self.props.mapedit_tile_heights
-
-	if nh_arg_type == "table" then
-		assert(#new_heights == 4)
-		for i=1,4 do
-			height_info[i] = new_heights[i]
-		end
-		tile_heights[z][x] = height_info
-	-- if argument is only 1 number, treat it as the height for all vertices
-	elseif nh_arg_type == "number" then
-		for i=1,4 do
-			height_info = new_heights
-		end
-	else
-		error(string.format("ProvMapEdit:translateTileVerts(): invalid new_heights argument, expected table/string got %s", nh_arg_type))
-	end
-end
-
 function ProvMapEdit:setTileTexture(x,z,tex_name)
 	local curr_texture = self.props.mapedit_tile_textures[z][x]
 	if curr_texture == tex_name then return true end
@@ -2216,6 +2232,69 @@ function ProvMapEdit:setTileTexture(x,z,tex_name)
 	mesh:setVertexAttribute(index+2, 3, tex_id)
 	mesh:setVertexAttribute(index+3, 3, tex_id)
 	self.props.mapedit_tile_textures[z][x] = tex_name
+	return true
+end
+
+function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
+	local tile_shape = self:getTileShape(x,z)
+	local texture_i = 1
+	local v1i,v2i,v3i,v4i
+	if tile_shape==0 then
+		texture_i = 1
+		v1i,v2i,v3i,v4i=1,2,3,4
+	elseif tile_shape==1 then
+		if (i>=4) then
+			texture_i=2
+			v1i,v2i,v3i,v4i=4,5,6,nil
+		else
+			v1i,v2i,v3i,v4i=1,2,3,nil
+		end
+	elseif tile_shape==2 then
+		if (i>=4) then
+			texture_i=2
+			v1i,v2i,v3i,v4i=4,5,6,nil
+		else
+			v1i,v2i,v3i,v4i=1,2,3,nil
+		end
+	elseif tile_shape==3 then
+		if (i<=3) then
+			v1i,v2i,v3i,v4i=1,2,3,nil
+		else
+			texture_i=2
+			v1i,v2i,v3i,v4i=4,5,6,nil
+		end
+	elseif tile_shape==4 then
+		if (i<=3) then
+			v1i,v2i,v3i,v4i=1,2,3,nil
+		else
+			texture_i=2
+			v1i,v2i,v3i,v4i=4,5,6,nil
+		end
+	end
+
+	-- convert to table for the future
+	local curr_texture = self.props.mapedit_tile_textures[z][x]
+	if type(curr_texture) ~= "table" then
+		self.props.mapedit_tile_textures[z][x] = {curr_texture, curr_texture}
+		curr_texture = self.props.mapedit_tile_textures[z][x][texture_i]
+	end
+
+	if curr_texture == tex_name then return true end
+
+	local loaded_textures = self.props.mapedit_texture_list
+	local tex_id = loaded_textures[tex_name]
+	assert(tex_id)
+	tex_id = tex_id - 1 -- shift to 0-index for GLSL
+
+	local index = self:getTilesIndexInMesh( x,z )
+	if not index then return nil end
+
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	mesh:setVertexAttribute(index+v1i-1, 3, tex_id)
+	mesh:setVertexAttribute(index+v2i-1, 3, tex_id)
+	mesh:setVertexAttribute(index+v3i-1, 3, tex_id)
+	if v4i then mesh:setVertexAttribute(index+v4i-1, 3, tex_id) end
+	self.props.mapedit_tile_textures[z][x][texture_i] = tex_name
 	return true
 end
 
@@ -2584,7 +2663,7 @@ function ProvMapEdit:getTileVertexObject(x,z,i)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end
-	assert(i==1 or i==2 or i==3 or i==4, "ProvMapEdit:getTileVertexObject(): i out of range [1,4]")
+	assert(i>= 1 and i<=6, "ProvMapEdit:getTileVertexObject(): i out of range [1,6]")
 
 	local mapedit = self
 	local tile = {
@@ -2635,7 +2714,7 @@ function ProvMapEdit:getWallObject(x,z,side)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end
-	assert(side==1 or side==2 or side==3 or side==4, "ProvMapEdit:getWallObject(): i out of range [1,4]")
+	assert(side>=1 and side<=5, "ProvMapEdit:getWallObject(): i out of range [1,5]")
 
 	local mapedit = self
 	local wall = {
@@ -2805,10 +2884,22 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			_max_x, _max_y, _max_z = max[1],max[2],max[3]
 		elseif obj_type == "tile" then
 			--local v1,v2,v3,v4 = self:getTileVerts(v[2],v[3])
-			local v1,v2,v3,v4 = self:getTileVerts(v[2].x,v[2].z)
-			mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
-			my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
-			mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+			local v1,v2,v3,v4,v5,v6 = self:getTileVerts(v[2].x,v[2].z)
+			mx = (v1[1]+v2[1]+v3[1]+v4[1])
+			my = (v1[2]+v2[2]+v3[2]+v4[2])
+			mz = (v1[3]+v2[3]+v3[3]+v4[3])
+			if v5 then
+				mx = mx+v5[1]+v6[1]
+				my = my+v5[2]+v6[2]
+				mz = mz+v5[3]+v6[3]
+				mx=mx*(1/6)
+				my=my*(1/6)
+				mz=mz*(1/6)
+			else
+				mx=mx*0.25
+				my=my*0.25
+				mz=mz*0.25
+			end
 
 			_min_x, _min_y, _min_z = get_min(v1,v2,v3,v4,1),
 			                         get_min(v1,v2,v3,v4,2),
@@ -2932,11 +3023,22 @@ function ProvMapEdit:getObjectCentre(obj)
 		my=my/(count-1)
 		mz=mz/(count-1)
 	elseif obj_type == "tile" then
-		--local v1,v2,v3,v4 = self:getTileVerts(obj[2],obj[3])
-		local v1,v2,v3,v4 = self:getTileVerts(obj[2].x,obj[2].z)
-		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
-		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
-		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
+		local v1,v2,v3,v4,v5,v6 = self:getTileVerts(obj[2].x,obj[2].z)
+		mx = (v1[1]+v2[1]+v3[1]+v4[1]) 
+		my = (v1[2]+v2[2]+v3[2]+v4[2]) 
+		mz = (v1[3]+v2[3]+v3[3]+v4[3]) 
+		if v5 then
+			mx = mx+v5[1]+v6[1]
+			my = my+v5[2]+v6[2]
+			mz = mz+v5[3]+v6[3]
+			mx=mx*(1/6)
+			my=my*(1/6)
+			mz=mz*(1/6)
+		else
+			mx=mx*0.25
+			my=my*0.25
+			mz=mz*0.25
+		end
 	elseif obj_type == "wall" then
 		--local v1,v2,v3,v4 = self:getWallVerts(obj[2],obj[3],obj[4])
 		local v1,v2,v3,v4 = self:getWallVerts(obj[2].x,obj[2].z,obj[2].side)
@@ -3006,16 +3108,7 @@ function ProvMapEdit:updateWallVerts(x,z)
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 
 	local map_heights = self.props.mapedit_tile_heights
-	local function get_heights(x,z)
-		if x<1 or x>w or z<1 or z>h then return nil end
-		local ht = map_heights[z][x]
-
-		if type(ht) == "number" then
-			return {ht,ht,ht,ht}
-		else
-			return ht
-		end
-	end
+	local tile_shapes = self.props.mapedit_tile_shapes
 
 	local function get_heights_triangle(x,z,side)
 		if x < 1 or x > w or z < 1 or z > h then
@@ -3024,25 +3117,25 @@ function ProvMapEdit:updateWallVerts(x,z)
 		local y = {}
 		local tileh = map_heights[z][x]
 		if type(tileh) == "table" then
-			y[1],y[2],y[3],y[4] = tileh[1],tileh[2],tileh[3],tileh[4]
+			y[1],y[2],y[3],y[4],y[5],y[6] = tileh[1],tileh[2],tileh[3],tileh[4],tileh[5],tileh[6]
 		else
-			y[1],y[2],y[3],y[4] = tileh,tileh,tileh,tileh
+			y[1],y[2],y[3],y[4],y[5],y[6] = tileh,tileh,tileh,tileh,tileh,tileh,tileh,tileh
 		end
 
-		local shape = map.tile_shape[z][x]
+		local shape = tile_shapes[z][x]
 		if shape == 0 then return y end
 		if shape==1 then
 			if direction=="north" or direction=="east" then
-				y[1],y[3]=y[4],y[4] end
+				y[1],y[3]=y[6] or y[4], y[5] or y[4] end
 		elseif shape==2 then
 			if direction=="north" or direction=="west" then
-				y[4],y[2]=y[3],y[3] end
+				y[4],y[2]=y[6] or y[3], y[5] or y[3] end
 		elseif shape==3 then
 			if direction=="south" or direction=="west" then
-				y[1],y[3]=y[2],y[2] end
+				y[1],y[3]=y[6] or y[2],y[5] or y[2] end
 		else
 			if direction=="south" or direction=="east" then
-				y[4],y[2]=y[1],y[1] end
+				y[4],y[2]=y[6] or y[1],y[5] or y[1] end
 		end
 
 		return y
@@ -3051,13 +3144,13 @@ function ProvMapEdit:updateWallVerts(x,z)
 	local mesh = self.props.mapedit_map_mesh.mesh
 
 	local tile_shape   = self.props.mapedit_tile_shapes[z][x]
-	local tile_height  = get_heights ( x   , z   )
-	local west_height  = get_heights ( x-1 , z   )
-	local south_height = get_heights ( x   , z+1 )
-	local east_height  = get_heights ( x+1 , z   )
-	local north_height = get_heights ( x   , z-1 )
+	local tile_height  = get_heights_triangle ( x   , z   )
+	local west_height  = get_heights_triangle ( x-1 , z   , "west")
+	local south_height = get_heights_triangle ( x   , z+1 , "south")
+	local east_height  = get_heights_triangle ( x+1 , z   , "east")
+	local north_height = get_heights_triangle ( x   , z-1 , "north")
 
-	local wall_info = Wall:getWallInfo2(nil,
+	local wall_info = Wall:getWallInfo(nil,
 		tile_shape,
 		tile_height,
 		west_height,
@@ -3111,6 +3204,14 @@ function ProvMapEdit:updateWallVerts(x,z)
 					verts[i] = {wx+(wallv[1]+1)*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
 														0,0,-1}
 				end
+			elseif wall_side == Wall.diagonali then
+				if not wall.diagonal then return nil,nil,nil,nil end
+				local vmax = get_uv_v_max(wall.diagonal)
+				for i=1,4 do
+					local wallv = wall.diagonal[i]
+					verts[i] = {wx+(wallv[1])*TILE_SIZE,  wallv[2]*TILE_HEIGHT, -wz+(wallv[3])*TILE_SIZE, u[i], wallv[2]-vmax,
+														wall.diagonal_norm[1],wall.diagonal_norm[2],wall.diagonal_norm[3]}
+				end
 			end
 			
 			return verts
@@ -3132,22 +3233,13 @@ function ProvMapEdit:updateWallVerts(x,z)
 			end
 			self.props.mapedit_map_mesh.wall_exists[z][x][side] = true
 		end
-
-		--local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
-
-		--local tex_height = textures[tex_id]:getHeight() / TILE_HEIGHT
-
-		--local attr = { 1.0, tex_height, 0.0, 0.0, tex_norm_id }
-		--for i=1,4 do
-		--	attr_verts[attr_count + i] = attr
-		--end
-		--attr_count = attr_count + 4
 	end
 
 	add_wall_verts(wall_info,1)
 	add_wall_verts(wall_info,2)
 	add_wall_verts(wall_info,3)
 	add_wall_verts(wall_info,4)
+	add_wall_verts(wall_info,5)
 end
 
 function ProvMapEdit:interpCameraToPos(dt)
