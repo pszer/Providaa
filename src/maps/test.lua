@@ -305,7 +305,7 @@ return {
 	},
 
 	groups = {
-
+		{name="TestGroup",insts={1,2,3}}
 	}
 
 }

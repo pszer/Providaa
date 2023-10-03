@@ -111,8 +111,10 @@ vec4 position(mat4 transform, vec4 vertex) {
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = skinview_u * vertex;
 
-	vec4 surface_offset = vec4(frag_normal * u_contour_outline_offset, 0.0);
-	view_v += surface_offset;
+	if (u_contour_outline_offset != 0.0) {
+		vec4 surface_offset = vec4(frag_normal * u_contour_outline_offset, 0.0);
+		view_v += surface_offset;
+	}
 
 	frag_position = (u_rot * view_v).xyz;
 	view_v = u_rot * view_v;

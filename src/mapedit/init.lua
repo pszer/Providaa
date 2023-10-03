@@ -3484,7 +3484,6 @@ function ProvMapEdit:drawViewport()
 	shadersend(shader,"u_uses_tileatlas", false)
 
 	self:drawGroupBounds(shader)
-	love.graphics.setStencilTest("notequal", 1)
 end
 
 function ProvMapEdit:invokeDrawMesh()
@@ -3497,6 +3496,7 @@ function ProvMapEdit:drawGroupBounds(shader)
 	--	return
 	--end
 
+	love.graphics.setStencilTest()
 	love.graphics.setDepthMode( "lequal", false  )
 	love.graphics.setMeshCullMode("none")
 	love.graphics.setWireframe( true )
@@ -3543,15 +3543,25 @@ function ProvMapEdit:drawNitori(shader)
 		local c,min,max = self:getSelectionCentreAndMinMax()
 		if not c then return end
 
+		local x_dist = max[1]-min[1]
+		local z_dist = max[3]-min[3]
+
 		local mat = self.active_transform_model_mat_a
 		if not mat then return end
 		min,max = self:transformMinMax(min,max,mat)
 
-		local pos = {max[1],  max[2]-2.5, (min[3]+max[3])*0.5}
-		local dir = {-1,0,0,"dir"}
-
-		local a1 = nito:getAnimator()
-		a1:setTime(math.abs(pos[1]*1.4))
+		local pos,dir
+		if z_dist >= x_dist then
+			pos = {max[1],  max[2]-2.5, (min[3]+max[3])*0.5}
+			dir = {-1,0,0,"dir"}
+			local a1 = nito:getAnimator()
+			a1:setTime((-pos[1]-pos[3]*0.3)*1.4)
+		else
+			pos = {(max[1]+min[1])*0.5,  max[2]-2.5, max[3]}
+			dir = {0,0,-1,"dir"}
+			local a1 = nito:getAnimator()
+			a1:setTime((-pos[3]-pos[1]*0.3)*1.4)
+		end
 
 		nito:setPosition(pos)
 		nito:setDirection(dir)

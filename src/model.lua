@@ -671,6 +671,7 @@ function ModelInstance:draw(shader, is_main_pass)
 	if det > 0 then
 		love.graphics.setFrontFaceWinding("ccw")
 	end
+	shadersend(shader, "u_skinning", 0)
 	prof.pop("model_drawwww")
 end
 
