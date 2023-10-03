@@ -57,6 +57,9 @@ ProvMapEdit = {
 	__cache_selection_max = nil,
 	__cache_recalc_selection_centre = false,
 
+	__object_painted = nil,
+	__object_painted_time = 0,
+
 	selection_changed = false,
 
 	rotate_cam_around_selection = false,
@@ -109,7 +112,12 @@ function ProvMapEdit:loadNito()
 	self.nito = ModelInstance:newInstance(self.nito_model,{["model_i_contour_flag"]=true,["model_i_static"]=false})
 	local a1 = self.nito:getAnimator()
 	self.nito.props.model_i_animator_interp=0.0
+
+	self.nito_anim_push = a1:getAnimationByName("Push")
+	self.nito_anim_paint = a1:getAnimationByName("Painting")
+
 	a1:playAnimationByName("Push")
+	a1:stopAnimation()
 end
 
 function ProvMapEdit:unload()
@@ -1128,7 +1136,7 @@ function ProvMapEdit:setupInputHandling()
 		end
 	end)
 
-	local held_limiter = periodicUpdate(1)
+	local held_limiter = periodicUpdate(2)
 	local viewport_select_held = Hook:new(function ()
 		if not held_limiter() then return end
 		local tool = self.props.mapedit_tool
@@ -1299,7 +1307,8 @@ function ProvMapEdit:enterTransformMode(transform_mode)
 	CONTROL_LOCK.MAPEDIT_TRANSFORM.elevate()
 	self.props.mapedit_mode = "transform"
 	self.props.mapedit_transform_mode = transform_mode
-	self.active_transform = maptransform:newTransform(transform_mode)
+	local centre,_,_ = self:getSelectionCentreAndMinMax()
+	self.active_transform = maptransform:newTransform(transform_mode,centre)
 end
 
 function ProvMapEdit:getCurrentMode()
@@ -2397,6 +2406,10 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	mesh:setVertexAttribute(index+v3i-1, 3, tex_id)
 	if v4i then mesh:setVertexAttribute(index+v4i-1, 3, tex_id) end
 	self.props.mapedit_tile_textures[z][x][texture_i] = tex_name
+
+	self.__object_painted = {"tile",{x=x,z=z,vert_i=i}}
+	self.__object_painted_time = getTickSmooth()
+
 	return true
 end
 
@@ -3185,7 +3198,7 @@ function ProvMapEdit:update(dt)
 
 	local nito = self.nito
 	if nito then
-		nito:updateAnimation()
+		nito:updateAnimation(true)
 	end
 
 	gui:update(dt)
@@ -3202,6 +3215,8 @@ function ProvMapEdit:update(dt)
 
 	local map_mesh = self.props.mapedit_map_mesh
 	if map_mesh and self.props.mapedit_enable_tex_anim then map_mesh:updateUvs() end
+
+	self:updateNitori(dt)
 
 	if self.selection_changed then
 		self.selection_changed = false
@@ -3529,13 +3544,10 @@ function ProvMapEdit:drawGroupBounds(shader)
 	love.graphics.setWireframe( false )
 end
 
-function ProvMapEdit:drawNitori(shader)
+function ProvMapEdit:updateNitori(dt)
+	self.nito_draw = false
 	local nito = self.nito
-	if not nito then return end
-	love.graphics.setDepthMode( "less", true  )
-	love.graphics.setMeshCullMode("front")
-	love.graphics.setColor(1,1,1,1)
-
+	local a1,a2 = nito:getAnimator()
 	if self.props.mapedit_mode == "transform" then
 		local tile,walls,models = self:getObjectTypesInSelection()
 		if tile or walls then return end
@@ -3550,6 +3562,8 @@ function ProvMapEdit:drawNitori(shader)
 		if not mat then return end
 		min,max = self:transformMinMax(min,max,mat)
 
+		a1:playAnimation(self.nito_anim_push)
+		a1:stopAnimation()
 		local pos,dir
 		if z_dist >= x_dist then
 			pos = {max[1],  max[2]-2.5, (min[3]+max[3])*0.5}
@@ -3557,8 +3571,8 @@ function ProvMapEdit:drawNitori(shader)
 			local a1 = nito:getAnimator()
 			a1:setTime((-pos[1]-pos[3]*0.3)*1.4)
 		else
-			pos = {(max[1]+min[1])*0.5,  max[2]-2.5, max[3]}
-			dir = {0,0,-1,"dir"}
+			pos = {(max[1]+min[1])*0.5,  max[2]-2.5, min[3]}
+			dir = {0,0,1,"dir"}
 			local a1 = nito:getAnimator()
 			a1:setTime((-pos[3]-pos[1]*0.3)*1.4)
 		end
@@ -3566,12 +3580,99 @@ function ProvMapEdit:drawNitori(shader)
 		nito:setPosition(pos)
 		nito:setDirection(dir)
 		nito:modelMatrix()
-		local stencil_func = function ()
-			love.graphics.setColorMask( true,true,true,true )
-			nito:draw(shader, true)
+		self.nito_draw = true
+	elseif self.props.mapedit_mode == "viewport" and self.props.mapedit_tool == "paint" then
+		
+		if self.__object_painted then
+			if self.__object_painted[1] ~= "tile" then return end
+			
+			local time = self.__object_painted_time
+
+			_________func = function(anim)
+				local curr_time = getTickSmooth()
+				if curr_time - self.__object_painted_time > (170-57+1)/3 then
+					anim:stopAnimation()
+					return
+				end
+
+				anim:playAnimation(self.nito_anim_paint, 57, 1.6, false, _________func)
+			end
+
+			local obj = self.__object_painted 
+			local x,z,vert = obj[2].x, obj[2].z, obj[2].vert_i
+			local y
+			local heights = self.props.mapedit_tile_heights[z][x]
+			if not heights then return end
+			if type(heights) ~= "table" then
+				y = heights
+			else
+				y = heights[vert]
+			end
+
+			local x,y,z = Tile.tileCoordToWorld(x,y,z)
+			self.nito_pdest_x = x
+			self.nito_pdest_y = y
+			self.nito_pdest_z = z
+			--print(x,y,z)
+			--nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.35}
+			--nito:setDirection{0,0,1,"dir"}
+			--nito:modelMatrix()
+
+			if not a1:isPlaying() then
+				local curr_time = getTickSmooth()
+				local anim_time = 0
+				local anim_speed = 3
+				print(curr_time - time )
+				if curr_time ~= time then anim_time = 57 anim_speed = 1.3 else
+					nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.35}
+					nito:setDirection{0,0,1,"dir"}
+					nito:modelMatrix()
+					a1:playAnimation(self.nito_anim_paint, anim_time, anim_speed, false, _________func)
+				end
+			else
+				local curr_pos = nito:getPosition()
+				local dx,dy,dz=curr_pos[1]-(x+TILE_SIZE*0.5),curr_pos[2]-y,curr_pos[3]-(-z+TILE_SIZE*0.35)
+				local m = dt
+				if m > 1.0 then m=1 end
+				nito:setPosition{curr_pos[1]-dx*m*25, curr_pos[2]-dy*m*25,curr_pos[3]-dz*m*25}
+				nito:setDirection{0,0,1,"dir"}
+				nito:modelMatrix()
+			end
+
+			self.__object_painted = nil
+			self.nito_draw = true
+		else
+			if a1:isPlaying() then
+				self.nito_draw = true
+
+				local curr_pos = nito:getPosition()
+				local x,y,z=self.nito_pdest_x,self.nito_pdest_y,self.nito_pdest_z
+				if x then
+				local dx,dy,dz=curr_pos[1]-(x+TILE_SIZE*0.5),curr_pos[2]-y,curr_pos[3]-(-z+TILE_SIZE*0.35)
+				local m = dt
+					if m > 1.0 then m=1 end
+				nito:setPosition{curr_pos[1]-dx*m*25, curr_pos[2]-dy*m*25,curr_pos[3]-dz*m*25}
+				nito:setDirection{0,0,1,"dir"}
+				nito:modelMatrix()
+				end
+			end
 		end
-		love.graphics.stencil(stencil_func, "replace", 1, false)
 	end
+end
+
+function ProvMapEdit:drawNitori(shader)
+	if not self.nito_draw then return end
+
+	local nito = self.nito
+	if not nito then return end
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setColor(1,1,1,1)
+	local stencil_func = function ()
+		love.graphics.setColorMask( true,true,true,true )
+		nito:draw(shader, true)
+	end
+	love.graphics.stencil(stencil_func, "replace", 1, false)
 	love.graphics.setStencilTest("notequal", 1)
 end
 

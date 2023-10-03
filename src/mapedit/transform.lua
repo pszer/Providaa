@@ -34,10 +34,11 @@ local MapEditTransform = {
 }
 MapEditTransform.__index = MapEditTransform
 
-function MapEditTransform:new(mousex, mousey)
+function MapEditTransform:new(mousex, mousey, centre)
 	local this = {
 		mx = mousex,
 		my = mousey,
+		sel_centre = centre,
 		getCam = get_cam,
 		axis_mode = "xyz",
 		transformation_type = "nil",
@@ -211,13 +212,38 @@ local function __getTransform_rotate(self, cam, granular)
 		local viewport = {0,0,win_w,win_h}
 
 		local unproject = cpml.mat4.unproject
+		local project = cpml.mat4.project
 		local viewproj = cam:getViewProjMatrix()
 		local cursor = __tempvec3
-		cursor.x,cursor.y,cursor.z = win_w*0.5+mouse_dx*2, win_h*0.5+mouse_dy*2, 1.0
-		--cursor.x = cursor.x * 2.0
-		--cursor.y = cursor.y * 2.0
-		--cursor.z = cursor.z * 2.0
+	--	cursor.x,cursor.y,cursor.z = win_w*0.5+mouse_dx*2, win_h*0.5+mouse_dy*2, 1.0
 
+		local centre_v = __tempvec3cp1
+		centre_v.x=self.sel_centre[1]
+		centre_v.y=self.sel_centre[2]
+		centre_v.z=self.sel_centre[3]
+		local centre_v_screen = project(centre_v,viewproj,{0,0,win_w,win_h})
+
+		mouse_dx = curr_mouse_x - centre_v_screen.x
+		mouse_dy = curr_mouse_y - centre_v_screen.y
+
+		local angle = math.atan2(mouse_dy,mouse_dx)
+
+		if self.__rotangle_start then
+			angle = -(angle - self.__rotangle_start)
+		else
+			self.__rotangle_start = angle
+			angle = 0.0
+		end
+
+		local forward_vec = __tempdirforward
+		local x,y,z = cam:getDirectionVector(forward_vec)
+
+		return {
+			cpml.quat.from_angle_axis(angle, x,y,z),
+			type="rotate"
+		}
+
+		--[[
 		local P = unproject(cursor, viewproj, viewport)
 		local cam_pos = cam:getPosition()
 
@@ -236,18 +262,7 @@ local function __getTransform_rotate(self, cam, granular)
 		local cross = cpml.vec3.cross(v1,v2)
 		local cross = cpml.vec3.cross(cross, v1)
 		cross = cross:normalize()
-
-		--local length = math.sqrt(x*x + y*y + z*z)
-		--x = x/length
-		--y = y/length
-		--z = z/length
-
-		--dir[1],dir[2],dir[3],dir[4]=x,y,z,1
-		--return cpml.quat.new(dir)
-		--return cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0))
-		return { cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0)), type="rotate" }
-		--return cpml.quat.from_direction(v1, cpml.vec3.new(0,-1,0))
-		--return dir
+		return { cpml.quat.from_direction(cross, cpml.vec3.new(0,-1,0)), type="rotate" }--]]
 	end
 
 	local function sign(x)
@@ -516,40 +531,40 @@ function MapEditTransform:__getTransform_flip(self, cam)
 	end
 end
 
-function MapEditTransform:newTranslate()
+function MapEditTransform:newTranslate(c)
 	local mx,my = love.mouse.getX(), love.mouse.getY()
-	local this = MapEditTransform:new(mx,my)
+	local this = MapEditTransform:new(mx,my,c)
 	this.getTransform = __getTransform_translate
 	this.transformation_type = "translate"
 	return this
 end
-function MapEditTransform:newRotate()
+function MapEditTransform:newRotate(c)
 	local mx,my = love.mouse.getX(), love.mouse.getY()
-	local this = MapEditTransform:new(mx,my)
+	local this = MapEditTransform:new(mx,my,c)
 	this.getTransform = __getTransform_rotate
 	this.transformation_type = "rotate"
 	return this
 end
-function MapEditTransform:newScale()
+function MapEditTransform:newScale(c)
 	local mx,my = love.mouse.getX(), love.mouse.getY()
-	local this = MapEditTransform:new(mx,my)
+	local this = MapEditTransform:new(mx,my,c)
 	this.getTransform = __getTransform_scale
 	this.transformation_type = "scale"
 	return this
 end
-function MapEditTransform:newFlip()
+function MapEditTransform:newFlip(c)
 	local mx,my = love.mouse.getX(), love.mouse.getY()
-	local this = MapEditTransform:new(mx,my)
+	local this = MapEditTransform:new(mx,my,c)
 	this.getTransform = __getTransform_flip
 	this.transformation_type = "flip"
 	return this
 end
-function MapEditTransform:newTransform(trans_type)
+function MapEditTransform:newTransform(trans_type,centre)
 	assert(trans_type and (trans_type == "translate" or trans_type == "rotate" or trans_type == "scale" or trans_type == "flip"))
-	if trans_type == "translate" then return self:newTranslate() end
-	if trans_type == "rotate" then return self:newRotate() end
-	if trans_type == "scale" then return self:newScale() end
-	if trans_type == "flip" then return self:newFlip() end
+	if trans_type == "translate" then return self:newTranslate(centre) end
+	if trans_type == "rotate" then return self:newRotate(centre) end
+	if trans_type == "scale" then return self:newScale(centre) end
+	if trans_type == "flip" then return self:newFlip(centre) end
 end
 
 local __flipx = {-1, 1, 1, type="scale"}

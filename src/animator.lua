@@ -48,8 +48,12 @@ function Animator:update()
 	if self.anim_curr_animation_finished then
 		local callback = self.anim_finish_callback
 		if callback then
+			if not self.anim_play_loop then
+				self.anim_play_animation = false
+			end
+			self.anim_finish_callback = nil
 			callback(self)
-
+		else
 			if not self.anim_play_loop then
 				self.anim_play_animation = false
 			end
@@ -64,7 +68,7 @@ function Animator:update()
 	end
 end
 
--- stops the animation without calling anim_finish_callback
+-- stops the animation ands calls anim_finish_callback
 function Animator:suspendAnimation()
 	if not self.anim_play_animation then return end
 	self.anim_play_animation = false
@@ -72,7 +76,7 @@ function Animator:suspendAnimation()
 	if callback then callback(self) end
 end
 
--- same as suspendAnimation but calls the callback function
+-- same as suspendAnimation but doesnt call the callback function
 function Animator:stopAnimation()
 	self.anim_play_animation = false
 end
@@ -143,7 +147,7 @@ function Animator:playAnimation(anim, time, speed, loop, callback)
 	self.anim_play_last_time  = getTickSmooth()
 	self.anim_play_time_acc   = time or 0
 	self.anim_play_speed      = speed or 1.0
-	self.anim_play_loop       = loop or true
+	if loop==false then self.anim_play_loop=false else self.anim_play_loop=true end
 	self.anim_finish_callback = callback
 	
 	self.anim_curr_animation_finished = false
@@ -185,7 +189,7 @@ function Animator.timeToIndex( anim_data, time, dont_loop )
 
 	local min = math.min
 	local max = math.max
-	local clamp = function(a,low,up) return min(max(a,low),up) end
+	local clamp = function(a,low,up) if a>up then return up end if a<low then return low end return a end
 
 	local is_finished = anim_first + frame_floor >= anim_last
 
@@ -195,8 +199,8 @@ function Animator.timeToIndex( anim_data, time, dont_loop )
 		frame_id1 = anim_first + (frame_floor) % anim_length
 		frame_id2 = anim_first + (frame_floor+1) % anim_length
 	else
-		frame_id1 = clamp(anim_first + (frame_floor), anim_first, anim_last)
-		frame_id1 = clamp(anim_first + (frame_floor+1), anim_first, anim_last)
+		frame_id1 = clamp(anim_first + (frame_floor) , anim_first, anim_last)
+		frame_id2 = clamp(anim_first + (frame_floor+1) , anim_first, anim_last)
 	end
 
 	return frame_id1, frame_id2, frame_interp, is_finished

@@ -284,7 +284,7 @@ function ModelInstance:getOutframe()
 	return self.bone_matrices, self.bone_matrices2
 end
 
-function ModelInstance:updateAnimation()
+function ModelInstance:updateAnimation(dont_step)
 	local animator1 = self.props.model_i_animator1
 	local animator2 = self.props.model_i_animator2
 	if animator1 then animator1:update() end
@@ -956,6 +956,10 @@ function Model:generateAnimationFrames()
 			local position_u = cpml.mat4.new(1)
 			local rotation_u = cpml.mat4.from_quaternion( rot_q )
 			local scale_u    = cpml.mat4.new(1)
+
+			if scale[1] ~= 1 then
+		print("wo",scale_v) end
+
 
 			position_u:translate(position_u, pos_v)
 			scale_u:scale(scale_u, scale_v)
