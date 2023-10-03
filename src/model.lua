@@ -702,7 +702,7 @@ function ModelInstance:drawContour(shader)
 	local model = self:getModel()
 	--local mesh = model:getMesh()
 	local colour = self.props.model_i_outline_colour
-	local offset = 0.25
+	local offset = 0.15
 
 	--love.graphics.setFrontFaceWinding(model.props.model_vertex_winding)
 	love.graphics.setMeshCullMode("back")
@@ -956,10 +956,6 @@ function Model:generateAnimationFrames()
 			local position_u = cpml.mat4.new(1)
 			local rotation_u = cpml.mat4.from_quaternion( rot_q )
 			local scale_u    = cpml.mat4.new(1)
-
-			if scale[1] ~= 1 then
-		print("wo",scale_v) end
-
 
 			position_u:translate(position_u, pos_v)
 			scale_u:scale(scale_u, scale_v)

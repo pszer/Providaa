@@ -826,6 +826,26 @@ function ProvMapEdit:defineCommands()
 		end -- undo command function
 	)
 
+	coms["change_texture"] = commands:define(
+		{
+			{"objects", "table", nil, nil},
+			{"previous_textures", "table", nil, nil},
+			{"new_textures", "table", nil, nil},
+		},
+		function(props) -- command function
+			local new = props.new_textures
+			for i,v in ipairs(props.objects) do
+				self:setObjectTexture(v,new[i])
+			end
+		end, -- command function
+		function(props) -- undo command function
+			local prev = props.previous_textures
+			for i,v in ipairs(props.objects) do
+				self:setObjectTexture(v,prev[i])
+			end
+		end -- undo command function
+	)
+
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -1113,7 +1133,10 @@ function ProvMapEdit:setupInputHandling()
 		if not tex_select then return end
 		local tex_name = tex_select[1]
 
-		if obj[1] == "tile" then
+		local obj_tex = self:getObjectTexture(obj)
+		if obj_tex==tex_name then return end
+
+		--[[if obj[1] == "tile" then
 			local x = obj[2].x
 			local z = obj[2].z
 			local vert_i = obj[2].vert_i
@@ -1124,7 +1147,12 @@ function ProvMapEdit:setupInputHandling()
 			local z = obj[2].z
 			local side = obj[2].side
 			self:setWallTexture(x,z,side,tex_name)
-		end
+		end--]]
+		self:commitCommand("change_texture",
+		{ ["objects"] = {obj},
+		  ["previous_textures"] = {obj_tex},
+			["new_textures"] = {tex_name}
+		})
 	end
 
 	local viewport_select = Hook:new(function ()
@@ -2325,7 +2353,30 @@ function ProvMapEdit:updateSelectedTileWalls(objs)
 	end
 end
 
-function ProvMapEdit:setTileTexture(x,z,tex_name)
+function ProvMapEdit:getObjectTexture(obj)
+	if obj[1] == "tile" then
+		local tile_v = obj[2]
+		local z,x=tile_v.z,tile_v.x
+		local tile_shape = self.props.mapedit_tile_shapes[tile_v.z][tile_v.x]
+		local texture_i = 1
+		if tile_shape~=0 and tile_v.vert_i>=4 then texture_i=2 end
+		local tex = self.props.mapedit_tile_textures[z][x]
+		if type(tex)=="table" then return tex[texture_i]
+		else return tex end
+	end
+	if obj[1] == "wall" then
+		local wall_v = obj[2]
+		local z,x=wall_v.z,wall_v.x
+		local tex = self.props.mapedit_wall_textures[z][x]
+		if type(tex)=="table" then return tex[wall_v.side]
+		else return tex end
+	end
+	if obj[1] == "model" then
+		return nil
+	end
+end
+
+--[[function ProvMapEdit:setTileTexture(x,z,tex_name)
 	local curr_texture = self.props.mapedit_tile_textures[z][x]
 	if curr_texture == tex_name then return true end
 
@@ -2344,8 +2395,21 @@ function ProvMapEdit:setTileTexture(x,z,tex_name)
 	mesh:setVertexAttribute(index+3, 3, tex_id)
 	self.props.mapedit_tile_textures[z][x] = tex_name
 	return true
+end--]]
+
+function ProvMapEdit:setObjectTexture(obj, tex)
+	local o_type = obj[1]
+	if o_type == "tile" then
+		local t = obj[2]
+		self:setTileVertexTexture(t.x,t.z,t.vert_i,tex)
+	elseif o_type == "wall" then
+		local t = obj[2]
+		self:setWallTexture(t.x,t.z,t.side,tex)
+	end
 end
 
+-- returns true if texture changed, otherwise false
+-- also returns previous texture name
 function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	local tile_shape = self:getTileShape(x,z)
 	local texture_i = 1
@@ -2390,7 +2454,7 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 		curr_texture = self.props.mapedit_tile_textures[z][x][texture_i]
 	end
 
-	if curr_texture == tex_name then return true end
+	if curr_texture == tex_name then return false, curr_texture end
 
 	local loaded_textures = self.props.mapedit_texture_list
 	local tex_id = loaded_textures[tex_name]
@@ -2398,7 +2462,7 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	tex_id = tex_id - 1 -- shift to 0-index for GLSL
 
 	local index = self:getTilesIndexInMesh( x,z )
-	if not index then return nil end
+	if not index then return false, curr_texture end
 
 	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	mesh:setVertexAttribute(index+v1i-1, 3, tex_id)
@@ -2410,12 +2474,12 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	self.__object_painted = {"tile",{x=x,z=z,vert_i=i}}
 	self.__object_painted_time = getTickSmooth()
 
-	return true
+	return true, curr_texture
 end
 
 function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	local curr_texture = self.props.mapedit_wall_textures[z][x][side]
-	if curr_texture == tex_name then return true end
+	if curr_texture == tex_name then return false, curr_texture end
 
 	local loaded_textures = self.props.mapedit_texture_list
 	local tex_id = loaded_textures[tex_name]
@@ -2423,7 +2487,7 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	tex_id = tex_id - 1 -- shift to 0-index for GLSL
 
 	local index = self:getWallsIndexInMesh( x,z, side )
-	if not index then return nil end
+	if not index then return false, curr_texture end
 
 	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	mesh:setVertexAttribute(index+0, 3, tex_id)
@@ -2431,7 +2495,7 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	mesh:setVertexAttribute(index+2, 3, tex_id)
 	mesh:setVertexAttribute(index+3, 3, tex_id)
 	self.props.mapedit_wall_textures[z][x][side] = tex_name
-	return true
+	return true, curr_texture
 end
 
 function ProvMapEdit:__getScaleByDist()
@@ -2901,8 +2965,6 @@ function ProvMapEdit:centreCamOnPointDist(centre, dist)
 
 	local cam = self.props.mapedit_cam
 	local dist = dist
-
-	print(dist)
 
 	local cam_dir = cam:getDirection()
 	local new_pos = {
@@ -3590,12 +3652,12 @@ function ProvMapEdit:updateNitori(dt)
 
 			_________func = function(anim)
 				local curr_time = getTickSmooth()
-				if curr_time - self.__object_painted_time > (170-57+1)/3 then
+				if curr_time - self.__object_painted_time > (170-57+1)/1.3 then
 					anim:stopAnimation()
 					return
 				end
 
-				anim:playAnimation(self.nito_anim_paint, 57, 1.6, false, _________func)
+				anim:playAnimation(self.nito_anim_paint, 57, 0.9, false, _________func)
 			end
 
 			local obj = self.__object_painted 
@@ -3621,10 +3683,10 @@ function ProvMapEdit:updateNitori(dt)
 			if not a1:isPlaying() then
 				local curr_time = getTickSmooth()
 				local anim_time = 0
-				local anim_speed = 3
+				local anim_speed = 1.3
 				print(curr_time - time )
-				if curr_time ~= time then anim_time = 57 anim_speed = 1.3 else
-					nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.35}
+				if curr_time ~= time then anim_time = 57 anim_speed = 0.9 else
+					nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.1}
 					nito:setDirection{0,0,1,"dir"}
 					nito:modelMatrix()
 					a1:playAnimation(self.nito_anim_paint, anim_time, anim_speed, false, _________func)
@@ -3648,7 +3710,7 @@ function ProvMapEdit:updateNitori(dt)
 				local curr_pos = nito:getPosition()
 				local x,y,z=self.nito_pdest_x,self.nito_pdest_y,self.nito_pdest_z
 				if x then
-				local dx,dy,dz=curr_pos[1]-(x+TILE_SIZE*0.5),curr_pos[2]-y,curr_pos[3]-(-z+TILE_SIZE*0.35)
+				local dx,dy,dz=curr_pos[1]-(x+TILE_SIZE*0.5),curr_pos[2]-y,curr_pos[3]-(-z+TILE_SIZE*0.1)
 				local m = dt
 					if m > 1.0 then m=1 end
 				nito:setPosition{curr_pos[1]-dx*m*25, curr_pos[2]-dy*m*25,curr_pos[3]-dz*m*25}
