@@ -53,6 +53,8 @@ attribute float HighlightAttribute;
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
+uniform float u_contour_outline_offset;
+
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
 		return
@@ -109,6 +111,9 @@ vec4 position(mat4 transform, vec4 vertex) {
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = skinview_u * vertex;
 
+	vec4 surface_offset = vec4(frag_normal * u_contour_outline_offset, 0.0);
+	view_v += surface_offset;
+
 	frag_position = (u_rot * view_v).xyz;
 	view_v = u_rot * view_v;
 
@@ -152,6 +157,9 @@ uniform bool u_global_coord_uv_enable;
 uniform bool u_highlight_pass;
 uniform float u_time;
 
+uniform bool u_draw_as_contour;
+uniform vec4 u_contour_colour;
+
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
@@ -192,6 +200,11 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 }
 
 void effect( ) {
+	if (u_draw_as_contour) {
+		love_Canvases[0] = u_contour_colour;
+		return;
+	}
+
 	if (u_highlight_pass) {
 		if (highlight_attr < 0.5) {
 			love_Canvases[0] = VaryingColor * 2.0*(highlight_attr-0.5);

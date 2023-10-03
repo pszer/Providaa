@@ -3426,7 +3426,7 @@ function ProvMapEdit:drawViewport()
 	love.graphics.origin()
 	love.graphics.setCanvas{Renderer.scene_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
-		depth=true, stencil=false}
+		depth=true, stencil=true}
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 
@@ -3439,6 +3439,8 @@ function ProvMapEdit:drawViewport()
 
 	local cam = self.props.mapedit_cam
 	cam:pushToShader(shader)
+
+	self:drawNitori(shader)
 	
 	shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 	shadersend(shader,"u_selection_colour", self.selection_col)
@@ -3476,11 +3478,13 @@ function ProvMapEdit:drawViewport()
 
 	self:drawSelectedHighlight()
 	love.graphics.setDepthMode( "less", true  )
+
+	love.graphics.setStencilTest()
 	self:drawModelsInViewport(shader)
 	shadersend(shader,"u_uses_tileatlas", false)
 
 	self:drawGroupBounds(shader)
-	self:drawNitori(shader)
+	love.graphics.setStencilTest("notequal", 1)
 end
 
 function ProvMapEdit:invokeDrawMesh()
@@ -3552,8 +3556,13 @@ function ProvMapEdit:drawNitori(shader)
 		nito:setPosition(pos)
 		nito:setDirection(dir)
 		nito:modelMatrix()
-		nito:draw()
+		local stencil_func = function ()
+			love.graphics.setColorMask( true,true,true,true )
+			nito:draw(shader, true)
+		end
+		love.graphics.stencil(stencil_func, "replace", 1, false)
 	end
+	love.graphics.setStencilTest("notequal", 1)
 end
 
 function ProvMapEdit:drawModelsInViewport(shader)
@@ -3577,7 +3586,10 @@ function ProvMapEdit:drawModelsInViewport(shader)
 				shader:send("u_apply_a_transformation", true)
 			end
 
+			love.graphics.setStencilTest()
 			v:draw(shader, false)
+			love.graphics.setStencilTest("notequal", 1)
+
 			shadersend(shader, "u_solid_colour_enable", true)
 			love.graphics.setDepthMode( "always", false  )
 			love.graphics.setColor(self.selection_col)
