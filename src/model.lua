@@ -615,12 +615,13 @@ function ModelInstance:fillOutBoneMatrices()
 
 		--self.bone_matrices = model:getBoneMatrices(animation, frame, self.bone_matrices)
 		prof.pop("get_bone_matrices")
+		self.anim_generated = true
 	end
 end
 
 function ModelInstance:sendBoneMatrices(shader)
 	local model = self:getModel()
-	if not model.props.model_animated then
+	if not model.props.model_animated or not self.anim_generated then
 		shadersend(shader, "u_skinning", 0)
 	else
 		shadersend(shader, "u_skinning", 1)
@@ -628,7 +629,7 @@ function ModelInstance:sendBoneMatrices(shader)
 	end
 end
 
-function ModelInstance:sendToShader(shader)
+function ModelInstance:sendToShader(shader, animate)
 	local shader = shader or love.graphics.getShader()
 
 	local model_u, normal_u = self:queryModelMatrix()

@@ -127,7 +127,7 @@ function Animator:staticAnimation(anim, time)
 
 	self.anim_play_animation  = false
 	self.anim_play_last_time  = getTickSmooth()
-	self.anim_play_time_acc   = time
+	self.anim_play_time_acc   = time or 0
 	self.anim_play_speed      = 1.0
 	self.anim_play_loop       = false
 	self.anim_curr_animation_finished = false
@@ -141,9 +141,9 @@ function Animator:playAnimation(anim, time, speed, loop, callback)
 
 	self.anim_play_animation  = true
 	self.anim_play_last_time  = getTickSmooth()
-	self.anim_play_time_acc   = time
-	self.anim_play_speed      = speed
-	self.anim_play_loop       = loop
+	self.anim_play_time_acc   = time or 0
+	self.anim_play_speed      = speed or 1.0
+	self.anim_play_loop       = loop or true
 	self.anim_finish_callback = callback
 	
 	self.anim_curr_animation_finished = false

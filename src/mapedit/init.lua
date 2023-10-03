@@ -96,10 +96,20 @@ function ProvMapEdit:load(args)
 	self:enterViewportMode()
 	self:defineCommands()
 	gui:init(self)
+	self:loadNito()
+
 end
 
 function ProvMapEdit:quit()
 	self:saveConfig()
+end
+
+function ProvMapEdit:loadNito()
+	self.nito_model = Model:fromLoader("mapedit/nito.iqm")
+	self.nito = ModelInstance:newInstance(self.nito_model,{["model_i_contour_flag"]=true,["model_i_static"]=false})
+	local a1 = self.nito:getAnimator()
+	self.nito.props.model_i_animator_interp=0.0
+	a1:playAnimationByName("Push")
 end
 
 function ProvMapEdit:unload()
@@ -2928,6 +2938,31 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 	return self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max
 end
 
+local __tempmint, __tempmaxt = {},{}
+function ProvMapEdit:transformMinMax(min,max,matrix)
+	local M = {min,max}
+	local mul = cpml.mat4.mul_vec4
+	local min,max=math.min,math.max
+	local corner_i1 = {1,1,1,1,2,2,2,2}
+	local corner_i2 = {1,1,2,2,1,1,2,2}
+	local corner_i3 = {1,2,1,2,1,2,1,2}
+	local min_x,min_y,min_z = 1/0, 1/0, 1/0
+	local max_x,max_y,max_z =-1/0,-1/0,-1/0
+	for i=1,8 do
+		local corner = __tempmint
+		corner[1] = M[corner_i1[i]][1]
+		corner[2] = M[corner_i2[i]][2]
+		corner[3] = M[corner_i3[i]][3]
+		corner[4] = 1
+		corner=mul(corner,matrix,corner)
+		min_x,min_y,min_z = min(corner[1],min_x),min(corner[2],min_y),min(corner[3],min_z)
+		max_x,max_y,max_z = max(corner[1],max_x),max(corner[2],max_y),max(corner[3],max_z)
+	end
+	__tempmint[1],__tempmint[2],__tempmint[3]=min_x,min_y,min_z
+	__tempmaxt[1],__tempmaxt[2],__tempmaxt[3]=max_x,max_y,max_z
+	return __tempmint,__tempmaxt
+end
+
 function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 	local x,y,z = 0,0,0
 
@@ -3147,6 +3182,11 @@ local count = 0
 function ProvMapEdit:update(dt)
 	local cam = self.props.mapedit_cam
 	local mode = self.props.mapedit_mode
+
+	local nito = self.nito
+	if nito then
+		nito:updateAnimation()
+	end
 
 	gui:update(dt)
 	self.viewport_input:poll()
@@ -3440,6 +3480,7 @@ function ProvMapEdit:drawViewport()
 	shadersend(shader,"u_uses_tileatlas", false)
 
 	self:drawGroupBounds(shader)
+	self:drawNitori(shader)
 end
 
 function ProvMapEdit:invokeDrawMesh()
@@ -3448,9 +3489,9 @@ function ProvMapEdit:invokeDrawMesh()
 end
 
 function ProvMapEdit:drawGroupBounds(shader)
-	if self.props.mapedit_mode ~= "viewport" then
-		return
-	end
+	--if self.props.mapedit_mode ~= "viewport" then
+	--	return
+	--end
 
 	love.graphics.setDepthMode( "lequal", false  )
 	love.graphics.setMeshCullMode("none")
@@ -3458,19 +3499,61 @@ function ProvMapEdit:drawGroupBounds(shader)
 
 	for i,group in ipairs(self.props.mapedit_model_groups) do
 		local min,max = group.min,group.max
-		--guirender:draw3DCube(shader, min,max, {196/255,107/255,255/255,1.0}, true, {196/255,107/255,255/255,0.05})
 		local selected = self:isGroupSelected(group)
 		if selected then
 			local s_col = {self.selection_col[1]*0.8,
 			               self.selection_col[2]*0.8,
 			               self.selection_col[3]*0.8,
 										 1.0}
-			guirender:draw3DCube(shader, min,max, self.selection_col, true, s_col)
+
+			local skip = false
+			if self.active_transform then
+				local mat = self.active_transform_model_mat_a
+				if mat then
+					min,max = self:transformMinMax(min,max,mat)
+				else
+					skip = true
+				end
+			end
+			if not skip then 
+				guirender:draw3DCube(shader, min,max, self.selection_col, true, s_col)
+			end
 		else
 			guirender:draw3DCube(shader, min,max, {196/255,107/255,255/255,0.5})
 		end
 	end
 	love.graphics.setWireframe( false )
+end
+
+function ProvMapEdit:drawNitori(shader)
+	local nito = self.nito
+	if not nito then return end
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setColor(1,1,1,1)
+
+	if self.props.mapedit_mode == "transform" then
+		local tile,walls,models = self:getObjectTypesInSelection()
+		if tile or walls then return end
+
+		local c,min,max = self:getSelectionCentreAndMinMax()
+		if not c then return end
+
+		local mat = self.active_transform_model_mat_a
+		if not mat then return end
+		min,max = self:transformMinMax(min,max,mat)
+
+		local pos = {max[1],  max[2]-2.5, (min[3]+max[3])*0.5}
+		local dir = {-1,0,0,"dir"}
+
+		local a1 = nito:getAnimator()
+		a1:setTime(math.abs(pos[1]*1.4))
+
+		nito:setPosition(pos)
+		nito:setDirection(dir)
+		nito:modelMatrix()
+		nito:draw()
+	end
 end
 
 function ProvMapEdit:drawModelsInViewport(shader)

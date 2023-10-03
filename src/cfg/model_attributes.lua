@@ -16,6 +16,10 @@ local MODEL_ATTRIBUTES = {
 	["shittycrate.iqm"] = {
 		["model_texture_fname"]  = "models/shittycrate.png",
 		["model_vertex_winding"] = "cw"
+	},
+	["mapedit/nito.iqm"] = {
+		["model_texture_fname"]  = "mapedit/nito.png",
+		["model_vertex_winding"] = "cw"
 	}
 }
 return MODEL_ATTRIBUTES

@@ -296,7 +296,8 @@ return {
 	models = {
 		{name="shittycrate.iqm", pos={8,1,62}},
 		{name="shittycrate.iqm", pos={1,1,62}},
-		{name="shittycrate.iqm", pos={6,3,62}}
+		{name="shittycrate.iqm", pos={6,3,62}},
+		{name="mapedit/nito.iqm",pos={6,1,60}}
 	},
 
 	skybox = {

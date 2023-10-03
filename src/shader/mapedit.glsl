@@ -53,6 +53,17 @@ attribute float HighlightAttribute;
 uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
+mat4 get_deform_matrix() {
+	if (u_skinning != 0) {
+		return
+			u_bone_matrices[int(VertexBone.x*255.0)] * VertexWeight.x +
+			u_bone_matrices[int(VertexBone.y*255.0)] * VertexWeight.y +
+			u_bone_matrices[int(VertexBone.z*255.0)] * VertexWeight.z +
+			u_bone_matrices[int(VertexBone.w*255.0)] * VertexWeight.w;
+	}
+	return mat4(1.0);
+}
+
 mat3 get_normal_matrix(mat4 skin_u) {
 	return mat3(transpose(inverse(skin_u)));
 }
@@ -83,8 +94,8 @@ mat4 apply_a_mesh_transformation(mat4 model) {
 }
 
 vec4 position(mat4 transform, vec4 vertex) {
-	//mat4 skin_u = get_model_matrix() * get_deform_matrix();
-	mat4 skin_u = get_model_matrix();
+	mat4 skin_u = get_model_matrix() * get_deform_matrix();
+	//mat4 skin_u = get_model_matrix();
 
 	if (u_apply_a_transformation) {
 		skin_u = apply_a_transformation(skin_u); }
