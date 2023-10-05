@@ -42,7 +42,7 @@ Renderer = {
 	hdr_exposure = 0.15,
 	hdr_exposure_min = 0.001,
 	hdr_exposure_max = 2.0,
-	hdr_exposure_nudge = 0.9,
+	hdr_exposure_nudge = 0.80,
 	hdr_exposure_adjust_speed = 2.5,
 
 	light_depthmap_pool = {},
@@ -106,9 +106,10 @@ function Renderer.createCanvas()
 	Renderer.scene_outline_viewport           = love.graphics.newCanvas(w,h, {format = "rgba16f"})
 	Renderer.scene_depthbuffer                = love.graphics.newCanvas(w,h, {format = "depth24stencil8"})
 	if Renderer.bloom_renderer then
-		Renderer.bloom_renderer:reallocate(w,h)
+		Renderer.bloom_renderer:release()
+		Renderer.bloom_renderer = BloomRender:new(w,h,4)
 	else
-		Renderer.bloom_renderer = BloomRender:new(w,h,5)
+		Renderer.bloom_renderer = BloomRender:new(w,h,4)
 	end
 
 	if not Renderer.nil_cubemap then Renderer.nil_cubemap = love.graphics.newCanvas(1,1,{format="depth16",type="cube",readable=true})end

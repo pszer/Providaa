@@ -10,6 +10,7 @@ varying vec3 frag_w_position;
 varying vec4 dir_frag_light_pos;
 varying vec4 dir_static_frag_light_pos;
 varying vec3 frag_normal;
+varying vec3 frag_v_normal;
 
 uniform int u_point_light_count;
 uniform float u_shadow_imult;
@@ -103,6 +104,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skinview_u = u_view * skin_u;
 
 	frag_normal = normalize(get_normal_matrix(skin_u) * VertexNormal);
+	frag_v_normal = frag_normal;
 
 	vec4 model_v = skin_u * vertex;
 	vec4 view_v = skinview_u * vertex;
@@ -117,6 +119,7 @@ vec4 position(mat4 transform, vec4 vertex) {
 		view_v.y = view_v.y + (view_v.z*view_v.z) / curve_coeff; }
 
 	view_v = u_rot * view_v;
+	frag_v_normal = mat3(u_rot) * frag_v_normal;
 
 	// interpolate fragment position in viewspace and worldspace
 	frag_w_position = model_v.xyz;
@@ -375,9 +378,13 @@ vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 }
 
 float attenuate_light(float dist, float light_size) {
-	float quad_comp   = 10.0/(light_size*light_size);
-	float linear_comp = 100.0/light_size;
+	float D = 4*light_size*light_size+light_size/50;
+	//float quad_comp   = 10.0/(light_size*light_size);
+	float quad_comp   = 2000.0/D;
+	float linear_comp = 400.0/light_size;
+	//float attenuate = 1.0/(1.0 + linear_comp*dist + quad_comp*dist*dist) - 0.001/light_size;
 	float attenuate = 1.0/(1.0 + linear_comp*dist + quad_comp*dist*dist);
+	attenuate = max(0.0,attenuate);
 	return attenuate;
 	//return max(0.0, attenuate - 0.005);
 }
@@ -443,7 +450,7 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	float curr_depth = length(frag_to_light);
 
 	float attenuate = attenuate_light(curr_depth, light_size);
-	if (attenuate < 0.005) { return vec3(0,0,0); }
+	//if (attenuate < 0.000005) { return vec3(0,0,0); }
 
 	//float closest_depth = texture(map, frag_to_light).r;
 	//closest_depth *= far_plane;
@@ -523,8 +530,17 @@ void effect( ) {
 
 	vec4 pix = texcolor * vec4(light,1.0);
 
+	float rim_dark = dot(frag_v_normal, -normalize(frag_w_position - view_pos));
+	if (rim_dark < 0) {
+		rim_dark = 0.0;
+	} else {
+		rim_dark = min(pow(min(1.0,rim_dark),1),0.22);
+	}
+	vec3 rim_ambient = 0.15 * (1.0-min(1.4*rim_dark,1.0)) * ambient_col.rgb;
+	rim_dark = max(min(rim_dark*1.2,1.0),0.3);
+
 	// TODO make the fog colour work properly with HDR
-	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour, pix.a);
+	vec4 result = vec4(rim_dark*((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour) + rim_ambient, pix.a);
 
 	love_Canvases[0] = result;
 	//love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;

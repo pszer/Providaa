@@ -67,60 +67,11 @@ function BloomRender:new(w,h,length)
 	return this
 end
 
-function BloomRender:reallocate(w,h)
-	if false then
-	self = {
-		--upsample_shader = upsample_shader,
-		downsample_shader = downsample_shader,
-		viewport_size = {w,h},
-		buffer = love.graphics.newCanvas(w,h,3,{format="rgba16f",readable=true}),
-
-		chain_length = self.chain_length,
-		full_length = 0,
-		targets = {},
-		sizes = {},
-		dummy_texture = love.graphics.newCanvas(1,1,{format="r8"}),
-		commitBlit = function(self,w,h,x,y)
-			love.graphics.draw(self.dummy_texture,x,y,0,w,h)
-		end,
-
-		bloom_result_layer = 0,
-		bloom_result_quad = nil,
-		filter_radius=0.006
-	}
-	self.targets[1]={self.buffer,layer=1}--first buffer target
-	self.targets[2]={self.buffer,layer=2}--second buffer target
-	self.targets[3]={self.buffer,layer=3}--second buffer target
-
-	self.buffer:setWrap("clamp","clamp")
-	self.buffer:setFilter("linear","linear")
-
-	self.downsample_shader:send("texs",self.buffer)
-
-	local int = math.floor
-	local W,H,y,x,i=w,h,0,0,1
-	-- successively scale in half from [w,h]->[1,1]
-	while true do
-		self.sizes[i] = {W,H, x=x, y=y, w=W, h=H}
-		if H==1 and W==1 then break end
-		if i>1 then
-			x=x+W
-		end
-		W=int(W*0.5)
-		H=int(H*0.5)
-		if W<1 then W=1 end
-		if H<1 then H=1 end
-		y=y+H
-		i=i+1
-	end
-	self.full_length = #(self.sizes)
-	local final_size = self.sizes[2]
-	self.bloom_result_quad = love.graphics.newQuad(final_size.x,final_size.y,final_size.w,final_size.h,self.buffer)
-	self.bloom_viewport = {final_size.x/w, final_size.y/h, final_size.w/w, final_size.h/h}
-	local avglum_size = self.sizes[self.full_length]
-	self.avglum_result_quad = love.graphics.newQuad(avglum_size.x,0,avglum_size.w,avglum_size.h,self.buffer)
-	self.avglum_viewport = {avglum_size.x/w,0,avglum_size.w/w,avglum_size.h/h}
-	end
+function BloomRender:release()
+	self.buffer:release()
+	self.bloom_result_quad:release()
+	self.avglum_result_quad:release()
+	self.dummy_texture:release()
 end
 
 -- renders bloom from given viewport texture

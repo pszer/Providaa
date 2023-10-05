@@ -54,7 +54,7 @@ function Prov:load()
 
 		
 		Light:new{
-			["light_pos"] = {250,-30,1500,1},
+			["light_pos"] = {250,-90,1500,1},
 			["light_col"] = {277.95/255, 255/255, 224/255,10000},
 			["light_size"] = 500,
 			["light_static"] = true

@@ -8,7 +8,7 @@ require "assetloader"
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
 
---PROF_CAPTURE = true
+PROF_CAPTURE = false
 prof = require("jprof") 
 
 local function __print_info()
