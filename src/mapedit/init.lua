@@ -3675,10 +3675,6 @@ function ProvMapEdit:updateNitori(dt)
 			self.nito_pdest_x = x
 			self.nito_pdest_y = y
 			self.nito_pdest_z = z
-			--print(x,y,z)
-			--nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.35}
-			--nito:setDirection{0,0,1,"dir"}
-			--nito:modelMatrix()
 
 			if not a1:isPlaying() then
 				local curr_time = getTickSmooth()

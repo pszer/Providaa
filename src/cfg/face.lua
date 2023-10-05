@@ -4,6 +4,14 @@ FACE_ATTRIBUTES = {
 
 	["pianko_face"] = {
 		animface_eyesdata_name = "pianko_eyes",
+		animface_features = {
+			{
+				name="pianko_mouth",
+				pose = "neutral",
+				position = {32,83},
+				mirror   = false,
+			}
+		},
 		animface_texture_dim   = {128,128},
 		animface_righteye_position = {18,46},
 		animface_lefteye_position  = {78,46},
@@ -21,11 +29,13 @@ FACE_ATTRIBUTES = {
 
 				-- keyframes
 				{0  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
-				      animface_righteye_dir ={ 0,0,12}, animface_lefteye_dir = { 0,0,12}},
+				      animface_righteye_dir ={ 0,0,12}, animface_lefteye_dir = { 0,0,12},
+							mouth_pose="neutral"},
 				{80  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
 				      animface_righteye_dir ={ 0,0,12}, animface_lefteye_dir = { 0,0,12}},
 				{89  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
-				      animface_righteye_dir ={ 1.7,0,12}, animface_lefteye_dir = { 1.5,0,12}},
+				      animface_righteye_dir ={ 1.7,0,12}, animface_lefteye_dir = { 1.5,0,12},
+							mouth_pose = "slight"},
 
 				{90+0 , animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1",},
 				{90+2 , animface_righteye_pose="close_phase2", animface_lefteye_pose="close_phase2",},
@@ -39,7 +49,8 @@ FACE_ATTRIBUTES = {
 				{150  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
 				      animface_righteye_dir ={ -1,1,12}, animface_lefteye_dir = { -1,1,12}},
 				{240  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
-				      animface_righteye_dir ={ -1,1,12}, animface_lefteye_dir = { -1,1,12}},
+				      animface_righteye_dir ={ -1,1,12}, animface_lefteye_dir = { -1,1,12},
+							mouth_pose="neutral"},
 				{249  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
 				      animface_righteye_dir ={ 0,0,12}, animface_lefteye_dir = { 0,0,12}},
 
@@ -53,14 +64,14 @@ FACE_ATTRIBUTES = {
 				{290  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
 				      animface_righteye_dir ={  0,0,12}, animface_lefteye_dir = {  0,0,12}},
 				{300  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
-				      animface_righteye_dir ={ -1,0,12}, animface_lefteye_dir = { -1,0,12}},
+				      animface_righteye_dir ={ -1,0,12}, animface_lefteye_dir = { -1,0,12},},
 
 				{420+0 , animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1",},
 				{420+2 , animface_righteye_pose="close_phase2", animface_lefteye_pose="close_phase2",},
 				{420+4 , animface_righteye_pose="close_phase3" , animface_lefteye_pose="close_phase3" ,},
 				{420+6 , animface_righteye_pose="close_phase2" , animface_lefteye_pose="close_phase2" ,},
 				{420+8, animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1",},
-				{420+10, animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,},
+				{420+10, animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     },
 				{432+0 , animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1",},
 				{432+2 , animface_righteye_pose="close_phase2", animface_lefteye_pose="close_phase2",},
 				{432+4 , animface_righteye_pose="close_phase3" , animface_lefteye_pose="close_phase3" ,},
@@ -73,7 +84,7 @@ FACE_ATTRIBUTES = {
 				{460  , animface_righteye_pose="neutral"     , animface_lefteye_pose="neutral"     ,
 				      animface_righteye_dir ={ 0,0,12}, animface_lefteye_dir = { 0,0,12}},
 
-				{500+0 , animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1",},
+				{500+0 , animface_righteye_pose="close_phase1", animface_lefteye_pose="close_phase1"},
 				{500+2 , animface_righteye_pose="close_phase2", animface_lefteye_pose="close_phase2",},
 				{500+4 , animface_righteye_pose="close_phase3" , animface_lefteye_pose="close_phase3" ,},
 				{500+6 , animface_righteye_pose="close_phase2" , animface_lefteye_pose="close_phase2" ,},

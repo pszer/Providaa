@@ -115,7 +115,7 @@ end
 function ModelDecor:compositeFace()
 	local face = self.props.decor_animated_face
 	if face then
-		face:composite2()
+		face:composite()
 	end
 end
 

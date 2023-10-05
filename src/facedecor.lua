@@ -4,6 +4,7 @@
 --
 
 local eyes_atts = require 'cfg/eyes'
+local feature_atts = require 'cfg.features'
 
 require 'cfg.face'
 local face_decor_atts = FACE_DECOR_ATTRIBUTES
@@ -36,9 +37,37 @@ function faceFromCfg(name)
 			face_props.animface_eyesdata_name, name))
 	end
 
+	local features_attrs = face_props.animface_features
+	local features = {}
+	for i,attr in ipairs(features_attrs) do
+		local feature = {}
+		for i,v in pairs(attr) do
+			feature[i]=v
+		end
+
+		local f_name = feature.name
+		if not f_name then
+			error(string.format("faceDecorFromCfg: %s, no name supplied for face feature at index %d supplied", name, i))
+		end
+
+		local feature_attrs = feature_atts[f_name]
+		if not feature_attrs then
+			error(string.format("faceDecorFromCfg: %s, no feature with name %s found in FACE_DECOR_ATTRIBUTES (cfg/features)", name, tostring(f_name)))
+		end
+
+		local feature_data = FacialFeatureData:fromCfg(f_name)
+		if not feature_data then
+			error(string.format("faceDecorFromCfg: %s, error loading feature with name %s", name, tostring(f_name)))
+		end
+
+		feature.data = feature_data
+		table.insert(features, feature)
+	end
+
+	face_props.animface_eyesdata = eyes_data
+	face_props.animface_features = features
+	face_props.animface_decor_reference = decor
 	local animface = AnimFace:new(face_props)
-	animface.props.animface_eyesdata = eyes_data
-	animface.props.animface_decor_reference = decor
 	decor.props.decor_animated_face = animface
 
 	return decor, animface

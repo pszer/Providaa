@@ -25,9 +25,6 @@
 	uniform vec2 reye_uv_translate;
 	uniform vec4 reye_pos;
 
-	//uniform bool flip_x;
-	//uniform bool flip_y;
-
 	vec2 flip_uv(vec2 uv, bool flipx, bool flipy) {
 		vec2 result = uv;
 		if (flipx) {

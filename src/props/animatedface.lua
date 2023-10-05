@@ -12,6 +12,7 @@ AnimFacePropPrototype = Props:prototype{
 
 	{"animface_eyesdata_name", "string", "", nil, "name of eye's in cfg/eyes to use for this face."},
 	{"animface_eyesdata", nil, nil, nil,          "eye's to use for this face."},
+	{"animface_features", "table", nil, PropDefaultTable{}, "table of other facial features."},
 
 	{"animface_texture", nil, nil, nil,         "texture to blit face elements onto for the final composition."},
 	{"animface_texture_dim", "table", nil, PropDefaultTable{256,256}, "dimensions of animface_texture"},

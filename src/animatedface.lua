@@ -19,10 +19,19 @@ function AnimFace:new(props)
 		anim_playing = 0,
 		play_last_time    = 0,
 		play_time_acc     = 0,
+
+		mouth = nil,
 	}
 
 	setmetatable(this,AnimFace)
 	this:allocateTexture()
+
+	for i,v in ipairs(this.props.animface_features) do
+		local category = v.data.props.feature_category
+		if category == "mouth" then
+			this.mouth = v
+		end
+	end
 
 	return this
 end
@@ -43,7 +52,7 @@ function AnimFace:release()
 	if eyedata then eyedata:release() end
 end
 
-function AnimFace:composite2()
+function AnimFace:composite()
 	local props = self.props
 	local texture = self:getTexture()
 
@@ -56,7 +65,7 @@ function AnimFace:composite2()
 	local destw, desth = texture:getDimensions()
 
 	--prof.push("setup_clearbuffers")
-	love.graphics.setShader()
+	--love.graphics.setShader()
 
 	love.graphics.setCanvas(texture)
 	love.graphics.clear(0,0,0,0)
@@ -84,17 +93,41 @@ function AnimFace:composite2()
 		destw, desth)
 
 	love.graphics.draw(AnimFace.temp_tex, 0,0,0, destw, desth)
+
+	love.graphics.setShader()
+
+	for i,v in ipairs(self.props.animface_features) do
+		local pos = v.position
+		local data = v.data
+		local pose = v.pose
+		local mirror = v.mirror
+		local quad = v.data.props.feature_pose_map[pose]
+		local src  = v.data.props.feature_source
+
+		love.graphics.draw(src,quad,pos[1],pos[2],0,1,1)
+
+		if mirror then
+			local src_w = self.props.animface_texture_dim[1]
+			love.graphics.draw(src,quad,src_w-pos[1],pos[2],0,-1,1)
+		end
+	end
 end
 
 function AnimFace:pushComposite()
 	--self.first_composite = false
-	local texture = self:composite2()
+	local texture = self:composite()
 	self.props.animface_decor_reference:getModel():getMesh():setTexture(texture)
 end
 
 function AnimFace:pushTexture()
 	local texture = self:getTexture()
 	self.props.animface_decor_reference:getModel():getMesh():setTexture(texture)
+end
+
+function AnimFace:setMouthPose( pose )
+	local mouth = self.mouth
+	if not mouth then return end
+	mouth.pose = pose
 end
 
 function AnimFace:getAnimationData( name )
@@ -135,12 +168,15 @@ function AnimFace:updateAnimation()
 		local frame_i = 1
 		local frame_count = #anim_data
 
+		local mouth_pose = "neutral"
 		-- seek keyframes
 		for i,v in ipairs(anim_data) do
 			if v[1] <= keytime then
 				--lefteye_pose = v.animface_lefteye_pose or lefteye_pose
 				--righteye_pose = v.animface_righteye_pose or righteye_pose
 				frame_i = i
+
+				mouth_pose = v.mouth_pose or mouth_pose
 			else
 				break
 			end
@@ -236,8 +272,9 @@ function AnimFace:updateAnimation()
                                   righteye_dir_1[2]*(1.0-righteye_interp) + righteye_dir_2[2]*righteye_interp,
                                   righteye_dir_1[3]*(1.0-righteye_interp) + righteye_dir_2[3]*righteye_interp
 
-		if lefteye_pose then self.props.animface_lefteye_pose = lefteye_pose end
+		if lefteye_pose  then self.props.animface_lefteye_pose  = lefteye_pose  end
 		if righteye_pose then self.props.animface_righteye_pose = righteye_pose end
+		if mouth_pose then self:setMouthPose(mouth_pose) end
 	end
 end
 

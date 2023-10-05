@@ -4,6 +4,7 @@ require "render"
 
 require "props.facialfeaturesprops"
 local eye_attributes = require 'cfg/eyes'
+local feature_attributes = require 'cfg/features'
 
 --[[
 --
@@ -277,7 +278,6 @@ function FacialFeatureData:new(props)
 	}
 
 	setmetatable(this,FacialFeatureData)
-	this:generateQuads()
 
 	return this
 end
@@ -316,7 +316,7 @@ function FacialFeatureData:openFilename(fname, props)
 	local dim = props.feature_dimensions
 	local w,h = dim[1],dim[2]
 
-	if source_w / dim[1] ~= 1 or source_h % dim[2] ~= 0 then
+	if source_w ~= dim[1] or source_h % dim[2] ~= 0 then
 		error(string.format("FacialFeatureData:openFilename(): %s incorrect feature component dimensions (%d,%d) (%d,%d)",fname,
 		  dim[1], dim[2], source_w, source_h))
 		return nil
@@ -341,10 +341,10 @@ function FacialFeatureData:openFilename(fname, props)
 			pose = "unnamed_pose"..to_string(i)
 		end
 
-		local quad = love.graphics.newQuad(0,i*(h-1),w,h, source_w, source_h)
+		local quad = love.graphics.newQuad(0,(i-1)*(h),w,h, source_w, source_h)
 
-		props.eyes_pose_map[pose] = i
-		props.eyes_pose_map[i] = pose
+		props.feature_pose_map[pose] = quad
+		props.feature_pose_map[i] = pose
 	end
 
 	return FacialFeatureData:new(props)
