@@ -1,13 +1,7 @@
 require "props.tileprops"
 
---require "texture"
---require "mesh"
---require "math"
-
---TILE_SIZE = 32
---TILE_HEIGHT = -24
-TILE_SIZE = 24
-TILE_HEIGHT = -16
+TILE_SIZE   = CONSTS.TILE_SIZE
+TILE_HEIGHT = CONSTS.TILE_HEIGHT
 
 Tile = {__type = "tile",
 

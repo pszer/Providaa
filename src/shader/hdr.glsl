@@ -11,7 +11,10 @@
 	uniform float exposure_max;
 	uniform float exposure_nudge;
 
-	uniform Image bloom_blur;
+	//uniform Image bloom_blur;
+	uniform sampler2DArray bloom_blur;
+	uniform int bloom_layer;
+	uniform vec4 bloom_viewport;
 	uniform float bloom_strength = 0.07f;	
 
 	//uniform float gamma;
@@ -187,7 +190,10 @@
 
 		vec4 pix_color = Texel(tex, texture_coords);
 		vec3 hdr_color = pix_color.rgb;
-		vec3 bloom_color = Texel(bloom_blur, texture_coords).rgb;
+
+		vec2 bloom_v_offset = bloom_viewport.xy;
+		vec2 bloom_v_size   = bloom_viewport.zw;
+		vec3 bloom_color = Texel(bloom_blur, vec3(bloom_v_offset + texture_coords*bloom_v_size, bloom_layer)).rgb;
 		hdr_color = bloom_mix(hdr_color, bloom_color);
 
 		//vec3 result = vec3(1.0) - exp(-hdr_color * exposure_val);
@@ -208,51 +214,5 @@
 
 		vec3 result = vec3(1.0) - exp(-hdr_color * exposure_val);
 		return vec4(result, 1.0);
-
-		//vec3 XYZ = RGBtoXYZ(result);
-		//vec3 xyY = XYZtoxyY(XYZ);
-		//vec3 Lab = XYZtoLab(XYZ);
-		//vec3 LCH = XYZtoLCH(XYZ);
-
-		//float chroma = 1.0 - (LABgetChroma(Lab)/200.0);
-		//float chroma = (LABgetChroma(Lab)/200.0);
-		//float chroma = (getChroma_xyY(xyY) - 0.3)* (1/0.7);
-		//float hue    = LabHue(Lab);
-		/*if (hue < 90.0) {
-			chroma *= abs(hue - 90.0) * (1.0 / 90.0);
-			//chroma *= 0;
-		} else if (hue > 270.0) {
-			chroma *= abs(hue - 270.0) * (1.0 / 90.0);
-		} else {
-			chroma = 0;
-		}*/
-
-		/*if (abs(hue) < 90.0) {
-			//chroma *= abs((abs(hue) - 90) * (1/180.0));
-			chroma = abs((abs(hue) - 90.0) * (1/90.0));
-		} else {
-			//chroma = chroma;
-			chroma = 0;
-		}*/
-		//if (abs(hue) < 180.0) {
-		//	chroma *= abs((abs(hue) - 180) * (1/180.0));
-			//chroma = abs((abs(hue) - 180.0) * (1/180.0));
-		//} else {
-			//chroma = chroma;
-		//	chroma = 0;
-		//}
-
-		//vec3 xyY_adjusted = AdjustSaturation_xyY(xyY, 1.2, chroma*10.0);	
-		//vec3 xyY_adjusted = adjustSaturation_xyY(xyY, -0.5) * chroma + xyY * (1.0-chroma);
-		//LCH = AdjustSaturationLCH(LCH, 1.0, chroma);
-
-		//vec3 RGB = XYZtoRGB( XYZ );
-		//vec3 RGB = vec3(chroma,chroma,chroma);
-		//vec3 RGB = XYZtoRGB( xyYtoXYZ(xyY_adjusted) );
-		//vec3 final_colour = vec3(1.0) - exp(-RGB * exposure_val);
-		//vec3 final_colour = RGB;
-		//final_colour = RGB + final_colour*0.00000001;
-
-		//return vec4(final_colour, 1.0);
 	}
 #endif

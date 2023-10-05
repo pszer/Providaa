@@ -3684,7 +3684,6 @@ function ProvMapEdit:updateNitori(dt)
 				local curr_time = getTickSmooth()
 				local anim_time = 0
 				local anim_speed = 1.3
-				print(curr_time - time )
 				if curr_time ~= time then anim_time = 57 anim_speed = 0.9 else
 					nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.1}
 					nito:setDirection{0,0,1,"dir"}

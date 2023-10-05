@@ -4,7 +4,7 @@ BloomBuffer = {__type = "bloombuffer"}
 BloomBuffer.__index = BloomBuffer
 
 BloomRenderer = {__type = "bloomrenderer",
-                 chain_length = 5}
+                 chain_length = CONSTS.BLOOM_CHAIN_LENGTH}
 BloomRenderer.__index = BloomRenderer
 
 function BloomBuffer:new(w, h, chain_length)
@@ -38,10 +38,6 @@ end
 function BloomRenderer:renderBloomTexture(src_canvas, filter_radius)
 	self:renderDownSamples(src_canvas)
 	self:renderUpSamples(filter_radius)
-
-	love.graphics.setShader()
-	love.graphics.setCanvas()
-	love.graphics.origin()
 	return self.buffer.mips[1].canvas
 end
 

@@ -139,10 +139,6 @@ end
 
 local __id = cpml.mat4.new()
 function Scene:drawGridMap()
-	--local meshes = self.props.scene_meshes
-	--for i,v in ipairs(meshes) do
-	--	v:drawAsEnvironment()
-	--end
 	local shader = love.graphics.getShader()
 
 	shadersend(shader,"u_uses_tileatlas", true)
@@ -224,7 +220,6 @@ end
 function Scene:updateLights( cam )
 	for i,v in ipairs(self.props.scene_lights) do
 		v:generateMatrices(cam)
-		--v:generateLightSpaceMatrixFromCamera(cam)
 	end
 end
 
@@ -243,10 +238,6 @@ function Scene:draw(cam)
 
 	Renderer.clearDepthBuffer()
 
-	prof.push("skybox")
-	self:drawSkybox()
-	prof.pop("skybox")
-
 	prof.push("shadowpass")
 	self:updateLights( cam )
 	self:shadowPass( cam )
@@ -255,8 +246,9 @@ function Scene:draw(cam)
 	self:updateModelAnimatedFaces()
 
 	prof.push("shaderpushes")
-	local sh = Renderer.setupCanvasFor3D()
+	--local sh = Renderer.setupCanvasFor3D()
 	prof.push("pushshadowmaps")
+	local sh = Renderer.vertex_shader
 	if self.resend_static_lightmap_info then
 		self:pushShadowMaps(sh)
 	else
@@ -268,6 +260,19 @@ function Scene:draw(cam)
 	self.props.scene_camera:pushToShader(sh)
 	prof.pop("shaderpushes")
 
+
+	prof.push("skybox")
+	self:drawSkybox()
+	prof.pop("skybox")
+
+	--[[love.graphics.setCanvas{Renderer.scene_viewport,
+		depthstencil = Renderer.scene_depthbuffer,
+		depth=true, stencil=true}
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("front")--]]
+	love.graphics.setDepthMode( "less", true  )
+	love.graphics.setMeshCullMode("front")
+	love.graphics.setShader(Renderer.vertex_shader)
 	prof.push("drawgrid")
 	self:drawGridMap()
 	prof.pop("drawgrid")
@@ -398,7 +403,8 @@ function Scene:shadowPass( )
 end
 
 -- pushes lights and shadow maps to shader
-local point_light_max   = 9
+local dir_light_max     = CONSTS.MAX_DIR_LIGHTS
+local point_light_max   = CONSTS.MAX_POINT_LIGHTS
 local point_light_pos = {}
 for i=1,point_light_max do point_light_pos[i] = {0,0,0,0} end
 local point_light_col = {}
@@ -565,16 +571,28 @@ function Scene:drawSkybox(cam)
 		return nil
 	end
 
-	Renderer.setupCanvasForSkybox()
+	prof.push("skybox_setup")
+
+	love.graphics.setCanvas{Renderer.scene_viewport,
+		depthstencil = Renderer.scene_depthbuffer,
+		depth=true, stencil=false}
+	--love.graphics.setDepthMode( "less", true  )
+	--love.graphics.setMeshCullMode("front")
+	love.graphics.setMeshCullMode("none")
+	love.graphics.setDepthMode( "always", false )
+
+	prof.pop("skybox_setup")
 
 	prof.push("skybox_push")
-	local sh = love.graphics.getShader()
+	--local sh = love.graphics.getShader()
+	local sh = Renderer.skybox_shader
 	shadersend(sh, "skybox", skybox_img)
 	shadersend(sh, "skybox_brightness", props.scene_skybox_hdr_brightness)
 	self.props.scene_camera:pushToShader(sh)
 	prof.pop("skybox_push")
 
 	prof.push("skybox_draw")
+	love.graphics.setShader(sh)
 	love.graphics.draw(Renderer.skybox_model)
 	prof.pop("skybox_draw")
 	return true

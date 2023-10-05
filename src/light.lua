@@ -11,7 +11,7 @@ SHADOW_UPDATE_FREQ = 0.0
 
 Light = {__type = "light",
 		 z_mult = 1.0, -- used to increase size of orthographic lightmap projection matrix when shadowmapping
-		checkIfUpdateMatrix = periodicUpdate(10)
+		checkIfUpdateMatrix = periodicUpdate(CONSTS.LIGHT_REDO_MATRIX_DELAY)
 }
 Light.__index = Light
 

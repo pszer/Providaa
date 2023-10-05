@@ -1,3 +1,4 @@
+require 'consts'
 require "gamestate"
 require "render"
 require "console"
@@ -7,7 +8,7 @@ require "assetloader"
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
 
-PROF_CAPTURE = false
+--PROF_CAPTURE = true
 prof = require("jprof") 
 
 local function __print_info()
