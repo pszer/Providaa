@@ -36,3 +36,20 @@ EyesDataPropPrototype = Props:prototype{
 	{"eyes_radius", "number", 12, nil,   "approximate radius of the eye"}
 
 }
+
+FacialFeaturePropPrototype = Props:prototype{
+
+	-- prop      prop     prop default    prop input     prop      read
+	-- name      type        value        validation     info      only
+
+	{"feature_category", "string", nil, PropIsOneOf{"mouth","blush","eyebrows"}}, -- feature type, affects way it's rendered
+	{"feature_filename", "string", "", nil, "name of texture to use as feature_source"},
+	{"feature_source", nil, nil, nil, "source image containing the features's poses" },
+
+	{"feature_dimensions", "table", nil, PropDefaultTable{0,0}, "the width and height in pixels for each face pose"},
+	{"feature_pose_count", "number", 0 , nil, "number of eye poses"},
+
+	{"feature_poses" , "table", nil, PropDefaultTable{} , "array of strings corresponding to poses"},
+	{"feature_pose_map" , "table", nil, PropDefaultTable{} , "mapping of strings to a quad"},
+
+}

@@ -55,8 +55,11 @@ function Model:fromLoader( filename )
 	local winding      = attributes["model_vertex_winding"]
 
 	if not texture_name then
-		error(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
+		texture_name = "undef.png"
+		print(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
 			filename))
+		--error(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
+		--	filename))
 	end
 
 	local objs = Loader:getModelReference( filename )

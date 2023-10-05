@@ -210,87 +210,6 @@ function EyesData:getHightlight(pose)
 	end
 end
 
-function EyesData:clearBuffers()
-	local function clear(c)
-		love.graphics.setCanvas(c)
-		love.graphics.clear()
-	end
-	--clear(self.props.eyes_right_canvas)
-	--clear(self.props.eyes_left_canvas)
-	clear(self.buffer)
-	--clear(self.buffer2)
-	--love.graphics.setCanvas()
-end
-
--- pose       : string name/index for eye pose
--- which_eye  : "left" or "right"
--- eye_look_v : direction vector where eye is looking, (0,0,1) is neutral
--- eye_radius : radius of eye in pixels, used to get a correct iris look translation
---[[function EyesData:composite(pose, which_eye, eye_look_v, eye_radius, posx, posy, dest)
-	local source    = self:sourceImage()
-	local iris      = self:getIris(pose)
-	local highlight = self:getHightlight(pose)
-	local base      = self:getBase(pose)
-	local sclera    = self:getSclera(pose)
-	local look_v    = {eye_look_v[1], eye_look_v[2], eye_look_v[3]}
-	local eye_r     = eye_radius or self.props.eyes_radius
-	local dim       = self:getDimensions()
-	local max_look  = self.props.eyes_look_max
-
-	if look_v[3] == 0 then look_v[3] = 0 end
-	look_v[1] = look_v[1] * (eye_r / look_v[3])
-	look_v[2] = look_v[2] * (eye_r / look_v[3])
-
-	local dist = math.sqrt(look_v[1]*look_v[1] + look_v[2]*look_v[2])
-	if dist ~= 0 and dist > max_look then
-		look_v[1] = max_look * look_v[1]/dist
-		look_v[2] = max_look * look_v[2]/dist
-	end
-
-	look_v[1] = look_v[1] / dim[1]
-	look_v[2] = look_v[2] / dim[2]
-
-	local flip_flag = which_eye == "left"
-
-	local mask_sh = Renderer.mask_shader
-	love.graphics.origin()
-	love.graphics.setColor(1,1,1,1)
-
-	-- we draw the iris multiplicatively masked by sclera to self.buffer
-	love.graphics.setCanvas(self.buffer)
-	love.graphics.setShader(mask_sh)
-	mask_sh:send("multiplicative_mask", true)
-	mask_sh:send("mask", sclera)
-	mask_sh:send("uv_translate", {look_v[1], look_v[2]})
-	mask_sh:send("flip_x", flip_flag)
-	mask_sh:send("flip_y", false)
-	love.graphics.draw(iris)
-
-	-- we draw the base
-	love.graphics.setShader()
-	love.graphics.setCanvas(dest)
-	if flip_flag then
-		love.graphics.draw(base, dim[1]+posx, posy, 0, -1, 1)
-	else
-		love.graphics.draw(base, posx, posy)
-	end
-	-- we draw the iris on top
-	love.graphics.draw(self.buffer, posx, posy)
-
-	-- we draw the highlight alpha masked by the iris in self.buffer
-	love.graphics.setShader(mask_sh)
-	mask_sh:send("multiplicative_mask", false)
-	mask_sh:send("mask", self.buffer)
-	mask_sh:send("uv_translate", {look_v[1]/10,look_v[2]/10})
-	mask_sh:send("flip_x", false)
-	mask_sh:send("flip_y", false)
-	love.graphics.draw(highlight, posx, posy)
-
-	--love.graphics.setCanvas()
-	--love.graphics.setShader()
-	--return canvas
-end--]]
-
 -- which_eye  : "left" or "right"
 -- eye_look_v : direction vector where eye is looking, (0,0,1) is neutral
 -- eye_radius : radius of eye in pixels, used to get a correct iris look translation
@@ -347,4 +266,86 @@ function EyesData:pushEyeDataToShader(shader, pose, which_eye, eye_look_v, eye_r
 		shader:send("reye_highlight_img", highlight)
 		shader:send("reye_pos", uv_rect)
 	end
+end
+
+FacialFeatureData = {}
+FacialFeatureData.__index = FacialFeatureData
+
+function FacialFeatureData:new(props)
+	local this = {
+		props = FacialFeaturePropPrototype(props),
+	}
+
+	setmetatable(this,FacialFeatureData)
+	this:generateQuads()
+
+	return this
+end
+
+function FacialFeatureData:release()
+	local source = self:sourceImage()
+	if source then
+		Loader:deref("texture", self.props.feature_filename) end
+	for i,v in pairs(self.props.feature_pose_map) do
+		v:release()
+	end
+end
+
+function FacialFeatureData:fromCfg(feature_name)
+	local atts = feature_attributes[feature_name]
+
+	if not atts then
+		error(string.format("FacialFeatureData:fromCfg: [\"%s\"] not found in cfg/features.lua", feature_name))
+	end
+
+	local fname = atts.feature_filename
+	return self:openFilename(fname, atts)
+end
+
+function FacialFeatureData:openFilename(fname, props)
+	local source_image = Loader:getTextureReference(fname)
+
+	if not source_image then
+		error(string.format("FacialFeatureData:openFilename(): image file \"%s\" not found", fname))
+		return nil
+	end
+
+	props.feature_source = source_image
+
+	local source_w, source_h = source_image:getDimensions()
+	local dim = props.feature_dimensions
+	local w,h = dim[1],dim[2]
+
+	if source_w / dim[1] ~= 1 or source_h % dim[2] ~= 0 then
+		error(string.format("FacialFeatureData:openFilename(): %s incorrect feature component dimensions (%d,%d) (%d,%d)",fname,
+		  dim[1], dim[2], source_w, source_h))
+		return nil
+	end
+
+	local poses_count = source_h / dim[2]
+	local poses_table = props.feature_poses
+	if not poses_table then
+		poses_table={}
+		props.feature_poses=poses_table
+	end
+	props.feature_pose_count = poses_count
+
+	if poses_count ~= #poses_table then
+		print(string.format("FacialFeatureData:openFilename(): pose count mismatch, %d found, %d given", poses_count, #poses_table)) end
+	
+
+	props.feature_pose_map = {}
+	for i=1,poses_count do
+		local pose = poses_table[i]
+		if not pose then
+			pose = "unnamed_pose"..to_string(i)
+		end
+
+		local quad = love.graphics.newQuad(0,i*(h-1),w,h, source_w, source_h)
+
+		props.eyes_pose_map[pose] = i
+		props.eyes_pose_map[i] = pose
+	end
+
+	return FacialFeatureData:new(props)
 end
