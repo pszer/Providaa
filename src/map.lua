@@ -1363,7 +1363,10 @@ local DEG_TO_RADIANS = math.pi/180.0
 function Map.generateModelInstances(map, dont_use_instancing)
 	local model_defs = map.models
 
+	local model_set={}
+	model_set[0]=0
 	local models = {}
+
 	for i,v in ipairs(model_defs) do
 		local mod_name = v.name
 		if not models[mod_name] then
@@ -1380,6 +1383,18 @@ function Map.generateModelInstances(map, dont_use_instancing)
 	for model_name , indices in pairs(models) do
 		--local model = Loader:getModelReference(model_name)
 		local model = Models.loadModel(model_name)
+
+		local add_to_set=true
+		for _,v in ipairs(model_set) do
+			if v==model then
+				add_to_set=false
+				break
+			end
+		end
+		if add_to_set then
+			model_set[0]=model_set[0]+1
+			model_set[model_set[0]]=model
+		end
 
 		for i,v in ipairs(indices) do
 			local mod_info = model_defs[v]
@@ -1429,7 +1444,7 @@ function Map.generateModelInstances(map, dont_use_instancing)
 		end
 	end
 
-	return insts
+	return insts,model_set
 end
 
 -- returns a skybox_texture, skybox_texture_name, skybox_hdr_brightness

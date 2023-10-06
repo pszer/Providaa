@@ -176,13 +176,21 @@ local MapEditGUILanguageStrings = {
 		jp="はマップのメッシュに付いてあります、削除できません。"
 	},
 
-	["[Drop file here]"]={
-		pl="[Dodaj plik tutaj]",
-		jp="[ここにファイルをドロップ]",
+	["[Drop texture here]"]={
+		pl="[Upuść teksture tutaj]",
+		jp="[ここにテクスチャをドロップ]",
+	},
+	["[Drop model here]"]={
+		pl="[Upuść model tutaj]",
+		jp="[ここにモデルをドロップ]",
 	},
 	[" is not in src/img/ folder."]={
 		pl=" nie jest w środku folderu src/img/.",
 		jp=" は「src/img/」ディレクトリ内にはありません。"
+	},
+	[" is not in src/models/ folder."]={
+		pl=" nie jest w środku folderu src/models/.",
+		jp=" は「src/models/」ディレクトリ内にはありません。"
 	},
 	[" doesn't exist."]={
 		pl=" nie istnieje.",

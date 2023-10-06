@@ -421,7 +421,7 @@ function MapEditGUI:define(mapedit)
 		local win = file_dropper_window:new({},
 		{
 			guiimage:new("mapedit/dropper.png",0,0,500,300,function()end,"left","top"),
-			guitextbox:new(lang["[Drop file here]"],0,0,300,"left","middle","bottom"),
+			guitextbox:new(lang["[Drop texture here]"],0,0,300,"left","middle","bottom"),
 			guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","bottom")
 		},
 		540,370
@@ -431,17 +431,43 @@ function MapEditGUI:define(mapedit)
 			win.delete = function(self) del(self) mapedit:setFileDropHook(nil) end
 		return win
 	end
+	local model_file_dropped_win = function ()
+		local hook = function(file)
+			mapedit:modelFileDropProcessor(file)
+		end
+
+		local win = file_dropper_window:new({},
+		{
+			guiimage:new("mapedit/dropper.png",0,0,500,300,function()end,"left","top"),
+			guitextbox:new(lang["[Drop model here]"],0,0,300,"left","middle","bottom"),
+			guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","bottom")
+		},
+		540,370
+		)
+		mapedit:setFileDropHook(hook)
+		local del = win.delete
+		win.delete = function(self) del(self) mapedit:setFileDropHook(nil) end
+		return win
+	end
 
 	self.texture_grid = guiimggrid:new(
 		mapedit.props.mapedit_texture_list,
-
 		function (self)
 			local selection = self.curr_selection
 			if selection then
 				MapEditGUI.grid_info_panel_image:setImage(selection[2])
 			end
-		end
-	)
+		end)
+
+	self.model_grid = guiimggrid:new(
+		mapedit.props.mapedit_model_list,
+		function (self)
+			local selection = self.curr_selection
+			if selection then
+				MapEditGUI.model_info_panel_image:setImage(selection[2])
+			end
+		end)
+
 	local grid_info_panel_layout = guilayout:define(
 		{id="image_region",
 		 split_type="+x",
@@ -462,7 +488,9 @@ function MapEditGUI:define(mapedit)
 		win_max_h=5000,
 	}, grid_info_panel_layout)
 
-	self.grid_info_panel_image = guiimage:new(nil,0,0,96,96,function() self:displayPopup("~b~(red)Do not click the kappa.") end,
+	self.grid_info_panel_image = guiimage:new(nil,0,0,96,96,function() end,
+	 "middle","middle",{0,0,0,1})
+	self.model_info_panel_image = guiimage:new(nil,0,0,96,96,function() end,
 	 "middle","middle",{0,0,0,1})
 	local grid_info_panel_window = grid_info_panel_window_def:new(
 		{},
@@ -479,14 +507,36 @@ function MapEditGUI:define(mapedit)
 						local tex_name=g_sel[1]
 						local ok, status = mapedit:removeTexture(tex_name)
 						if not ok then
-							MapEditGUI:displayPopup(status,5.5)
+							MapEditGUI:displayPopup(tostring(status),5.5)
 						end
 					end
 				end,
 				"left", "top")
 		},
-		0,0,300,100
-	)
+		0,0,300,100)
+
+	local model_info_panel_window = grid_info_panel_window_def:new(
+		{},
+		{
+			self.model_info_panel_image,
+			guibutton:new(lang["Import"],nil,0,0,
+				function(self,win)
+					return model_file_dropped_win()
+				end, "left", "top"),
+			guibutton:new(lang["Delete"],nil,0,0,
+				function(self,win)
+					local g_sel = MapEditGUI.model_grid:getGridSelectedObject()
+					if g_sel then
+						local model=g_sel[3]
+						local ok, status = mapedit:removeModelFromList(model)
+						if not ok then
+							MapEditGUI:displayPopup(tostring(status),5.5)
+						end
+					end
+				end,
+				"left", "top")
+		},
+		0,0,300,100)
 
 	local panel_layout = guilayout:define(
 		{id="toolbar_region",
@@ -511,17 +561,36 @@ function MapEditGUI:define(mapedit)
 		{"toolbar_region", function(l) return l.x,l.y,l.w,l.h end},
 		{"grid_region", function(l) return l.x,l.y,l.w,l.h end},
 		{"grid_info_panel", region_default_f},
+		{"grid_region", function(l) return l.x,l.y,l.w,l.h end},
+		{"grid_info_panel", region_default_f},
 		{"viewport_region", region_pixoffset_f(0,0)}
 	)
 
 	local w,h = love.graphics.getDimensions()
 	self.main_panel = guiscreen:new(
 		panel_layout:new(
-		  0,0,w,h,{main_toolbar, self.texture_grid, grid_info_panel_window}),
+		  0,0,w,h,{main_toolbar,
+				self.texture_grid, grid_info_panel_window,
+				self.model_grid, model_info_panel_window,
+				}),
 			function(o) self:handleTopLevelThrownObject(o) end,
 			CONTROL_LOCK.MAPEDIT_PANEL,
 			CONTROL_LOCK.MAPEDIT_WINDOW
 	)
+
+	function MapEditGUI:showTexturePanel()
+		self.main_panel:disableElement(self.model_grid)
+		self.main_panel:disableElement(model_info_panel_window)
+		self.main_panel:enableElement(self.texture_grid)
+		self.main_panel:enableElement(grid_info_panel_window)
+	end
+	function MapEditGUI:showModelPanel()
+		self.main_panel:enableElement(self.model_grid)
+		self.main_panel:enableElement(model_info_panel_window)
+		self.main_panel:disableElement(self.texture_grid)
+		self.main_panel:disableElement(grid_info_panel_window)
+	end
+	self:showModelPanel()
 end
 
 --

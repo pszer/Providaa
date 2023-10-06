@@ -18,6 +18,7 @@ local commands    = require 'mapedit.command'
 local lang        = require 'mapedit.guilang'
 
 local export_map  = require 'mapedit.export'
+local model_thumb = require 'modelthumbnail'
 
 ProvMapEdit = {
 
@@ -204,9 +205,12 @@ function ProvMapEdit:loadMap(map_name)
 		self.props.mapedit_skybox_img = skybox_img
 	end
 
-	local models = Map.generateModelInstances( map_file, true )
+	local models, model_set = Map.generateModelInstances( map_file, true )
 	self.props.mapedit_model_insts = models
 	self:updateModelMatrices()
+	for _,v in ipairs(model_set) do
+		self:addModelToList(v)
+	end
 
 	self:copyPropsFromMap(map_file)
 	self:allocateObjects()
@@ -230,6 +234,17 @@ function ProvMapEdit:reloadSkybox()
 	else
 		error("ProvMapEdit:reloadSkybox(): fail")
 	end
+end
+
+function ProvMapEdit:addModelToList(model)
+	assert_type(model,"model")
+	local thumbnail = model_thumb(model)
+	local list = self.props.mapedit_model_list
+	local name = model.props.model_name
+	table.insert(list,{name,thumbnail,model})
+end
+function ProvMapEdit:removeModelFromList(model)
+	return false,false
 end
 
 function ProvMapEdit:addTexture(tex_name, tex)
@@ -1199,8 +1214,8 @@ function ProvMapEdit:setupInputHandling()
 		["paint"] = "edit",
 	}
 	local viewport_cycle_tool = Hook:new(function () self:cycleTool() end)
-	local viewport_edit_tool  = Hook:new(function () self.props.mapedit_tool="edit" end)
-	local viewport_paint_tool = Hook:new(function () self.props.mapedit_tool="paint" end)
+	local viewport_edit_tool  = Hook:new(function () self:cycleTool("edit") end)
+	local viewport_paint_tool = Hook:new(function () self:cycleTool("paint") end)
 
 	self.viewport_input:getEvent("edit_undo","down"):addHook(viewport_undo)
 	self.viewport_input:getEvent("edit_redo","down"):addHook(viewport_redo)
@@ -1279,12 +1294,30 @@ function ProvMapEdit:setupInputHandling()
 	self.transform_input:getEvent("transform_scale", "down"):addHook(transform_to_scale)
 end
 
-function ProvMapEdit:cycleTool()
+function ProvMapEdit:cycleTool(tool)
 	local __cycle = {
 		["edit"]  = "paint",
 		["paint"] = "edit",
 	}
+	local __cyclefuncs = {
+		["edit"]  = function ()
+			gui:showModelPanel()
+		end,
+		["paint"] = function ()
+			gui:showTexturePanel()
+		end,
+	}
+
+	if tool then
+		self.props.mapedit_tool = tool
+		local func = __cyclefuncs[tool]
+		if func then func() end
+		return
+	end
+
 	self.props.mapedit_tool = __cycle[self.props.mapedit_tool]
+	local func = __cyclefuncs[self.props.mapedit_tool]
+	if func then func() end
 end
 
 function ProvMapEdit:selectionEmpty()
@@ -4129,6 +4162,7 @@ end
 function ProvMapEdit:setFileDropHook(hook_func)
 	self.file_dropped_hook = hook_func
 end
+
 function ProvMapEdit:textureFileDropProcessor(file)
 	local filename = file:getFilename()
 
@@ -4141,12 +4175,6 @@ function ProvMapEdit:textureFileDropProcessor(file)
 	local img_fname = process_filename(filename)
 	if not img_fname then return nil end
 	img_fname = string.gsub(img_fname,"\\","/")
-	--[[local info = love.filesystem.getInfo(filename)
-	if not info then
-		print(filename)
-		gui:displayPopup(img_fname..lang[" doesn't exist."],4)
-		return
-	end--]]
 
 	local status, img = pcall(function() return Loader:getTextureReference(img_fname) end)
 	if not status or not img then
@@ -4157,6 +4185,29 @@ function ProvMapEdit:textureFileDropProcessor(file)
 	self:addTexture(img_fname, img)
 	gui:displayPopup(img_fname..lang[" success."],2)
 end
+function ProvMapEdit:modelFileDropProcessor(file)
+	local filename = file:getFilename()
+
+	local function process_filename(str)
+		local E = str:match(".*src[/\\]models[/\\](.*)")
+		if not E then gui:displayPopup(str..lang[" is not in src/models/ folder."],5.8) return nil end
+		return E
+	end
+
+	local mod_fname = process_filename(filename)
+	if not mod_fname then return nil end
+	mod_fname = string.gsub(mod_fname,"\\","/")
+
+	local status, mod = pcall(function() return Models.loadModel(mod_fname) end)
+	if not status or not mod then
+		gui:displayPopup(str..lang[" failed to open."],4)
+		return
+	end
+
+	self:addModel(mod)
+	gui:displayPopup(mod_fname..lang[" success."],2)
+end
+
 function ProvMapEdit:filedropped(file)
 	local hook = self.file_dropped_hook
 	if hook then

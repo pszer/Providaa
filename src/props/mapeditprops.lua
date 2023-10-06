@@ -59,6 +59,7 @@ MapEditPropPrototype = Props:prototype{
 																  index in the mesh are the vertices for the tile]]},
 
 
-	{"mapedit_texture_list", "table", nil, PropDefaultTable{}, "loaded tile/wall textures"}
+	{"mapedit_texture_list", "table", nil, PropDefaultTable{}, "loaded tile/wall textures"},
+	{"mapedit_model_list"  , "table", nil, PropDefaultTable{}, "loaded model/model thumbnails"},
 
 }

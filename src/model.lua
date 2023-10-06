@@ -850,7 +850,7 @@ end
 
 -- corrects the models bounding box by the model direction fixing matrix
 function Model:correctBoundingBox()
-	if self.bounds_corrected then return end
+	if self.bounds_corrected then return self.props.model_bounding_box end
 
 	local bounds = self.props.model_bounding_box
 	local b_min = bounds.min
@@ -877,6 +877,7 @@ function Model:correctBoundingBox()
 	if b_min[3] > b_max[3] then swap(b_min,b_max,3) end
 
 	self.bounds_corrected = true
+	return bounds
 end
 
 -- returns the bounding box

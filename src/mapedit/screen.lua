@@ -53,6 +53,15 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 		for i,v in ipairs(self.elements) do
 			if v==element then
 				self.element_status[i]=false
+				return
+			end
+		end
+	end
+	function this:enableElement(element)
+		for i,v in ipairs(self.elements) do
+			if v==element then
+				self.element_status[i]=true
+				return
 			end
 		end
 	end
