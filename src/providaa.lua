@@ -113,7 +113,7 @@ function Prov:load()
 
 	local cam = self.scene:getCamera()
 	cam:setController(
-		camcontrol:followEntityFixed(theent, {0,0,35}, {0.5,0.55,0.5}))
+		camcontrol:followEntityFixed(theent, {0,-15,95}, {0.5,0.55,0.5}))
 
 	-- only load once
 	self.load = function() end
