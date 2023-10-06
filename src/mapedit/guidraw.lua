@@ -268,7 +268,8 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 		["lgreen"]  = 0x80FF80,
 		["lblue"]   = 0x8080FF,
 		["lred"]    = 0xFF8080,
-		["lpurple"] = 0xbb78ff
+		["lpurple"] = 0xbb78ff,
+		["lpink"]   = 0xff5ec1,
 	}
 
 	while true do

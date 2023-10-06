@@ -206,7 +206,17 @@ function MapEditGUI:define(mapedit)
 
 		 {lang["~bReset"],action=function(props)
 		   mapedit:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
-		   icon = nil}
+		   icon = nil},
+
+		 {lang["~(lgray)--Actions--"]},
+		 {lang["Place model"], suboptions = function(props)
+		 	local at_sel, at_origin = mapedit:getPlaceModelFunctions()
+		 	return {
+				{lang["... at ~(lpink)selection~r."], action=at_sel    , disable=not at_sel   },
+				{lang["... at world origin."]       , action=at_origin , disable=not at_origin},
+			}
+		 end}
+
 		 end)
 	
 	context["select_undef_context"] = 
@@ -257,7 +267,15 @@ function MapEditGUI:define(mapedit)
 		 	return {} end,
 		  disable = true},
 
-		 {lang["~bReset"],disable = true, icon = nil}
+		 {lang["~bReset"],disable = true, icon = nil},
+
+		 {lang["~(lgray)--Actions--"]},
+		 {lang["Place model"], suboptions = function(props)
+		 	local at_sel, at_origin = mapedit:getPlaceModelFunctions()
+		 	return {
+				{lang["... at ~(lpink)selection~r."], action=at_sel    , disable=not at_sel   },
+				{lang["... at world origin."]       , action=at_origin , disable=not at_origin},
+			} end}
 		 end)
 
 	local region_default_f = function(l) return l.x, l.y, l.w, l.h end

@@ -205,7 +205,7 @@ function ProvMapEdit:loadMap(map_name)
 		self.props.mapedit_skybox_img = skybox_img
 	end
 
-	local models, model_set = Map.generateModelInstances( map_file, true )
+	local models, model_set, models_ordered = Map.generateModelInstances( map_file, true )
 	self.props.mapedit_model_insts = models
 	self:updateModelMatrices()
 	for _,v in ipairs(model_set) do
@@ -217,7 +217,8 @@ function ProvMapEdit:loadMap(map_name)
 
 	Map.loadGroups(
 		map_file,
-		models,
+		--models,
+		models_ordered,
 		function(name,insts)
 			self:createModelGroup(name,insts)
 		end
@@ -245,6 +246,52 @@ function ProvMapEdit:addModelToList(model)
 end
 function ProvMapEdit:removeModelFromList(model)
 	return false,false
+end
+local __tempvectt = cpml.vec3.new()
+function ProvMapEdit:getPlaceModelFunctions()
+	local grid = gui.model_grid
+	local sel = grid:getGridSelectedObject()
+
+	if not sel then return nil,nil end
+	local model = sel[3]
+	if not model then return nil,nil end
+
+	local place_at_selection_func = nil
+	local place_at_origin_func = nil
+
+	local tile_s,wall_s,model_s= self:getObjectTypesInSelection()
+	local place_at_grid_flag = (tile_s or wall_s) and (not model_s)
+	
+	if place_at_grid_flag then
+		place_at_selection_func = function ()
+			local centre = self:getSelectionCentreAndMinMax()
+			local mat = cpml.mat4.new()
+			local t = __tempvectt
+			t.x=centre[1]
+			t.y=centre[2]
+			t.z=centre[3]
+			mat:translate(mat,t)
+
+			local inst = ModelInstance:newInstance(model, {model_i_transformation_mode="matrix", model_i_matrix=mat})
+			self:commitComposedCommand(
+			 {"deselect_all", {}},
+			 {"add_obj", {objects={inst}}},
+			 {"additive_select", {select_objects = {{"model",inst}} }}
+			)
+		end
+	end
+
+	place_at_origin_func = function ()
+			local mat = cpml.mat4.new()
+			local inst = ModelInstance:newInstance(model, {model_i_matrix=mat})
+			self:commitComposedCommand(
+			 {"deselect_all", {}},
+			 {"add_obj", {objects={inst}}},
+			 {"additive_select", {select_objects = {{"model",inst}} }}
+			)
+	end
+
+	return place_at_selection_func, place_at_origin_func
 end
 
 function ProvMapEdit:addTexture(tex_name, tex)
@@ -1174,7 +1221,7 @@ function ProvMapEdit:setupInputHandling()
 		end
 	end)
 
-	local held_limiter = periodicUpdate(2)
+	local held_limiter = periodicUpdate(4)
 	local viewport_select_held = Hook:new(function ()
 		if not held_limiter() then return end
 		local tool = self.props.mapedit_tool
@@ -3723,6 +3770,11 @@ function ProvMapEdit:updateNitori(dt)
 
 		local x_dist = max[1]-min[1]
 		local z_dist = max[3]-min[3]
+		local height = max[2]-min[2]
+		local y_off=0
+		if height < 40 then
+			y_off = 40-height
+		end
 
 		local mat = self.active_transform_model_mat_a
 		if not mat then return end
@@ -3732,12 +3784,12 @@ function ProvMapEdit:updateNitori(dt)
 		a1:stopAnimation()
 		local pos,dir
 		if z_dist >= x_dist then
-			pos = {max[1],  max[2]-2.5, (min[3]+max[3])*0.5}
+			pos = {max[1],  max[2]-2.5+y_off, (min[3]+max[3])*0.5}
 			dir = {-1,0,0,"dir"}
 			local a1 = nito:getAnimator()
 			a1:setTime((-pos[1]-pos[3]*0.3)*1.4)
 		else
-			pos = {(max[1]+min[1])*0.5,  max[2]-2.5, min[3]}
+			pos = {(max[1]+min[1])*0.5,  max[2]-2.5+y_off, min[3]}
 			dir = {0,0,1,"dir"}
 			local a1 = nito:getAnimator()
 			a1:setTime((-pos[3]-pos[1]*0.3)*1.4)
@@ -4204,7 +4256,7 @@ function ProvMapEdit:modelFileDropProcessor(file)
 		return
 	end
 
-	self:addModel(mod)
+	self:addModelToList(mod)
 	gui:displayPopup(mod_fname..lang[" success."],2)
 end
 

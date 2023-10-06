@@ -69,16 +69,20 @@ local MapEditGUILanguageStrings = {
 	},
 	["No group"]={
 		pl="Nie ma grupy",
-		jp="選んでされた組はない",
+		jp="選び組ではありません",
 	},
 
 	["~(lgray)--Transform--"]={
 		pl="~(lgray)--Transformuj--",
 		jp="~(lgray)トランスフォーマー"
 	},
+	["~(lgray)--Actions--"]={
+		pl="~(lgray)--Operacje--",
+		jp="~(lgray)作用",
+	},
 	["Flip"]={
 		pl="Odbij",
-		jp="反転する",
+		jp="反転",
 	},
 
 	["... by ~i~(lred)X~r Axis"]={
@@ -96,7 +100,7 @@ local MapEditGUILanguageStrings = {
 
 	["Rotate"]={
 		pl="Obróć",
-		jp="~b回転~rする",
+		jp="回転",
 	},
 	["... around ~i~(lred)X~r Axis"]={
 		pl="... dookoła Osi ~i~(lred)X~r",
@@ -199,6 +203,18 @@ local MapEditGUILanguageStrings = {
 	[" failed to open."]={
 		pl=" nie udało się otworzyć.",
 		jp=" を開くことできませんでした。"
+	},
+	["Place model"]={
+		pl="Postaw model",
+		jp="モデルを入れる",
+	},
+	["... at ~(lpink)selection~r."]={
+		pl="... na ~(lpink)selekcji~r.",
+		jp="。。~(lpink)選び~rの上に",
+	},
+	["... at world origin."]={
+		pl="... na początek świata.",
+		jp="。。世界の原点に",
 	},
 
 	["default_group_name"]={

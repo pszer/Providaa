@@ -1366,6 +1366,7 @@ function Map.generateModelInstances(map, dont_use_instancing)
 	local model_set={}
 	model_set[0]=0
 	local models = {}
+	local ordered  = {}
 
 	for i,v in ipairs(model_defs) do
 		local mod_name = v.name
@@ -1381,7 +1382,6 @@ function Map.generateModelInstances(map, dont_use_instancing)
 
 	local default_rot, default_scale = {0,0,0,"rot"}, {1,1,1}
 	for model_name , indices in pairs(models) do
-		--local model = Loader:getModelReference(model_name)
 		local model = Models.loadModel(model_name)
 
 		local add_to_set=true
@@ -1400,6 +1400,10 @@ function Map.generateModelInstances(map, dont_use_instancing)
 			local mod_info = model_defs[v]
 			local mod_pos = mod_info.pos
 			local mod_mat = mod_info.matrix
+
+			if dont_use_instancing then
+				ordered[v]=i
+			end
 
 			if mod_mat then
 				indices[i] = ModelInfo.newFromMatrix(cpml.mat4.new(mod_mat))
@@ -1444,7 +1448,13 @@ function Map.generateModelInstances(map, dont_use_instancing)
 		end
 	end
 
-	return insts,model_set
+	if dont_use_instancing then
+		for i,v in pairs(ordered) do
+			ordered[i]=insts[v]
+		end
+	end
+
+	return insts,model_set,ordered
 end
 
 -- returns a skybox_texture, skybox_texture_name, skybox_hdr_brightness
