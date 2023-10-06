@@ -67,11 +67,21 @@ function MapMesh:new(args)
 
 end
 
-function MapMesh:release()
+function MapMesh:setNewAtlasUvs(atlas, uvs)
+	self.mesh:setTexture(atlas)
+	self.tex = atlas
+	self.uvs = uvs
+	self.uvs_buffer = {}
+	for i,v in ipairs(self.uvs) do
+		self.uvs_buffer[i] = v
+	end
+end
+
+function MapMesh:release(release_tex)
 	if self.mesh then self.mesh:release() end
 	if self.mesh_atts then self.mesh_atts:release() end
 	if self.tex then self.tex:release() end
-	if self.textures then
+	if self.textures and release_tex then
 		for i,v in ipairs(self.textures.names) do
 			Loader:deref("texture", v)
 		end
@@ -109,6 +119,39 @@ function MapMesh:updateUvs()
 	end
 
 	return true
+end
+
+function MapMesh:reloadAnimDefinitions(defs, texture_list)
+	local anim_textures_info = self.animated_tex_info
+	for i,v in pairs(defs) do
+		anim_textures_info[i] = v
+
+		local texs = v.textures
+
+		local seq_length = #v.sequence
+		local tex_count  = #v.textures
+		anim_textures_info[i].seq_length = seq_length
+		anim_textures_info[i].tex_count  = tex_count
+
+		anim_textures_info[i].delay = v.delay or 8
+
+		local seq = anim_textures_info[i].sequence
+		for j,u in ipairs(seq) do
+			if u > tex_count then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = tex_count
+			elseif u < 1 then
+				print(string.format("Map.generateMapMesh(): animated texture for tile type %s has a malformed sequence, correcting.", tostring(i)))
+				seq[j] = 1
+			end
+		end
+
+		anim_textures_info[i].indices = {}
+		for j,tex_name in ipairs(texs) do
+			local index = texture_list[tex_name] or 1
+			anim_textures_info[i].indices[j] = index
+		end
+	end
 end
 
 function MapMesh:pushAtlas(shader, push_img)

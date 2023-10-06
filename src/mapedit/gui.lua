@@ -400,6 +400,38 @@ function MapEditGUI:define(mapedit)
 
 	local main_toolbar = toolbars["main_toolbar"]:new({},0,0,1000,10)
 
+	local file_dropper_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_pixoffset_f(10,10)},
+		{"region", region_pixoffset_f(260,175)},
+		{"region", region_pixoffset_f(260,335)}
+	)
+	local file_dropper_window = guiwindow:define({
+		win_min_w=520,
+		win_max_w=520,
+		win_min_h=340,
+		win_max_h=340,
+	}, file_dropper_layout)
+	local texture_file_dropped_win = function ()
+		local hook = function(file)
+			mapedit:textureFileDropProcessor(file)
+		end
+
+		local win = file_dropper_window:new({},
+		{
+			guiimage:new("mapedit/dropper.png",0,0,500,300,function()end,"left","top"),
+			guitextbox:new(lang["[Drop file here]"],0,0,300,"left","middle","bottom"),
+			guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","bottom")
+		},
+		540,370
+		)
+		mapedit:setFileDropHook(hook)
+			local del = win.delete
+			win.delete = function(self) del(self) mapedit:setFileDropHook(nil) end
+		return win
+	end
+
 	self.texture_grid = guiimggrid:new(
 		mapedit.props.mapedit_texture_list,
 
@@ -438,6 +470,7 @@ function MapEditGUI:define(mapedit)
 			self.grid_info_panel_image,
 			guibutton:new(lang["Import"],nil,0,0,
 				function(self,win)
+					return texture_file_dropped_win()
 				end, "left", "top"),
 			guibutton:new(lang["Delete"],nil,0,0,
 				function(self,win)
@@ -446,7 +479,7 @@ function MapEditGUI:define(mapedit)
 						local tex_name=g_sel[1]
 						local ok, status = mapedit:removeTexture(tex_name)
 						if not ok then
-							MapEditGUI:displayPopup(status,3.0)
+							MapEditGUI:displayPopup(status,5.5)
 						end
 					end
 				end,

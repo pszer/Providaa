@@ -176,6 +176,23 @@ local MapEditGUILanguageStrings = {
 		jp="はマップのメッシュに付いてあります、削除できません。"
 	},
 
+	["[Drop file here]"]={
+		pl="[Dodaj plik tutaj]",
+		jp="[ここにファイルをドロップ]",
+	},
+	[" is not in src/img/ folder."]={
+		pl=" nie jest w środku folderu src/img/.",
+		jp=" は「src/img/」ディレクトリ内にはありません。"
+	},
+	[" doesn't exist."]={
+		pl=" nie istnieje.",
+		jp=" は存在しません。"
+	},
+	[" failed to open."]={
+		pl=" nie udało się otworzyć.",
+		jp=" を開くことできませんでした。"
+	},
+
 	["default_group_name"]={
 		eng="Group",
 		pl ="Grupa",

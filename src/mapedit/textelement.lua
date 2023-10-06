@@ -9,7 +9,7 @@ local MapEditGUITextElement = {
 }
 MapEditGUITextElement.__index = MapEditGUITextElement
 
-function MapEditGUITextElement:new(str,x,y,limit,align)
+function MapEditGUITextElement:new(str,x,y,limit,align,align_x,align_y)
 	assert(str and type(str)=="string")
 
 	local this = {
@@ -19,8 +19,14 @@ function MapEditGUITextElement:new(str,x,y,limit,align)
 		h=h,
 		limit = limit or 500,
 		align = align or "left",
+		align_x = align_x or "left",
+		align_y = align_y or "top",
 		text = nil
 	}
+
+	-- synonyms
+	if this.align == "centre" then this.align="center" end
+	if this.align == "middle" then this.align="center" end
 
 	--this.text = guirender:createDrawableText(str)
 	this.text = guirender:createDrawableTextLimited(str, this.limit, this.align)
@@ -49,9 +55,27 @@ function MapEditGUITextElement:new(str,x,y,limit,align)
 	end
 
 	function this.setX(self,x)
-		self.x = x end
+		if self.align_x=="middle" then
+			self.x = x - self.w*0.5
+		elseif self.align_x=="left" then
+			self.x = x
+		elseif self.align_x=="right" then
+			self.x = x - self.w
+		else
+			self.x = x
+		end
+		end
 	function this.setY(self,y)
-		self.y = y end
+		if self.align_y=="middle" then
+			self.y = y - self.h*0.5
+		elseif self.align_y=="top" then
+			self.y = y
+		elseif self.align_y=="bottom" then
+			self.y = y - self.h
+		else
+			self.y = y
+		end
+		end
 	function this.setW(self,w)
 		end
 	function this.setH(self,h) 

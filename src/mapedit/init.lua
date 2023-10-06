@@ -75,7 +75,9 @@ ProvMapEdit = {
 	clipboard = {},
 
 	tilevertex_objs = {},
-	wall_objs = {}
+	wall_objs = {},
+
+	file_dropped_hook = nil
 }
 ProvMapEdit.__index = ProvMapEdit
 
@@ -275,14 +277,18 @@ function ProvMapEdit:textureIsAppliedToMesh(tex_name)
 		for x=1,w do
 			local t_tex = self.props.mapedit_tile_textures[z][x]
 			if t_tex == tex_name then return true end
+			if type(t_tex)=="table" then
+				if t_tex[1] == tex_name then return true end
+				if t_tex[2] == tex_name then return true end
+			end
 			local w_tex = self.props.mapedit_wall_textures[z][x]
-			if type(w_tex)~="table" then
-				if w_tex == tex_name then return true end
-			else
+			if w_tex == tex_name then return true end
+			if type(w_tex)=="table" then
 				if w_tex[1] == tex_name then return true end
 				if w_tex[2] == tex_name then return true end
 				if w_tex[3] == tex_name then return true end
 				if w_tex[4] == tex_name then return true end
+				if w_tex[5] == tex_name then return true end
 			end
 		end
 	end
@@ -308,8 +314,11 @@ function ProvMapEdit:removeTexture(tex_name)
 
 			for j=i,count-1 do
 				texs[j]=texs[j+1]
+				local j_tex_name = texs[j][1]
+				texs[j_tex_name]=j
 			end
 			texs[count] = nil
+			texs[tex_name] = nil
 			self:regenAtlas()
 			return true
 		end
@@ -326,13 +335,18 @@ function ProvMapEdit:regenAtlas()
 	local tex_table = {}
 	for i,v in ipairs(loaded_textures) do
 		tex_table[i] = v[2]
+		tex_table[v[1]] = i
+		print(i, v[1],v[2], tex_table[v[1]])
 	end
 
-	local atlas, uvs = texatlas(tex_table, 1024, 1024)
+	local atlas, uvs = texatlas(tex_table, CONSTS.ATLAS_SIZE, CONSTS.ATLAS_SIZE)
 
-	if map_mesh.tex then map_mesh.tex:release() end
-	map_mesh.tex = atlas
-	map_mesh.uvs = uvs
+	if map_mesh.tex then map_mesh.tex:release(false) end
+	map_mesh:setNewAtlasUvs(atlas, uvs)
+	map_mesh:reloadAnimDefinitions(self.props.mapedit_anim_tex, tex_table)
+
+	self:fixAllTileTextures()
+	self:fixAllWallTextures()
 end
 
 function ProvMapEdit:copyPropsFromMap(map_file)
@@ -426,12 +440,6 @@ function ProvMapEdit:allocateObjects()
 			end
 		end
 	end
-end
-
-function ProvMapEdit:addTexture(tex_name)
-	local tex = Loader:getTextureReference(tex_name)
-	local entry = {tex_name, tex}
-	table.insert(self.props.mapedit_texture_list, entry)
 end
 
 function ProvMapEdit:defineCommands()
@@ -1135,19 +1143,6 @@ function ProvMapEdit:setupInputHandling()
 
 		local obj_tex = self:getObjectTexture(obj)
 		if obj_tex==tex_name then return end
-
-		--[[if obj[1] == "tile" then
-			local x = obj[2].x
-			local z = obj[2].z
-			local vert_i = obj[2].vert_i
-			--self:setTileTexture(x,z,tex_name)
-			self:setTileVertexTexture(x,z,vert_i,tex_name)
-		elseif obj[1] == "wall" then
-			local x = obj[2].x
-			local z = obj[2].z
-			local side = obj[2].side
-			self:setWallTexture(x,z,side,tex_name)
-		end--]]
 		self:commitCommand("change_texture",
 		{ ["objects"] = {obj},
 		  ["previous_textures"] = {obj_tex},
@@ -2189,7 +2184,7 @@ function ProvMapEdit:getWallsIndexInMesh( x,z , side )
 	assert(side>=1 and side<=5)
 	local wmap = self.props.mapedit_map_mesh.wall_vert_map
 	local index = wmap[z][x][side]
-	return index
+	return index,index+4
 end
 
 function ProvMapEdit:getWallVerts( x,z , side )
@@ -2475,6 +2470,82 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	self.__object_painted_time = getTickSmooth()
 
 	return true, curr_texture
+end
+
+function ProvMapEdit:fixAllTileTextures()
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	for z=1,h do
+		for x=1,w do
+			self:fixTileTexture(x,z)
+		end
+	end
+end
+function ProvMapEdit:fixTileTexture(x,z)
+	local shape = self:getTileShape(x,z)
+	if shape==0 then
+		for i=1,4 do
+			self:fixTileVertexTexture(x,z,i)
+		end
+	else
+		for i=1,6 do
+			self:fixTileVertexTexture(x,z,i)
+		end
+	end
+end
+function ProvMapEdit:fixTileVertexTexture(x,z,i)
+	local tex = self.props.mapedit_tile_textures[z][x]
+	if not tex then return end
+
+	local entry_type = type(tex)
+	local tex_id=nil
+	if entry_type=="table" then
+		local tile_shape = self:getTileShape(x,z)
+		local texture_i = 1
+		if tile_shape>0 and i>=4 then
+			texture_i = 2
+		end
+		tex_id=tex[texture_i]
+	else
+		tex_id=tex
+	end
+	if not tex_id then return end
+	tex_id = self.props.mapedit_texture_list[tex_id]-1
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	local index = self:getTilesIndexInMesh(x,z)
+	mesh:setVertexAttribute(index+i-1, 3, tex_id)
+end
+
+function ProvMapEdit:fixAllWallTextures()
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+	for z=1,h do
+		for x=1,w do
+			self:fixWallTexture(x,z)
+		end
+	end
+end
+function ProvMapEdit:fixWallTexture(x,z)
+	for side=1,5 do
+		self:fixWallSideTexture(x,z,side)
+	end
+end
+function ProvMapEdit:fixWallSideTexture(x,z,side)
+	local tex = self.props.mapedit_wall_textures[z][x]
+	if not tex then return end
+
+	local entry_type = type(tex)
+	local tex_id=nil
+	if entry_type=="table" then
+		tex_id=tex[side]
+	else
+		tex_id=tex
+	end
+	if not tex_id then return end
+	tex_id = self.props.mapedit_texture_list[tex_id]-1
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	index,index_end = self:getWallsIndexInMesh(x,z,side)
+	for i=index,index_end do
+		mesh:setVertexAttribute(i, 3, tex_id)
+	end
 end
 
 function ProvMapEdit:setWallTexture(x,z,side,tex_name)
@@ -3652,12 +3723,12 @@ function ProvMapEdit:updateNitori(dt)
 
 			_________func = function(anim)
 				local curr_time = getTickSmooth()
-				if curr_time - self.__object_painted_time > (170-57+1)/1.3 then
+				if curr_time - self.__object_painted_time > (170-57+1)/1.7 then
 					anim:stopAnimation()
 					return
 				end
 
-				anim:playAnimation(self.nito_anim_paint, 57, 0.9, false, _________func)
+				anim:playAnimation(self.nito_anim_paint, 57, 1.4, false, _________func)
 			end
 
 			local obj = self.__object_painted 
@@ -3679,8 +3750,8 @@ function ProvMapEdit:updateNitori(dt)
 			if not a1:isPlaying() then
 				local curr_time = getTickSmooth()
 				local anim_time = 0
-				local anim_speed = 1.3
-				if curr_time ~= time then anim_time = 57 anim_speed = 0.9 else
+				local anim_speed = 1.6
+				if curr_time ~= time then anim_time = 57 anim_speed = 1.4 else
 					nito:setPosition{x+TILE_SIZE*0.5,y,-z+TILE_SIZE*0.1}
 					nito:setDirection{0,0,1,"dir"}
 					nito:modelMatrix()
@@ -4053,4 +4124,42 @@ end
 
 function ProvMapEdit:resize(w,h)
 	gui:exitContextMenu()
+end
+
+function ProvMapEdit:setFileDropHook(hook_func)
+	self.file_dropped_hook = hook_func
+end
+function ProvMapEdit:textureFileDropProcessor(file)
+	local filename = file:getFilename()
+
+	local function process_filename(str)
+		local E = str:match(".*src[/\\]img[/\\](.*)")
+		if not E then gui:displayPopup(str..lang[" is not in src/img/ folder."],5.8) return nil end
+		return E
+	end
+
+	local img_fname = process_filename(filename)
+	if not img_fname then return nil end
+	img_fname = string.gsub(img_fname,"\\","/")
+	--[[local info = love.filesystem.getInfo(filename)
+	if not info then
+		print(filename)
+		gui:displayPopup(img_fname..lang[" doesn't exist."],4)
+		return
+	end--]]
+
+	local status, img = pcall(function() return Loader:getTextureReference(img_fname) end)
+	if not status or not img then
+		gui:displayPopup(str..lang[" failed to open."],4)
+		return
+	end
+
+	self:addTexture(img_fname, img)
+	gui:displayPopup(img_fname..lang[" success."],2)
+end
+function ProvMapEdit:filedropped(file)
+	local hook = self.file_dropped_hook
+	if hook then
+		hook(file)
+	end
 end

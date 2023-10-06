@@ -103,9 +103,27 @@ function MapEditGUIImage:new(img,x,y,w,h,action,align_x,align_y,bg_col)
 	end
 
 	function this.setX(self,x)
-		self.x = x - self.w*0.5 end
+		if self.align_x=="middle" then
+			self.x = x - self.w*0.5
+		elseif self.align_x=="left" then
+			self.x = x
+		elseif self.align_x=="right" then
+			self.x = x - self.w
+		else
+			self.x = x
+		end
+		end
 	function this.setY(self,y)
-		self.y = y - self.h*0.5 end
+		if self.align_y=="middle" then
+			self.y = y - self.h*0.5
+		elseif self.align_y=="top" then
+			self.y = y
+		elseif self.align_y=="bottom" then
+			self.y = y - self.h
+		else
+			self.y = y
+		end
+		end
 	function this.setW(self,w)
 		end
 	function this.setH(self,h) 

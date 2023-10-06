@@ -65,10 +65,6 @@ function MapEditGUIWindow:define(default_props, layout_def)
 				this.props[i]=v
 			end
 
-			function this:delete()
-				self.delete = true
-			end
-
 			function this:setX(x)
 				local w,h = self.w, self.h
 				local winw,winh = love.graphics.getDimensions()
