@@ -433,11 +433,14 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_tileset, map_file.tile_set)
 	clone(props.mapedit_wallset, map_file.wall_set)
 	clone(props.mapedit_tile_heights, map_file.height_map)
-	--clone(props.mapedit_tile_map, map_file.tile_map)
-	--clone(props.mapedit_wall_map, map_file.wall_map)
 	clone(props.mapedit_anim_tex, map_file.anim_tex)
 	clone(props.mapedit_skybox, map_file.skybox)
 	clone(props.mapedit_tile_shapes, map_file.tile_shape)
+
+	clone(props.mapedit_tile_tex_offsets, map_file.tile_tex_offset)
+	clone(props.mapedit_wall_tex_offsets, map_file.wall_tex_offset)
+	clone(props.mapedit_tile_tex_scales, map_file.tile_tex_scale)
+	clone(props.mapedit_wall_tex_scales, map_file.wall_tex_scale)
 
 	-- get the texture names for each of the tile and walls
 	local t_tex = props.mapedit_tile_textures
@@ -2285,6 +2288,19 @@ function ProvMapEdit:getWallVerts( x,z , side )
 		{x4,y4,z4}
 end
 
+function ProvMapEdit:getTileVertexTexOffset(x,z,vert_i)
+	return __getTileVertexTexOffset(self.props.mapedit_tile_tex_offsets,x,z,vert_i)
+end
+function ProvMapEdit:getWallTexOffset(x,z,side)
+	return __getWallTexOffset(self.props.mapedit_wall_tex_offsets,x,z,side)
+end
+function ProvMapEdit:getTileVertexTexScale(x,z,vert_i)
+	return __getTileVertexTexScale(self.props.mapedit_tile_tex_scales,x,z,vert_i)
+end
+function ProvMapEdit:getWallTexScale(x,z,side)
+	return __getWallTexScale(self.props.mapedit_wall_tex_scales,x,z,side)
+end
+
 local __temphtable = {0,0,0,0}
 local __shape_map = {
 {1,2,3,4,nil,nil},
@@ -2672,26 +2688,7 @@ local __tempvec3tt = cpml.vec3.new()
 local __temptablett = {0,0,0,"dir"}
 function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 	local info = transform:getTransform(self.props.mapedit_cam, self.granulate_transform)
-	--local t_type = transform:getTransformType()
 	local t_type = info.type
-
-	--[[local function getScaleByDist()
-		local w = love.graphics.getDimensions()
-		local centre = self:getSelectionCentreAndMinMax()
-		if not centre then
-			return 1.0
-		end
-		local cam_pos = self.props.mapedit_cam:getPosition()
-		local dx = centre[1] - cam_pos[1]
-		local dy = centre[2] - cam_pos[2]
-		local dz = centre[3] - cam_pos[3]
-		local l = math.sqrt(dx*dx + dy*dy + dz*dz)
-		if l == 0 then return 1.0 end
-		l = (l*(90/50000))/(w/1366)
-		return l
-		--if l > 1 then return 1.0 end
-		--return l*l*l
-	end--]]
 	local getScaleByDist = self.__getScaleByDist
 
 	local __id = {
@@ -2708,8 +2705,10 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 
 		local int = math.floor
 		local g_scale=8
-		local function granulate(v)
-			if not self.granulate_transform then return v end
+		if not self.granulate_transform then
+			g_scale = 0.5
+		end
+		local function granulate(v, g_scale)
 			v.x = int(v.x/g_scale)*g_scale
 			v.y = int(v.y/g_scale)*g_scale
 			v.z = int(v.z/g_scale)*g_scale
@@ -2721,7 +2720,7 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 		translate.x = int(info[1]*s)
 		translate.y = int(info[2]*s)
 		translate.z = int(info[3]*s)
-		granulate(translate)
+		granulate(translate,g_scale)
 		mat:translate(mat, translate)
 		return mat, info
 	end

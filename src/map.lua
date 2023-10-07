@@ -368,8 +368,13 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			vert_count  = vert_count  + vert_additions
 			index_count = index_count + 6
 
-			local attr =  { 1.0, 1.0, 0.0, 0.0, tex_norm_id }
-			local attr2 = { 1.0, 1.0, 0.0, 0.0, tex_norm_id2 }
+			local toff1 = Map.getTileVertexTexOffset(map,x,z,1)
+			local toff2 = Map.getTileVertexTexOffset(map,x,z,4)
+			local tscale1 = Map.getTileVertexTexScale(map,x,z,1)
+			local tscale2 = Map.getTileVertexTexScale(map,x,z,4)
+
+			local attr  =  { tscale1[1], tscale1[2], toff1[1], toff1[2], tex_norm_id }
+			local attr2 =  { tscale2[1], tscale2[2], toff2[1], toff2[2], tex_norm_id2 }
 			if vert_additions==4 then
 				for i=1,4 do
 					attr_verts[attr_count + i] = attr 
@@ -470,8 +475,14 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				index_count = index_count + 6
 
 				local tex_height = textures[tex_id]:getHeight()/TILE_HEIGHT
+				local tex_off = Map.getWallTexOffset(map,z,x,side) or {0,0}
+				local tex_scale = Map.getWallTexScale(map,z,x,side) or {1,1}
 
-				local attr = { 1.0, tex_height, 0.0, 0.0, tex_norm_id }
+				local attr = { tex_scale[1] or 1.0, 
+				              (tex_scale[2] or 1.0)*tex_height,
+										 	 tex_off[1] or 0,
+											 tex_off[2] or 0,
+											 tex_norm_id }
 				for i=1,4 do
 					attr_verts[attr_count + i] = attr
 				end
@@ -563,9 +574,16 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 			vert_count  = vert_count  + 4
 			index_count = index_count + 6
 
-			local tex_height = textures[tex_id]:getHeight() / TILE_HEIGHT
+			local tex_height = textures[tex_id]:getHeight()/TILE_HEIGHT
+			local tex_off = Map.getWallTexOffset(map,z,x,side) or {0,0}
+			local tex_scale = Map.getWallTexScale(map,z,x,side) or {1,1}
 
-			local attr = { 1.0, tex_height, 0.0, 0.0, tex_norm_id }
+			local attr = { tex_scale[1] or 1.0, 
+										(tex_scale[2] or 1.0)*tex_height,
+										 tex_off[1] or 0,
+										 tex_off[2] or 0,
+										 tex_norm_id }
+
 			for i=1,4 do
 				attr_verts[attr_count + i] = attr
 			end
@@ -1277,19 +1295,31 @@ function Map.getIdenticalConsecutiveTilesCount(map, x,z)
 	local tile_id = map.tile_map[z][x]
 	local tile_shape = map.tile_shape[z][x]
 	local h1,h2,h3,h4 = unpack(Map.getHeights(map, x,z))
+	local tex_off   = Map.getTileVertexTexOffset(map,x,z,1)
+	local tex_scale = Map.getTileVertexTexOffset(map,x,z,1)
 
 	if tile_shape ~= 0 then
 		return 1 end
 	if (h1~=h2) or (h1~=h3) or(h1~=h4) then -- we check that the start tile is flat
 		return 1 end
 
+	local abs = math.abs
+	local function merge(v1,v2,dist)
+		local d = abs(v2[1]-v1[1])+abs(v2[2]-v1[1])
+		if d < dist then return true else return false end
+	end
+
 	local X = x + 1
 	while X <= map.width do
 		local tile_id2 = map.tile_map[z][X]
 		local tile_shape2 = map.tile_shape[z][X]
+		local tex_off2   = Map.getTileVertexTexOffset(map,X,z,1)
+		local tex_scale2 = Map.getTileVertexTexOffset(map,X,z,1)
 		if tile_id ~= tile_id2 then
 			break end
 		if tile_shape2 ~= 0 then
+			break end
+		if not merge(tex_off,tex_off2,0.01) or merge(tex_scale,tex_scale2,0.01) then
 			break end
 		local j1,j2,j3,j4 = unpack(Map.getHeights(map, X,z))
 		if (j1~=j2) or (j1~=j3) or(j1~=j4) then -- we check that the next tile is flat
@@ -1359,6 +1389,80 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 	return i,i
 end
 
+--tiletexscale
+function __getTileVertexTexOffset(offsets,x,z,vert_i)
+	local entry = offsets[z][x]
+	if entry == nil then return {0,0} end
+	assert_type(entry, "table")
+	if type(entry[1])=="table" or type(entry[2])=="table" then
+		if vert_i >= 4 then
+			return entry[2] or {0,0}
+		else
+			return entry[1] or {0,0}
+		end
+	else
+		return entry
+	end
+end
+function Map.getTileVertexTexOffset(map,x,z,vert_i)
+	local tex_offsets = map.tile_tex_offset
+	return __getTileVertexTexOffset(tex_offsets,x,z,vert_i)
+end
+--tiletexscale
+
+--tiletexoffset
+function __getWallTexOffset(offsets,x,z,side)
+	local entry = offsets[z][x]
+	if entry == nil then return {0,0} end
+	assert_type(entry, "table")
+	entry = entry[side]
+	if entry == nil then return {0,0} end
+	assert_type(entry, "table")
+	return entry
+end
+function Map.getWallTexOffset(map,x,z,side)
+	local tex_offsets = map.wall_tex_offset
+	return __getWallTexOffset(tex_offsets,x,z,side)
+end
+--tiletexoffset
+
+--tiletexscale
+function __getTileVertexTexScale(scales,x,z,vert_i)
+	local entry = scales[z][x]
+	if entry == nil then return {1,1} end
+	assert_type(entry, "table")
+	if type(entry[1])=="table" or type(entry[2])=="table" then
+		if vert_i >= 4 then
+			return entry[2] or {1,1}
+		else
+			return entry[1] or {1,1}
+		end
+	else
+		return entry
+	end
+end
+function Map.getTileVertexTexScale(map,x,z,vert_i)
+	local tex_scales = map.tile_tex_scale
+	return __getTileVertexTexScale(tex_scales,x,z,vert_i)
+end
+--tiletexscale
+
+--walltexscale
+function __getWallTexScale(scales,x,z,side)
+	local entry = scales[z][x]
+	if entry == nil then return {1,1} end
+	assert_type(entry, "table")
+	entry = entry[side]
+	if entry == nil then return {1,1} end
+	assert_type(entry, "table")
+	return entry
+end
+function Map.getWallTexScale(map,x,z,side)
+	local tex_scales = map.wall_tex_scale
+	return __getWallTexScale(tex_scales,x,z,side)
+end
+--walltexscale
+
 local DEG_TO_RADIANS = math.pi/180.0
 function Map.generateModelInstances(map, dont_use_instancing)
 	local model_defs = map.models
@@ -1396,14 +1500,15 @@ function Map.generateModelInstances(map, dont_use_instancing)
 			model_set[model_set[0]]=model
 		end
 
+		local index_copy = {}
+		for i,v in ipairs(indices) do
+			index_copy[i] = v
+		end
+
 		for i,v in ipairs(indices) do
 			local mod_info = model_defs[v]
 			local mod_pos = mod_info.pos
 			local mod_mat = mod_info.matrix
-
-			if dont_use_instancing then
-				ordered[v]=i
-			end
 
 			if mod_mat then
 				indices[i] = ModelInfo.newFromMatrix(cpml.mat4.new(mod_mat))
@@ -1433,24 +1538,21 @@ function Map.generateModelInstances(map, dont_use_instancing)
 			model_inst = ModelInstance:newInstance(model, indices[1])
 			insts_count = insts_count+1
 			insts[insts_count] = model_inst
+			ordered[index_copy[1]] = model_inst
 		else
 			if not dont_use_instancing then
 				model_inst = ModelInstance:newInstances(model, indices)
 				insts_count = insts_count+1
 				insts[insts_count] = model_inst
+				ordered[index_copy[1]] = model_inst
 			else
-				for _,info in ipairs(indices) do
+				for i,info in ipairs(indices) do
 					local model_inst = ModelInstance:newInstance(model, info)
 					insts_count = insts_count+1
 					insts[insts_count] = model_inst
+					ordered[index_copy[i]] = model_inst
 				end
 			end
-		end
-	end
-
-	if dont_use_instancing then
-		for i,v in pairs(ordered) do
-			ordered[i]=insts[v]
 		end
 	end
 
@@ -1477,6 +1579,10 @@ function Map.__generateSkybox(skybox)
 end
 
 function Map.loadGroups(map, model_insts, create_group_func)
+	for i,v in ipairs(model_insts) do
+		print(i, v.props.model_i_reference.props.model_name)
+	end
+
 	local groups = map.groups
 	if not groups then return {} end
 	local g = {}
@@ -1497,7 +1603,7 @@ end
 -- verifies if map format is correct
 -- returns nil if fine, otherwise returns an error string
 function Map.malformedCheck(map)
-	local name = map.name or "UNNAMED"
+	local name = tostring(map.name) or "UNNAMED"
 
 	local w,h = map.width, map.height
 	if not w or not h then
@@ -1531,6 +1637,22 @@ function Map.malformedCheck(map)
 	local models   = map.models
 	if not models then
 		return string.format("Map %s is missing a model table, add an empty [\"models\"]={} if not needed", name) end
+
+	local tile_tex_offset = map.tile_tex_offset
+	if not tile_tex_offset then
+		return string.format("Map %s is missing a tile texure offset map", name) end
+
+	local tile_tex_scale = map.tile_tex_scale
+	if not tile_tex_scale then
+		return string.format("Map %s is missing a tile texure scale map", name) end
+
+	local wall_tex_offset = map.wall_tex_offset
+	if not wall_tex_offset then
+		return string.format("Map %s is missing a wall texure offset map", name) end
+
+	local wall_tex_scale = map.wall_tex_scale
+	if not wall_tex_scale then
+		return string.format("Map %s is missing a wall texure scale map", name) end
 
 	--[[
 	local tile_tex_info = map.tile_tex_info
@@ -1591,6 +1713,18 @@ function Map.malformedCheck(map)
 		end
 		if #(tile_shape[z]) ~= w then
 			return string.format("Map %s has mismatching width and tile_shape array size (width=%d, #tile_shape[%d]=%d)", name, h,z,#tile_shape[z])
+		end
+		if #(tile_tex_offset[z]) > w then
+			return string.format("Map %s has mismatching width and tile_tex_offset array size (width=%d, #tile_shape[%d]=%d)", name, h,z,#tile_shape[z])
+		end
+		if #(tile_tex_scale[z]) > w then
+			return string.format("Map %s has mismatching width and tile_tex_scale array size (width=%d, #tile_shape[%d]=%d)", name, h,z,#tile_shape[z])
+		end
+		if #(wall_tex_offset[z]) > w then
+			return string.format("Map %s has mismatching width and wall_tex_offset array size (width=%d, #wall_shape[%d]=%d)", name, h,z,#wall_shape[z])
+		end
+		if #(wall_tex_scale[z]) > w then
+			return string.format("Map %s has mismatching width and wall_tex_scale array size (width=%d, #wall_shape[%d]=%d)", name, h,z,#wall_shape[z])
 		end
 	
 		for x=1,w do

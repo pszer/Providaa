@@ -45,8 +45,10 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_tile_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each tile"},
 	{"mapedit_wall_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each wall"},
 
-	{"mapedit_tile_tex_info", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture info, {tex_offset, tex_scale} (each is a vec2, tex_scale.xy~=0)"},
-	{"mapedit_wall_tex_info", "table", nil, PropDefaultTable{}, "map_width x map_height table of wall texture info, {tex_offset, tex_scale} (each is a vec2, tex_scale.xy~=0)"},
+	{"mapedit_tile_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of two vec2s."},
+	{"mapedit_tile_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture scales, each entry is nil,a vec2, or a table of two vec2s."},
+	{"mapedit_wall_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of five vec2s."},
+	{"mapedit_wall_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture scales, each entry is nil,a vec2, or a table of five vec2s."},
 
 	{"mapedit_anim_tex", "table", nil, PropDefaultTable{}, "active map animated texture definitions"},
 
