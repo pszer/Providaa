@@ -9,6 +9,22 @@ local MapEditGUITextInput = {
 	__maketextinputhook = nil,
 	__deltextinputhook  = nil,
 
+	buffer_info = {
+		l = 4,
+		r = 6,
+		t = 5,
+		b = 3,
+	},
+	sel_col={255/255,161/255,66/255,1.0},
+	unsel_col={1,1,1,0.2},
+
+	identity_validator = function(str)
+		return str
+	end,
+	identity_format_func = function(str)
+		return str
+	end,
+
 	int_validator = function(str)
 		local extract = string.match(str,"^[-+]?%d+$")
 		if not extract then return nil end
@@ -104,11 +120,12 @@ local MapEditGUITextInput = {
 MapEditGUITextInput.__index = MapEditGUITextInput
 
 function MapEditGUITextInput:setup(make,del)
-	
+	self.__maketextinputhook=make
+	self.__deltextinputhook=del
 end
 
-function MapEditGUITextInput:new(str,x,y,w,h,init_str,validator,format_func,align_x,align_y)
-	assert(str and type(str)=="string")
+function MapEditGUITextInput:new(init_str,x,y,w,h,validator,format_func,align_x,align_y)
+	assert(type(init_str)=="string")
 
 	assert(self.__maketextinputhook and self.__deltextinputhook,
 		"MapEditGUITextInput:new(): text input hook make/delete function not set yet, please use MapEditGUITextInput:setup()")
@@ -126,29 +143,70 @@ function MapEditGUITextInput:new(str,x,y,w,h,init_str,validator,format_func,alig
 
 		align_x=align_x or "middle",
 		align_y=align_y or "middle",
+
+		cursor_pos = 0,
+		cursor_x = 0
 	}
 
 	this.text = guirender:createDynamicTextObject(init_str,this.w,format_func)
 
 	function this:draw()
+		local draw_cursor = false
 		love.graphics.setScissor(self.x,self.y,self.w,self.h)
 		love.graphics.setColor(0,0,0,1)
 		love.graphics.rectangle("fill",self.x,self.y,self.w,self.h)
+		if self.__maketextinputhook()==self.__hook then
+			draw_cursor = true
+			love.graphics.setColor(self.sel_col)
+		else
+			love.graphics.setColor(self.unsel_col)
+		end
+		love.graphics.rectangle("line",self.x,self.y,self.w,self.h)
 		love.graphics.setColor(1,1,1,1)
-		self.text:draw(self.x,self.y,0,1,1)
+		local bx,by = self.buffer_info.l, self.buffer_info.r
+		self.text:draw(self.x+bx,self.y+by,0,1,1)
+
+		if draw_cursor then
+			local time = love.timer.getTime()
+			if math.fmod(time,1.33) < 1.11 then
+				love.graphics.rectangle("fill",self.buffer_info.l+self.x-1+self.cursor_x,self.y+self.h-4,8,2)
+			end
+		end
+
 		love.graphics.setScissor()
 	end
 
+	function this:shiftCursor(dir)
+		local dir = dir
+		if dir then
+			local str_len = #self.text.string
+			self.cursor_pos = self.cursor_pos + dir
+			if self.cursor_pos < 1 then self.cursor_pos = 1 end
+			if self.cursor_pos > str_len+1 then self.cursor_pos = str_len+1 end
+		end
+		self.cursor_x = self.text:getcharpos(self.cursor_pos)
+	end
+
 	function this:textinput(t)
-		if not self.capture then return end
 		if t=="\b" then
-			self.text:popchar()
+			self:shiftCursor(-1)
+			self.text:popchar(self.cursor_pos)
+		elseif t=="\tleft" then
+			self:shiftCursor(-1)
+		elseif t=="\tright" then
+			self:shiftCursor( 1)
+		elseif t=="\thome" then
+			self:shiftCursor(-1/0)
+		elseif t=="\tend" then
+			self:shiftCursor( 1/0)
 		else
-			self.text:concat(t)
+			self.text:insert(t, self.cursor_pos)
+			local chars = #t
+			self:shiftCursor(chars)
 		end
 	end
 
-	self.__maketextinputhook(self,this.textinput)
+	--self.__maketextinputhook(self,this.textinput)
 	function this:delete()
 		self.__deltextinputhook(self)
 	end
@@ -199,8 +257,10 @@ function MapEditGUITextInput:new(str,x,y,w,h,init_str,validator,format_func,alig
 	function this.setH(self,h) 
 		end
 
+	this.__hook  = function(t) this:textinput(t) end
 	function this:action()
-		self.capture = not self.capture
+		self.__maketextinputhook(this.__hook)
+		self:shiftCursor(1/0)
 	end
 
 	function this:getText()
@@ -209,6 +269,10 @@ function MapEditGUITextInput:new(str,x,y,w,h,init_str,validator,format_func,alig
 	function this:get()
 		local val = self.validator(self.text.string)
 		return val
+	end
+	function this:inputValid()
+		local val = self.validator(self.text.string)
+		return val ~= nil
 	end
 
 	setmetatable(this, MapEditGUITextInput)

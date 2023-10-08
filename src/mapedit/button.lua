@@ -23,7 +23,7 @@ local MapEditGUIButton = {
 }
 MapEditGUIButton.__index = MapEditGUIButton
 
-function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
+function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y,toggle,start_held)
 	assert((str or icon) and action)
 
 	local this = {
@@ -39,7 +39,17 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 		disable = false,
 		align_x = align_x or "middle",
 		align_y = align_y or "middle",
+		held = start_held,
+		toggle = toggle
 	}
+
+	if toggle then
+		local toggleable_action = function(self,win)
+			self.held = true
+			return action(self,win)
+		end
+		this.action = toggleable_action
+	end
 
 	if this.text ~= "" then
 		this.text = guirender:createDrawableText(str)
@@ -81,7 +91,7 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y)
 	function this:draw()
 		local state = "normal"
 
-		if self.hover and not self.disable then
+		if (self.hover and not self.disable) or (self.toggle and self.held) then
 			state="hover"
 		elseif self.disable then
 			state="disable"

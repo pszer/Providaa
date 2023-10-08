@@ -42,6 +42,7 @@ function MapEditTransform:new(mousex, mousey, centre)
 		getCam = get_cam,
 		axis_mode = "xyz",
 		transformation_type = "nil",
+		absolute = false,
 
 		getTransform = function(cam)
 			error("MapEditTransform:getTransform(): this object has no transformation type, use newTranslate() / newRotate() / newScale()!")
@@ -595,6 +596,35 @@ local function def_fixed_rot(quat)
 	local T = MapEditTransform:new(0,0)
 	T.getTransform = function(self,cam,g) return {quat, type="rotate"} end
 	T.transformation_type = "rotate"
+	return T
+end
+
+function MapEditTransform:rotateByAxis(angle,axis)
+	assert(string.match(axis,"^[xXyYzZ]$"))
+	local quat
+	if axis=="x" or axis=="X" then
+		quat=cpml.quat.from_angle_axis(angle, 1,0,0)
+	elseif axis=="y" or axis=="Y" then
+		quat=cpml.quat.from_angle_axis(angle, 0,-1,0)
+	elseif axis=="z" or axis=="Z" then
+		quat=cpml.quat.from_angle_axis(angle, 0,0,1)
+	end
+	return def_fixed_rot(quat)
+end
+
+function MapEditTransform:scaleBy(x,y,z)
+	local T = MapEditTransform:new(0,0)
+	T.getTransform = function(self,cam,g) return {x,y,z, type="scale"} end
+	T.transformation_type = "scale"
+	T.absolute = true
+	return T
+end
+
+function MapEditTransform:translateBy(x,y,z)
+	local T = MapEditTransform:new(0,0)
+	T.getTransform = function(self,cam,g) return {x,y,z, type="translate"} end
+	T.transformation_type = "translate"
+	T.absolute = true
 	return T
 end
 

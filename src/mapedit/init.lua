@@ -2846,6 +2846,9 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 		__tempmat4tt[i] = __id[i]
 	end
 
+	local absolute = transform.absolute
+	if absolute then getScaleByDist=function () return 1.0 end end
+
 	local mat = __tempmat4tt
 	if t_type == "translate" then
 
@@ -2855,6 +2858,7 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 			g_scale = 0.5
 		end
 		local function granulate(v, g_scale)
+			if absolute then return v end
 			v.x = int(v.x/g_scale)*g_scale
 			v.y = int(v.y/g_scale)*g_scale
 			v.z = int(v.z/g_scale)*g_scale
@@ -2886,6 +2890,7 @@ function ProvMapEdit:getBaseMatrixFromMapEditTransformation(transform)
 
 		local int = math.floor
 		local function granulate(v)
+			if absolute then return v end
 			if not self.granulate_transform then return v end
 
 			if v.x >= 1.0 then v.x = int(v.x) else
@@ -3302,7 +3307,6 @@ function ProvMapEdit:getSelectionCentreAndMinMax()
 	end
 	self.__cache_recalc_selection_centre = false
 
-	
 	self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max =
 		self:getObjectsCentreAndMinMax(self.active_selection, 
 			self.__cache_selection_centre, self.__cache_selection_min, self.__cache_selection_max)
@@ -4410,6 +4414,10 @@ function ProvMapEdit:filedropped(file)
 	if hook then
 		hook(file)
 	end
+end
+
+function ProvMapEdit:keypressed(key,scancode,isrepeat)
+	gui:keypressed(key,scancode,isrepeat)
 end
 
 function ProvMapEdit:textinput(t)

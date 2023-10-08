@@ -167,22 +167,22 @@ function love.keypressed(key, scancode, isrepeat)
 	if key == "f8" then
 		Console.open()
 	end
-	if GAMESTATE.keypressed then GAMESTATE:keypressed(t) end
+	if GAMESTATE.keypressed then GAMESTATE:keypressed(key, scancode, isrepeat) end
 end
 
 function love.keyreleased(key, scancode)
 	__keyreleased(key, scancode)
-	if GAMESTATE.keyreleased then GAMESTATE:keyreleased(t) end
+	if GAMESTATE.keyreleased then GAMESTATE:keyreleased(key, scancode) end
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
 	__mousepressed(x, y, button, istouch, presses)
-	if GAMESTATE.mousepressed then GAMESTATE:mousepressed(t) end
+	if GAMESTATE.mousepressed then GAMESTATE:mousepressed(x, y, button, istouch, presses) end
 end
 
 function love.mousereleased(x, y, button, istouch, presses)
 	__mousereleased(x, y, button, istouch, presses)
-	if GAMESTATE.mousereleased then GAMESTATE:mousereleased(t) end
+	if GAMESTATE.mousereleased then GAMESTATE:mousereleased(x, y, button, istouch, presses) end
 end
 
 function love.mousemoved(x,y,dx,dy,istouch)

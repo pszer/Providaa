@@ -378,15 +378,10 @@ vec3 calc_point_light_col(int point_light_id, vec3 normal, float attenuate ) {
 }
 
 float attenuate_light(float dist, float light_size) {
-	float D = 4*light_size*light_size+light_size/50;
-	//float quad_comp   = 10.0/(light_size*light_size);
-	float quad_comp   = 2000.0/D;
-	float linear_comp = 400.0/light_size;
-	//float attenuate = 1.0/(1.0 + linear_comp*dist + quad_comp*dist*dist) - 0.001/light_size;
-	float attenuate = 1.0/(1.0 + linear_comp*dist + quad_comp*dist*dist);
-	attenuate = max(0.0,attenuate);
-	return attenuate;
-	//return max(0.0, attenuate - 0.005);
+	float s = dist/light_size;
+	if (s >= 1.0) { return 0.0; }
+	float s2 = s*s;
+	return ((1-s2)*(1-s2))/(1+2*s2);
 }
 
 vec3 calc_point_light_col_full(int point_light_id, vec3 normal ) {
@@ -450,25 +445,13 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	float curr_depth = length(frag_to_light);
 
 	float attenuate = attenuate_light(curr_depth, light_size);
-	//if (attenuate < 0.000005) { return vec3(0,0,0); }
-
-	//float closest_depth = texture(map, frag_to_light).r;
-	//closest_depth *= far_plane;
-
-	//float adjusted_bias = bias * max( curr_depth / 60 , 1.0 );
-
-	//float shadow = curr_depth - adjusted_bias > closest_depth ? 1.0 : 0.0;
-	//float s = texture( map, vec4(frag_to_light, (curr_depth-bias)));
-	//shadow -= s;
+	if (attenuate<=0.00001) { return vec3(0,0,0); }
 
 	float cosTheta = clamp( dot( normal, frag_to_light ), 0,1 );
 	float bias_angled = clamp( abs(tan(acos(cosTheta))) , 0.25, 1);
-	//float adjusted_bias = 0.0125*tan(acos(cosTheta));
-	//float adjusted_bias = bias;
 
 	//float adjusted_bias = bias * max( curr_depth / 500 , 1.0 ) * tan(acos(cosTheta));
 	float adjusted_bias = bias * max( curr_depth / 1000 , 1.0 ) * bias_angled ;
-	//float adjusted_bias = bias * max( curr_depth / 50 , 1.0 );
 
 	const int samples = 7;
 	float shadow = 1.0;

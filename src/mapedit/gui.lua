@@ -36,7 +36,7 @@ local MapEditGUI = {
 
 	cxtm_input = nil,
 
-	textinput_hooks = {}
+	textinput_hook = nil
 
 }
 MapEditGUI.__index = MapEditGUI
@@ -50,6 +50,273 @@ end
 function MapEditGUI:define(mapedit)
 	local context = self.context_menus
 	local toolbars = self.toolbars
+
+	local region_default_f = function(l) return l.x, l.y, l.w, l.h end
+	local region_middle_f = function(l) return l.x+l.w*0.5, l.y+l.h*0.5, l.w, l.h end
+	local region_offset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+l.h*_y, l.w, l.h end end
+	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+_y, l.w, l.h end end
+	local region_ypixoffset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+_y, l.w, l.h end end
+
+	guitextinput:setup(function(i,t) return self:setTextInputHook(i,t)  end,
+	                   function( i ) return self:removeTextInputHook(i) end)
+
+	--
+	-- translate window
+	--
+	local translate_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_pixoffset_f(10,10)},-- header
+		{"region", region_pixoffset_f(10,35)},-- translate toggle
+		{"region", region_pixoffset_f(80,35)},-- world toggle
+		{"region", region_pixoffset_f(8,65)}, -- X
+		{"region", region_pixoffset_f(8,90)}, -- Y
+		{"region", region_pixoffset_f(8,115)},-- Z
+		{"region", region_pixoffset_f(25,60)}, -- X textbox
+		{"region", region_pixoffset_f(25,85)}, -- Y textbox
+		{"region", region_pixoffset_f(25,110)},-- Z textbox
+		{"region", region_pixoffset_f(10,140)},-- Commit button
+		{"region", region_pixoffset_f(80,140)}-- Cancel button
+	)
+	local translate_win = guiwindow:define({
+		win_min_w=160,
+		win_max_w=160,
+		win_min_h=170,
+		win_max_h=170,
+		win_focus=true,
+	}, translate_win_layout)
+	local function make_translate_win(objs)
+		local centre,_,_ = mapedit:getObjectsCentreAndMinMax(objs)
+
+		local header = guitextbox:new(lang["Move selection."],0,0,155,"left")
+
+		local local_button,global_button=nil,nil
+		local mode = "local"
+		local_button = guibutton:new(lang["Locally"],nil,0,0,
+			function(self,win)
+				mode="local"
+				global_button.held=false
+			end,"left","top",true,true)
+		global_button = guibutton:new(lang["Globally"],nil,0,0,
+			function(self,win)
+				mode="global"
+				local_button.held=false
+			end,"left","top",true,false)
+
+		local X_text = guitextbox:new("~b~(lred)X:",0,0,165,nil,nil,nil,true)
+		local Y_text = guitextbox:new("~b~(lgreen)Y:",0,0,165,nil,nil,nil,true)
+		local Z_text = guitextbox:new("~b~(lblue)Z:",0,0,165,nil,nil,nil,true)
+		local X_input = guitextinput:new("0",0,0,125,20,guitextinput.float_validator, guitextinput.float_format_func,"left","top")
+		local Y_input = guitextinput:new("0",0,0,125,20,guitextinput.float_validator, guitextinput.float_format_func,"left","top")
+		local Z_input = guitextinput:new("0",0,0,125,20,guitextinput.float_validator, guitextinput.float_format_func,"left","top")
+
+		local commit_button = guibutton:new(lang["~bCommit"],nil,0,0,
+			function(self,win)
+				local X_status = X_input:get()
+				local Y_status = Y_input:get()
+				local Z_status = Z_input:get()
+				if not X_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lred)X") return end
+				if not Y_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lgreen)Y") return end
+				if not Z_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lblue)Z") return end
+
+				if mode=="local" then
+					local transform = maptransform:translateBy(X_status,Y_status,Z_status)
+					mapedit:commitCommand("transform", {transform_info=transform})
+					win:delete()
+				else
+					local x,y,z
+					x = X_status - centre[1]
+					y = Y_status - centre[2]
+					z = Z_status - centre[3]
+					local transform = maptransform:translateBy(x,y,z)
+					mapedit:commitCommand("transform", {transform_info=transform})
+					win:delete()
+				end
+			end,"left","top")
+		local close_button = guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"left","top")
+
+		local win = translate_win:new({},
+		{
+			header,
+			local_button,
+			global_button,
+			X_text,Y_text,Z_text,
+			X_input,Y_input,Z_input,
+			commit_button,close_button
+		},
+		0,0,100,130)
+		return win
+	end
+	--
+	-- translate window
+	--
+
+	--
+	-- scale window
+	--
+	local scale_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_pixoffset_f(10,10)},-- header
+		{"region", region_pixoffset_f(8,35)}, -- X
+		{"region", region_pixoffset_f(8,60)}, -- Y
+		{"region", region_pixoffset_f(8,85)}, -- Z
+		{"region", region_pixoffset_f(25,30)}, -- X textbox
+		{"region", region_pixoffset_f(25,55)}, -- Y textbox
+		{"region", region_pixoffset_f(25,80)}, -- Z textbox
+		{"region", region_pixoffset_f(10,110)}, -- Commit button
+		{"region", region_pixoffset_f(80,110)}  -- Cancel button
+	)
+	local scale_win = guiwindow:define({
+		win_min_w=160,
+		win_max_w=160,
+		win_min_h=140,
+		win_max_h=140,
+		win_focus=true,
+	}, scale_win_layout)
+	local function make_scale_win(objs)
+		local header = guitextbox:new(lang["Scale selection."],0,0,155,"left")
+
+		local local_button,global_button=nil,nil
+		local mode = "local"
+		local_button = guibutton:new(lang["Locally"],nil,0,0,
+			function(self,win)
+				mode="local"
+				global_button.held=false
+			end,"left","top",true,true)
+		global_button = guibutton:new(lang["Globally"],nil,0,0,
+			function(self,win)
+				mode="global"
+				local_button.held=false
+			end,"left","top",true,false)
+
+		local X_text = guitextbox:new("~b~(lred)X:",0,0,165,nil,nil,nil,true)
+		local Y_text = guitextbox:new("~b~(lgreen)Y:",0,0,165,nil,nil,nil,true)
+		local Z_text = guitextbox:new("~b~(lblue)Z:",0,0,165,nil,nil,nil,true)
+
+		local validator = function(t)
+			local V = guitextinput.float_validator(t)
+			if not V then return nil end
+			if V == 0.0 then return nil end
+			return V
+		end
+		local format_func = function(str)
+			local S = guitextinput.float_format_func(str)
+			if tonumber(S)==0.0 then
+				return "~(red)"..S
+			end
+			return S
+		end
+
+		local X_input = guitextinput:new("1.0",0,0,125,20,validator, format_func,"left","top")
+		local Y_input = guitextinput:new("1.0",0,0,125,20,validator, format_func,"left","top")
+		local Z_input = guitextinput:new("1.0",0,0,125,20,validator, format_func,"left","top")
+
+		local commit_button = guibutton:new(lang["~bCommit"],nil,0,0,
+			function(self,win)
+				local X_status = X_input:get()
+				local Y_status = Y_input:get()
+				local Z_status = Z_input:get()
+				if not X_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lred)X") return end
+				if not Y_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lgreen)Y") return end
+				if not Z_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lblue)Z") return end
+
+				local transform = maptransform:scaleBy(X_status,Y_status,Z_status)
+				mapedit:commitCommand("transform", {transform_info=transform})
+				win:delete()
+			end,"left","top")
+		local close_button = guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"left","top")
+
+		local win = scale_win:new({},
+		{
+			header,
+			X_text,Y_text,Z_text,
+			X_input,Y_input,Z_input,
+			commit_button,close_button
+		},
+		0,0,100,130)
+		return win
+	end
+	--
+	-- scale window
+	--
+	
+	--
+	-- rotation window
+	--
+	local rotation_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_pixoffset_f(10,10)},-- header
+		{"region", region_pixoffset_f(10,30)},-- X toggle
+		{"region", region_pixoffset_f(30,30)},-- Y toggle
+		{"region", region_pixoffset_f(50,30)},-- Z toggle
+		{"region", region_pixoffset_f(8,60)}, -- theta
+		{"region", region_pixoffset_f(25,55)}, -- X textbox
+		{"region", region_pixoffset_f(10,85)},-- Commit button
+		{"region", region_pixoffset_f(80,85)} -- Cancel button
+	)
+	local rotation_win = guiwindow:define({
+		win_min_w=160,
+		win_max_w=160,
+		win_min_h=115,
+		win_max_h=115,
+		win_focus=true,
+	}, rotation_win_layout)
+	local function make_rotation_win(objs, axis)
+		local centre,_,_ = mapedit:getObjectsCentreAndMinMax(objs)
+
+		local header = guitextbox:new(lang["Rotate selection."],0,0,155,"left")
+
+		local X_button,Y_button,Z_button = nil,nil,nil
+		local mode = axis
+		X_button = guibutton:new("~(lred)X",nil,0,0,
+			function(self,win)
+				mode="X"
+				Y_button.held=false
+				Z_button.held=false
+			end,"left","top",true,axis=="X")
+		Y_button = guibutton:new("~(lgreen)Y",nil,0,0,
+			function(self,win)
+				mode="Y"
+				X_button.held=false
+				Z_button.held=false
+			end,"left","top",true,axis=="Y")
+		Z_button = guibutton:new("~(lblue)Z",nil,0,0,
+			function(self,win)
+				mode="Z"
+				X_button.held=false
+				Y_button.held=false
+			end,"left","top",true,axis=="Z")
+
+
+		local theta_text = guitextbox:new("~b~(lpurple)θ°",0,0,165,nil,nil,nil,true)
+		local theta_input = guitextinput:new("0",0,0,125,20,guitextinput.float_validator, guitextinput.float_format_func,"left","top")
+
+		local commit_button = guibutton:new(lang["~bCommit"],nil,0,0,
+			function(self,win)
+				local DEG_TO_RAD = 1/(180.0/math.pi)
+				local theta_status = theta_input:get()
+				if not theta_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,lang["~b~(red)Angle"]) return end
+				local transform = maptransform:rotateByAxis(theta_status * DEG_TO_RAD, mode)
+				mapedit:commitCommand("transform", {transform_info=transform})
+				win:delete()
+			end,"left","top")
+		local close_button = guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"left","top")
+
+		local win = rotation_win:new({},
+		{
+			header,
+			X_button,Y_button,Z_button,
+			theta_text,theta_input,
+			commit_button,close_button
+		},
+		0,0,100,130)
+		return win
+	end
+	--
+	-- rotation window
+	--
 
 	context["select_models_context"] = 
 		contextmenu:define(
@@ -143,6 +410,13 @@ function MapEditGUI:define(mapedit)
 
 		 {lang["~(lgray)--Transform--"]},
 
+		 {lang["Move"], action = function(props)
+		 		return make_translate_win(props.select_objects)
+		  end},
+		 {lang["Scale"], action = function(props)
+		 		return make_scale_win(props.select_objects)
+		  end},
+
 		 {lang["Flip"], suboptions = function(props)
 		  return {
 			 {lang["... by ~i~(lred)X~r Axis"],
@@ -160,6 +434,9 @@ function MapEditGUI:define(mapedit)
 
 		 {lang["Rotate"], suboptions = function(props)
 		 	return {
+			 {lang["... by angle°"], action = function(props)
+		      return make_rotation_win(props.select_objects, "Y")
+			 	end},
 			 {lang["... around ~i~(lred)X~r Axis"], suboptions = function(props)
 			  return {
 			    {"+~i90~b°", 
@@ -281,12 +558,6 @@ function MapEditGUI:define(mapedit)
 			} end}
 		 end)
 
-	local region_default_f = function(l) return l.x, l.y, l.w, l.h end
-	local region_middle_f = function(l) return l.x+l.w*0.5, l.y+l.h*0.5, l.w, l.h end
-	local region_offset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+l.h*_y, l.w, l.h end end
-	local region_pixoffset_f = function(_x,_y) return function(l) return l.x+_x, l.y+_y, l.w, l.h end end
-	local region_ypixoffset_f = function(_x,_y) return function(l) return l.x+l.w*_x, l.y+_y, l.w, l.h end end
-
 	-- About window
 	local about_win_layout = guilayout:define(
 		{id="image_region",
@@ -312,7 +583,9 @@ function MapEditGUI:define(mapedit)
 		win_min_h=120,
 		win_max_h=120,
 	}, about_win_layout)
+	-- About window
 
+	-- Language window
 	local lang_win_layout = guilayout:define(
 		{id="region",
 		 split_type=nil},
@@ -328,6 +601,21 @@ function MapEditGUI:define(mapedit)
 		win_max_h=115,
 		win_focus=true,
 	}, lang_win_layout)
+	-- Change map name window
+	local mapname_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_ypixoffset_f(0.5,10)},
+		{"region", region_ypixoffset_f(0.5,25)},
+		{"region", region_ypixoffset_f(0.5,50)}
+	)
+	local mapname_win = guiwindow:define({
+		win_min_w=200,
+		win_max_w=200,
+		win_min_h=75,
+		win_max_h=75,
+		win_focus=true,
+	}, mapname_win_layout)
 
 	context["help_context"] = 
 		contextmenu:define(
@@ -378,14 +666,21 @@ function MapEditGUI:define(mapedit)
 		},
 		function(props) return
 		{lang["Save"],action=function()
-			--[[local result, log = export_map(mapedit.props)
-			for i,v in ipairs(log) do
-				print(v)
-			end
-			print()
-			print(result)--]]
 			mapedit:exportAndWriteToFile("test2.lua")
 		end},
+		{lang["Open"],action=function()
+		end},
+		{" --- "},
+		{lang["Set map name"],action=function(props)
+			local curr_map_name = mapedit.props.mapedit_map_name
+			return mapname_win:new({},
+			{
+				guitextbox:new(lang["Type in new name."],0,0,300,"left","middle","top"),
+				guitextinput:new(curr_map_name,0,0,180,20,guitextinput.identity_validator, guitextinput.identity_format_func,"middle","top"),
+				guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"middle","top")}
+				,0,0,200,80)
+		end},
+		{" --- "},
 		{lang["~iQuit"],action=function()love.event.quit()end}
 		end
 		)
@@ -797,15 +1092,42 @@ function MapEditGUI:poll()
 	self.win_input:poll()
 end
 
-function MapEditGUI:addTextInputHook(i,t) 
-	self.textinput_hooks[i]=t
+function MapEditGUI:setTextInputHook(t) 
+	if not t then return self.textinput_hook end
+	love.keyboard.setKeyRepeat(true)
+	self.textinput_hook = t
+	return t
 end
 function MapEditGUI:removeTextInputHook(i)
-	self.textinput_hooks[i]=nil
+	if self.textinput_hook == i then
+		love.keyboard.setKeyRepeat(false)
+		self.textinput_hook = nil
+	end
 end
 function MapEditGUI:textinput(t)
-	for i,v in pairs(self.textinput_hooks) do
-		v(i,t)
+	local hook = self.textinput_hook
+	if hook then hook(t) end
+end
+function MapEditGUI:keypressed(key,scancode,isrepeat)
+	if scancode=="backspace" then
+		self:textinput("\b")
+	elseif scancode=="home" then
+		self:textinput("\thome")
+	elseif scancode=="end" then
+		self:textinput("\tend")
+	elseif scancode=="right" then
+		self:textinput("\tright")
+	elseif scancode=="left" then
+		self:textinput("\tleft")
+	elseif scancode=="v" then
+		local ctrl = scancodeIsPressed("lctrl", CONTROL_LOCK.META) or
+		             scancodeIsPressed("rctrl", CONTROL_LOCK.META)
+		if ctrl then
+			local clipboard = love.system.getClipboardText()
+			if clipboard and clipboard ~= "" then
+				self:textinput(clipboard)
+			end
+		end
 	end
 end
 

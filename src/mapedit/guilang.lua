@@ -69,7 +69,7 @@ local MapEditGUILanguageStrings = {
 	},
 	["No group"]={
 		pl="Nie ma grupy",
-		jp="選び組ではありません",
+		jp="選択組ではありません",
 	},
 
 	["~(lgray)--Transform--"]={
@@ -102,6 +102,14 @@ local MapEditGUILanguageStrings = {
 		pl="Obróć",
 		jp="回転",
 	},
+	["Rotate selection."]={
+		pl="Obróć selekcje.",
+		jp="選択を回転する。",
+	},
+	["... by angle°"]={
+		pl="... według kąta°",
+		jp="。。角度によって"
+	},
 	["... around ~i~(lred)X~r Axis"]={
 		pl="... dookoła Osi ~i~(lred)X~r",
 		jp="。。~i~(lred)Ｘ~rの軸を中心に",
@@ -113,6 +121,10 @@ local MapEditGUILanguageStrings = {
 	["... around ~i~(lblue)Z~r Axis"]={
 		pl="... dookoła Osi ~i~(lblue)Z~r",
 		jp="。。~i~(lblue)Ｚ~rの軸を中心に",
+	},
+	["Scale selection."]={
+		pl="Zmien rozmiaj selekcji.",
+		jp="選択を拡大縮小する。"
 	},
 	["~bReset"]={
 		pl="Zresetuj",
@@ -210,11 +222,50 @@ local MapEditGUILanguageStrings = {
 	},
 	["... at ~(lpink)selection~r."]={
 		pl="... na ~(lpink)selekcji~r.",
-		jp="。。~(lpink)選び~rの上に",
+		jp="。。~(lpink)選択~rの上に",
 	},
 	["... at world origin."]={
 		pl="... na początek świata.",
 		jp="。。世界の原点に",
+	},
+
+	["Type in new name."]={
+		pl="Wpisz nowy imie.",
+		jp="名前を新しく入力してください。"
+	},
+	["Cancel"]={
+		pl="Anuluj",
+		jp="キャンセル"
+	},
+	["~bCommit"]={
+		pl="~bZrub",
+		jp="~bコミット"
+	},
+
+	["Move"]={
+		pl="Przesun",
+		jp="動かす"
+	},
+	["Locally"]={
+		pl="Lokalnie",
+		jp="地域的",
+	},
+	["Globally"]={
+		pl="Globalnie",
+		jp="大域的"
+	},
+	["Move selection."]={
+		pl="Przesun selekcje.",
+		jp="選択を動かす。"
+	},
+
+	["~(red)%s~(red) is malformed."]={
+		pl="~(red)%s~(red) jest błędny.",
+		jp="~(red)%s~(red)の入力は無効です。"
+	},
+	["~b~(red)Angle"]={
+		pl="~b~(red)Kąt",
+		jp="~b~(red)角度"
 	},
 
 	["default_group_name"]={

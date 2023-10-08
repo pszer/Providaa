@@ -9,7 +9,7 @@ local MapEditGUITextElement = {
 }
 MapEditGUITextElement.__index = MapEditGUITextElement
 
-function MapEditGUITextElement:new(str,x,y,limit,align,align_x,align_y)
+function MapEditGUITextElement:new(str,x,y,limit,align,align_x,align_y,format)
 	assert(str and type(str)=="string")
 
 	local this = {
@@ -29,7 +29,11 @@ function MapEditGUITextElement:new(str,x,y,limit,align,align_x,align_y)
 	if this.align == "middle" then this.align="center" end
 
 	--this.text = guirender:createDrawableText(str)
-	this.text = guirender:createDrawableTextLimited(str, this.limit, this.align)
+	if not format then
+		this.text = guirender:createDrawableTextLimited(str, this.limit, this.align)
+	else
+		this.text = guirender:createDrawableText(str)
+	end
 	this.w,this.h = this.text:getDimensions()
 
 	function this:draw()

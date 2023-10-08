@@ -9,6 +9,7 @@ MapEditPropPrototype = Props:prototype{
 	-- name      type        value        validation     info      only
 
 	{"mapedit_filename", nil, nil, nil, "working map's filename"},
+	{"mapedit_map_name", "string", "New Map", nil, "working map's name"},
 
 	{"mapedit_mode", "string", "viewport", PropIsOneOf{"viewport","transform"}},
 	{"mapedit_tool", "string", "edit", PropIsOneOf{"edit","paint"}},
