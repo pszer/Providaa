@@ -396,6 +396,7 @@ vec3 calc_point_light_col_full(int point_light_id, vec3 normal ) {
 	float dist = length(dir) + 0.0001;
 
 	float attenuate = attenuate_light(dist, light_size);
+	if (attenuate<=0.00001) { return vec3(0,0,0); }
 
 	vec3 light_dir_n = normalize( dir );
 	vec3 diffuse = diffuse_lighting( normal, light_dir_n, light_col );

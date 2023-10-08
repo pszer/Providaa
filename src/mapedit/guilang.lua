@@ -122,6 +122,10 @@ local MapEditGUILanguageStrings = {
 		pl="... dookoła Osi ~i~(lblue)Z~r",
 		jp="。。~i~(lblue)Ｚ~rの軸を中心に",
 	},
+	["Scale"]={
+		pl="Zmien rozmiaj",
+		jp="拡大縮小す",
+	},
 	["Scale selection."]={
 		pl="Zmien rozmiaj selekcji.",
 		jp="選択を拡大縮小する。"

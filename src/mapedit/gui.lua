@@ -289,7 +289,6 @@ function MapEditGUI:define(mapedit)
 				Y_button.held=false
 			end,"left","top",true,axis=="Z")
 
-
 		local theta_text = guitextbox:new("~b~(lpurple)θ°",0,0,165,nil,nil,nil,true)
 		local theta_input = guitextinput:new("0",0,0,125,20,guitextinput.float_validator, guitextinput.float_format_func,"left","top")
 

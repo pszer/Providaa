@@ -4385,6 +4385,7 @@ function ProvMapEdit:textureFileDropProcessor(file)
 
 	self:addTexture(img_fname, img)
 	gui:displayPopup(img_fname..lang[" success."],2)
+	gui.texture_grid:update()
 end
 function ProvMapEdit:modelFileDropProcessor(file)
 	local filename = file:getFilename()
@@ -4407,6 +4408,7 @@ function ProvMapEdit:modelFileDropProcessor(file)
 
 	self:addModelToList(mod)
 	gui:displayPopup(mod_fname..lang[" success."],2)
+	gui.model_grid:update()
 end
 
 function ProvMapEdit:filedropped(file)
