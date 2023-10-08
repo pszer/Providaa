@@ -1,18 +1,19 @@
-local guirender   = require 'mapedit.guidraw'
-local contextmenu = require 'mapedit.context'
-local toolbar     = require 'mapedit.toolbar'
-local popup       = require 'mapedit.popup'
-local guilayout   = require 'mapedit.layout'
-local guiscreen   = require 'mapedit.screen'
-local guiwindow   = require 'mapedit.window'
-local guitextbox  = require 'mapedit.textelement'
-local guibutton   = require 'mapedit.button'
-local guiimage    = require 'mapedit.image'
-local guiscrollb  = require 'mapedit.scrollbar'
-local guiimggrid  = require 'mapedit.gridselection'
+local guirender    = require 'mapedit.guidraw'
+local contextmenu  = require 'mapedit.context'
+local toolbar      = require 'mapedit.toolbar'
+local popup        = require 'mapedit.popup'
+local guilayout    = require 'mapedit.layout'
+local guiscreen    = require 'mapedit.screen'
+local guiwindow    = require 'mapedit.window'
+local guitextbox   = require 'mapedit.textelement'
+local guibutton    = require 'mapedit.button'
+local guiimage     = require 'mapedit.image'
+local guiscrollb   = require 'mapedit.scrollbar'
+local guiimggrid   = require 'mapedit.gridselection'
+local guitextinput = require 'mapedit.textinput'
 
-local export_map = require 'mapedit.export'
-local lang = require 'mapedit.guilang'
+local export_map   = require 'mapedit.export'
+local lang         = require 'mapedit.guilang'
 
 local maptransform = require "mapedit.transform"
 
@@ -33,7 +34,9 @@ local MapEditGUI = {
 	
 	main_toolbar = nil,
 
-	cxtm_input = nil
+	cxtm_input = nil,
+
+	textinput_hooks = {}
 
 }
 MapEditGUI.__index = MapEditGUI
@@ -792,6 +795,18 @@ function MapEditGUI:poll()
 	self.cxtm_input:poll()
 	self.panel_input:poll()
 	self.win_input:poll()
+end
+
+function MapEditGUI:addTextInputHook(i,t) 
+	self.textinput_hooks[i]=t
+end
+function MapEditGUI:removeTextInputHook(i)
+	self.textinput_hooks[i]=nil
+end
+function MapEditGUI:textinput(t)
+	for i,v in pairs(self.textinput_hooks) do
+		v(i,t)
+	end
 end
 
 function MapEditGUI:update(dt)

@@ -108,6 +108,10 @@ function MapEditGUIWindow:define(default_props, layout_def)
 
 			function this:delete()
 				self.props.win_delete = true
+				for i,v in ipairs(self.elements) do
+					local del = v.delete
+					if del then del(v) end
+				end
 			end
 
 			function this.getCurrentlyHoveredOption(self)
@@ -120,16 +124,21 @@ function MapEditGUIWindow:define(default_props, layout_def)
 			end
 
 			function this:updateHoverInfo()
-				local hover = false
-				local x,y,w,h = self.x, self.y, self.w, self.h
-				local mx,my = love.mouse.getPosition()
-				if x<=mx and mx<=x+w and
-				   y<=my and my<=y+h
-				then
+				local hover = nil
+				if self.props.win_focus then
 					self.hover = true
 					hover = self
 				else
-					self.hover = false
+					local x,y,w,h = self.x, self.y, self.w, self.h
+					local mx,my = love.mouse.getPosition()
+					if x<=mx and mx<=x+w and
+						 y<=my and my<=y+h
+					then
+						self.hover = true
+						hover = self
+					else
+						self.hover = false
+					end
 				end
 
 				for i,v in ipairs(self.elements) do

@@ -278,6 +278,7 @@ function ProvMapEdit:getPlaceModelFunctions()
 			 {"add_obj", {objects={inst}}},
 			 {"additive_select", {select_objects = {{"model",inst}} }}
 			)
+			self:centreCamOnSelection()
 		end
 	end
 
@@ -289,6 +290,7 @@ function ProvMapEdit:getPlaceModelFunctions()
 			 {"add_obj", {objects={inst}}},
 			 {"additive_select", {select_objects = {{"model",inst}} }}
 			)
+			self:centreCamOnSelection()
 	end
 
 	return place_at_selection_func, place_at_origin_func
@@ -2651,7 +2653,12 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	local loaded_textures = self.props.mapedit_texture_list
 	local tex_id = loaded_textures[tex_name]
 	assert(tex_id)
+	local tex_info = loaded_textures[tex_id]
 	tex_id = tex_id - 1 -- shift to 0-index for GLSL
+
+	local tex_img = tex_info[2]
+	local tex_h = tex_img:getHeight()
+	local y_scale = tex_h / TILE_HEIGHT;
 
 	local index = self:getWallsIndexInMesh( x,z, side )
 	if not index then return false, curr_texture end
@@ -2663,6 +2670,145 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	mesh:setVertexAttribute(index+3, 3, tex_id)
 	self.props.mapedit_wall_textures[z][x][side] = tex_name
 	return true, curr_texture
+end
+
+function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y)
+	local curr = self:getTileVertexTexOffset(x,z,vert_i)
+	local new_x = new_x or curr[1]
+	local new_y = new_y or curr[2]
+	local tile_shape = self:getTileShape(x,z)
+
+	local offsets = self.props.mapedit_tile_tex_offsets
+	local start_i,end_i = 0,5
+	if tile_shape>0 then
+		if not offsets[z][x] then
+			offsets[z][x]={nil,nil}
+		end
+		if vert_i>=4 then
+			start_i,end_i=3,5
+			local o_type = type(offsets[z][x][1])
+			if o_type=="table" then
+				offsets[z][x][2] = {new_x,new_y}
+			elseif o_type==nil then
+				offsets[z][x][1] = {1,1}
+				offsets[z][x][2] = {new_x,new_y}
+			else
+				offsets[z][x] = {{1,1},{new_x,new_y}}
+			end
+		else
+			start_i,end_i=0,2
+			local o_type = type(offsets[z][x][2])
+			if o_type=="table" then
+				offsets[z][x][1] = {new_x,new_y}
+			elseif o_type==nil then
+				offsets[z][x][2] = {1,1}
+				offsets[z][x][1] = {new_x,new_y}
+			else
+				offsets[z][x] = {{new_x,new_y},{1,1}}
+			end
+		end
+	else
+		offsets[z][x] = {{new_x,new_y},{new_x,new_y}}
+	end
+	local tile_index = self:getTilesIndexInMesh(x,z)
+	start_i,end_i = start_i+tile_index,end_i+tile_index
+	local mesh = self.props.mapedit_map_mesh.mesh
+	for i=start_i,end_i do
+		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+	end
+end
+function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y)
+	local curr = self:getTileVertexTexScale(x,z,vert_i)
+	local new_x = new_x or curr[1]
+	local new_y = new_y or curr[2]
+	if new_x==0.0 then new_x = 0.01 end 
+	if new_y==0.0 then new_y = 0.01 end 
+	local tile_shape = self:getTileShape(x,z)
+
+	local scales = self.props.mapedit_tile_tex_scales
+	local start_i,end_i = 0,5
+	if tile_shape>0 then
+		if not scales[z][x] then
+			scales[z][x]={nil,nil}
+		end
+		if vert_i>=4 then
+			start_i,end_i=3,5
+			local o_type = type(scales[z][x][1])
+			if o_type=="table" then
+				scales[z][x][2] = {new_x,new_y}
+			elseif o_type==nil then
+				scales[z][x][1] = {1,1}
+				scales[z][x][2] = {new_x,new_y}
+			else
+				scales[z][x] = {{1,1},{new_x,new_y}}
+			end
+		else
+			start_i,end_i=0,2
+			local o_type = type(scales[z][x][2])
+			if o_type=="table" then
+				scales[z][x][1] = {new_x,new_y}
+			elseif o_type==nil then
+				scales[z][x][2] = {1,1}
+				scales[z][x][1] = {new_x,new_y}
+			else
+				scales[z][x] = {{new_x,new_y},{1,1}}
+			end
+		end
+	else
+		scales[z][x] = {{new_x,new_y},{new_x,new_y}}
+	end
+	local tile_index = self:getTilesIndexInMesh(x,z)
+	start_i,end_i = start_i+tile_index,end_i+tile_index
+	local mesh = self.props.mapedit_map_mesh.mesh
+	for i=start_i,end_i do
+		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+	end
+end
+
+function ProvMapEdit:setWallTexOffset(x,z,vert_i, new_x,new_y)
+	local curr = self:getWallTexOffset(x,z,vert_i)
+	local new_x = new_x or curr[1]
+	local new_y = new_y or curr[2]
+	local tile_shape = self:getTileShape(x,z)
+
+	local offsets = self.props.mapedit_tile_tex_offsets
+	local start_i,end_i = 0,5
+	if tile_shape>0 then
+		if not offsets[z][x] then
+			offsets[z][x]={nil,nil}
+		end
+		if vert_i>=4 then
+			start_i,end_i=3,5
+			local o_type = type(offsets[z][x][1])
+			if o_type=="table" then
+				offsets[z][x][2] = {new_x,new_y}
+			elseif o_type==nil then
+				offsets[z][x][1] = {1,1}
+				offsets[z][x][2] = {new_x,new_y}
+			else
+				offsets[z][x] = {{1,1},{new_x,new_y}}
+			end
+		else
+			start_i,end_i=0,2
+			local o_type = type(offsets[z][x][2])
+			if o_type=="table" then
+				offsets[z][x][1] = {new_x,new_y}
+			elseif o_type==nil then
+				offsets[z][x][2] = {1,1}
+				offsets[z][x][1] = {new_x,new_y}
+			else
+				offsets[z][x] = {{new_x,new_y},{1,1}}
+			end
+		end
+	else
+		offsets[z][x] = {{new_x,new_y},{new_x,new_y}}
+	end
+	local tile_index = self:getTilesIndexInMesh(x,z)
+	start_i,end_i = start_i+tile_index,end_i+tile_index
+	local mesh = self.props.mapedit_map_mesh.mesh
+	for i=start_i,end_i do
+		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+	end
 end
 
 function ProvMapEdit:__getScaleByDist()
@@ -4264,4 +4410,8 @@ function ProvMapEdit:filedropped(file)
 	if hook then
 		hook(file)
 	end
+end
+
+function ProvMapEdit:textinput(t)
+	gui:textinput(t)
 end

@@ -1304,8 +1304,11 @@ function Map.getIdenticalConsecutiveTilesCount(map, x,z)
 		return 1 end
 
 	local abs = math.abs
+	local mod1 = function(a)
+		local m=math.fmod(a,1.0)
+		if m<0.0 then return m+1.0 end return m end 
 	local function merge(v1,v2,dist)
-		local d = abs(v2[1]-v1[1])+abs(v2[2]-v1[1])
+		local d = abs(mod1(v2[1])-mod1(v1[1]))+abs(mod1(v2[2])-mod1(v1[1]))
 		if d < dist then return true else return false end
 	end
 

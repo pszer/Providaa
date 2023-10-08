@@ -122,8 +122,12 @@ function MapEditGUIScreen:new(layout, throw_obj, lock, win_lock)
 
 			for i,v in ipairs(wins) do
 				v:update()
-				local h_info = v:updateHoverInfo()
-				if h_info then hover = true end
+				if hover then
+					v.hover = false
+				else
+					local h_info = v:updateHoverInfo()
+					if h_info then hover = true end
+				end
 			end
 			if hover then
 				self.win_control_lock.open()

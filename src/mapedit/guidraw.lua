@@ -211,7 +211,7 @@ end
 --
 -- if you want to use a tilde character as part of the text, escape it using double tilde ~~
 --
-function MapEditGUIRender:createDrawableText(string, font, font_bold, font_italic)
+function MapEditGUIRender:createDrawableText(string, font, font_bold, font_italic, font_ibold, premade_canvas)
 	assert_type(string, "string")
 	local font = font or self.font
 	local font_bold = font_bold or self.font_bold
@@ -384,7 +384,7 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	maxw = math.max(w,maxw)
 	maxh = maxh + h
 
-	local canvas = love.graphics.newCanvas(maxw,maxh)
+	local canvas = premade_canvas or love.graphics.newCanvas(maxw,maxh)
 	love.graphics.origin()
 	love.graphics.setShader()
 	love.graphics.setColor(1,1,1,1)
@@ -405,11 +405,72 @@ function MapEditGUIRender:createDrawableText(string, font, font_bold, font_itali
 	end
 	love.graphics.setCanvas()
 
-	return canvas
+	return canvas,maxw,maxh
+end
+
+function MapEditGUIRender:createDynamicTextObject(init_string, width, format_func, font,fontb,fonti,fontib)
+	local this = {
+		string = init_string or "",
+		internal_string = "",
+		width  = width or 500,
+		canvas = love.graphics.newCanvas(width,64,{format="rgb10a2"}),
+		formatter = format_func,
+		font = font,
+		fontb = fontb,
+		fonti = fonti,
+		fontib = fontib,
+		w = 0,
+		h = 0,
+
+		set = function(self,text)
+			local result = string.gsub(text,"~","~~") -- tilde is reserved for formatting bold,italic,colour etc. and is not visible
+			                                          -- ~~ is treated as an escape character
+			if self.formatter then
+				local new_result = self.formatter(result)
+				if new_result then result = new_result end
+			end
+			self.internal_string = result
+			self.string = tex
+
+			local _,w,h = MapEditGUIRender:drawableFormatString(result, self.font, self.fontb, self.fonti, self.fontib, self.canvas)
+			self.w = w or 0
+			self.h = h or 0
+		end,
+		concat = function(self,text)
+			local text = self.string .. tex
+			self:set(text)
+		end,
+		insert = function(self,text,i)
+			local str_len = #self.string
+			if i>str_len then self:concat(text) return end
+			local result = self.string
+			if i<=1 then
+				result = text..result
+			else
+				result = string.sub(1,i-1)..text..string.sub(i,-1)
+			end
+			self:set(result)
+		end,
+		get = function(self)
+			return self.string
+		end,
+		popchar = function(self)
+			if self.string == "" then return end
+			local str = string.sub(self.string,1,-2)
+			self:set(str)
+		end,
+		draw = function(self,x,y,r,sx,sy)
+			love.graphics.draw(self.canvas,x,y,r,sx,sy)
+		end
+	}
+
+	this:set(this.string)
+
+	return this
 end
 
 -- without color/bold/italic formatting (for now)
-function MapEditGUIRender:createDrawableTextLimited(string, limit, align, font, font_bold, font_italic)
+function MapEditGUIRender:createDrawableTextLimited(string, limit, align, font, font_bold, font_italic, font_ibold)
 	assert_type(string, "string")
 	assert(limit)
 	local align = align or "left"
@@ -417,7 +478,7 @@ function MapEditGUIRender:createDrawableTextLimited(string, limit, align, font, 
 	local font_bold = font_bold or self.font_bold
 	local font_italic = font_italic or self.font_italic
 	local font_ibold = font_ibold or self.font_ibold
-	assert(font and font_bold and font_italic)
+	assert(font and font_bold and font_italic and font_ibold)
 
 	local drawable = love.graphics.newText(font, "")
 	drawable:setf(string,limit,align)
