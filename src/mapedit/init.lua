@@ -403,7 +403,6 @@ function ProvMapEdit:regenAtlas()
 	for i,v in ipairs(loaded_textures) do
 		tex_table[i] = v[2]
 		tex_table[v[1]] = i
-		print(i, v[1],v[2], tex_table[v[1]])
 	end
 
 	local atlas, uvs = texatlas(tex_table, CONSTS.ATLAS_SIZE, CONSTS.ATLAS_SIZE)
@@ -519,8 +518,8 @@ function ProvMapEdit:allocateObjects()
 			self.tilevertex_objs[z][x]={}
 			self.wall_objs[z][x]={}
 			for i=1,6 do
-				self.tilevertex_objs[z][x][i]=self:getTileVertexObject(x,z,i)
-				self.tilevertex_objs[z][x][i].__overlay=self:getTileVertexObject(x,z,i,true)
+				self.tilevertex_objs[z][x][i]           = self:getTileVertexObject(x,z,i)
+				self.tilevertex_objs[z][x][i].__overlay = self:getTileVertexObject(x,z,i,true)
 			end
 			for i=1,5 do
 				self.wall_objs[z][x][i]=self:getWallObject(x,z,i)
@@ -1221,20 +1220,20 @@ function ProvMapEdit:setupInputHandling()
 				local objs_in_range = {}
 				for x=x1,x2 do
 					for z=z1,z2 do
-						--table.insert(objs_in_range, {"tile",x,z})
 						local tile_shape = self:getTileShape(x,z)
+						local overlay = self.props.mapedit_overlay_edit
 						if tile_shape==0 then
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4,overlay)})
 						else
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,5)})
-							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,6)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,1,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,2,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,3,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,4,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,5,overlay)})
+							table.insert(objs_in_range, {"tile",self:getTileVertexObject(x,z,6,overlay)})
 						end
 					end
 				end
@@ -1724,14 +1723,13 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 	local unproject_v = unproject(cursor_v, viewproj, viewport_xywh)
 	--local ray_dir_v = cpml.vec3.new(cam:getDirection())
 	local ray = {position=cam_pos, direction=cpml.vec3.normalize(unproject_v - cam_pos)}
-	--print("ray_v", ray.position)
-	--print("ray_dir_v", ray.direction)
 
 	local min_dist = 1/0
 	local mesh_test = nil
 	-- test against map mesh
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 
+	local overlay = self.props.mapedit_overlay_edit
 	local function __test_tile(x,z)
 		local test_type = "face"
 		if self.alt_modifier then test_type = "vert" end
@@ -1739,7 +1737,7 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		if intersect and dist < min_dist then
 			mesh_test = {"tile"}
 			for i,v in ipairs(verts) do
-				mesh_test[i+1] = self:getTileVertexObject(x,z,v)
+				mesh_test[i+1] = self:getTileVertexObject(x,z,v,overlay)
 			end
 			min_dist = dist
 		end
@@ -1805,7 +1803,6 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 			for Z=1,g_h do
 				local test_result = get_region_test_result(X,Z)
 				if test_result then
-					--print(X,Z)
 					for z=(Z-1)*grid_size,min(Z*grid_size,h-1) do
 						for x=(X-1)*grid_size,min(X*grid_size,w-1) do
 							__test_tile(x+1,z+1)
@@ -2350,14 +2347,22 @@ function ProvMapEdit:getWallVerts( x,z , side )
 		{x4,y4,z4}
 end
 
-function ProvMapEdit:getTileVertexTexOffset(x,z,vert_i)
-	return __getTileVertexTexOffset(self.props.mapedit_tile_tex_offsets,x,z,vert_i)
+function ProvMapEdit:getTileVertexTexOffset(x,z,vert_i,overlay)
+	if not overlay then
+		return __getTileVertexTexOffset(self.props.mapedit_tile_tex_offsets,x,z,vert_i)
+	else
+		return __getTileVertexTexOffset(self.props.mapedit_overlay_tex_offsets,x,z,vert_i)
+	end
 end
 function ProvMapEdit:getWallTexOffset(x,z,side)
 	return __getWallTexOffset(self.props.mapedit_wall_tex_offsets,x,z,side)
 end
-function ProvMapEdit:getTileVertexTexScale(x,z,vert_i)
-	return __getTileVertexTexScale(self.props.mapedit_tile_tex_scales,x,z,vert_i)
+function ProvMapEdit:getTileVertexTexScale(x,z,vert_i,overlay)
+	if not overlay then
+		return __getTileVertexTexScale(self.props.mapedit_tile_tex_scales,x,z,vert_i)
+	else
+		return __getTileVertexTexScale(self.props.mapedit_overlay_tex_scales,x,z,vert_i)
+	end
 end
 function ProvMapEdit:getWallTexScale(x,z,side)
 	return __getWallTexScale(self.props.mapedit_wall_tex_scales,x,z,side)
@@ -2367,7 +2372,7 @@ function ProvMapEdit:getTexOffset(obj)
 	local o_type = obj[1]
 	if o_type=="tile" then
 		local t = obj[2]
-		return self:getTileVertexTexOffset(t.x,t.z,t.vert_i)
+		return self:getTileVertexTexOffset(t.x,t.z,t.vert_i,t.overlay)
 	elseif o_type=="wall" then
 		local w = obj[2]
 		return self:getWallTexOffset(w.x,w.z,w.side)
@@ -2380,7 +2385,7 @@ function ProvMapEdit:getTexScale(obj)
 	local o_type = obj[1]
 	if o_type=="tile" then
 		local t = obj[2]
-		return self:getTileVertexTexScale(t.x,t.z,t.vert_i)
+		return self:getTileVertexTexScale(t.x,t.z,t.vert_i,t.overlay)
 	elseif o_type=="wall" then
 		local w = obj[2]
 		return self:getWallTexScale(w.x,w.z,w.side)
@@ -2394,7 +2399,12 @@ function ProvMapEdit:setTexOffset(obj, offset)
 	local o_type = obj[1]
 	if o_type=="tile" then
 		local t = obj[2]
-		self:setTileVertexTexOffset(t.x,t.z,t.vert_i, offset[1], offset[2])
+		local overlay=t.overlay
+		if overlay then
+			self:setOverlayVertexTexOffset(t.x,t.z,t.vert_i, offset[1], offset[2])
+		else
+			self:setTileVertexTexOffset(t.x,t.z,t.vert_i, offset[1], offset[2])
+		end
 	elseif o_type=="wall" then
 		local w = obj[2]
 		self:setWallTexOffset(w.x,w.z,w.side, offset[1], offset[2])
@@ -2408,7 +2418,12 @@ function ProvMapEdit:setTexScale(obj, scale)
 	local o_type = obj[1]
 	if o_type=="tile" then
 		local t = obj[2]
-		self:setTileVertexTexScale(t.x,t.z,t.vert_i, scale[1], scale[2])
+		local overlay=t.overlay
+		if overlay then
+			self:setOverlayVertexTexScale(t.x,t.z,t.vert_i, scale[1], scale[2])
+		else
+			self:setTileVertexTexScale(t.x,t.z,t.vert_i, scale[1], scale[2])
+		end
 	elseif o_type=="wall" then
 		local w = obj[2]
 		self:setWallTexScale(w.x,w.z,w.side, scale[1], scale[2])
@@ -2608,6 +2623,7 @@ function ProvMapEdit:setObjectTexture(obj, tex)
 		local t = obj[2]
 		local overlay = t.overlay
 		if overlay then
+			print("grEH")
 			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex,self:getOverlayTexTable(),self:getOverlayAttrsMesh())
 		else
 			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex)
@@ -2673,8 +2689,12 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name, tex_table, attrs)
 
 	local loaded_textures = self.props.mapedit_texture_list
 	local tex_id = loaded_textures[tex_name]
-	assert(tex_id)
-	tex_id = tex_id - 1 -- shift to 0-index for GLSL
+	--assert(tex_id)
+	if tex_id then
+		tex_id = tex_id - 1 -- shift to 0-index for GLSL
+	else
+		tex_id = -1
+	end
 
 	local index = self:getTilesIndexInMesh( x,z )
 	if not index then return false, curr_texture end
@@ -2795,9 +2815,9 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 end
 
 function ProvMapEdit:setOverlayVertexTexOffset(x,z,vert_i, new_x,new_y)
-	self:setTileVertexTexScale(x,z,vert_i, new_x,new_y, self.props.mapedit_overlay_tex_offsets, self:getOverlayAttrsMesh())
+	self:setTileVertexTexOffset(x,z,vert_i, new_x,new_y, self.props.mapedit_overlay_tex_offsets, self:getOverlayAttrsMesh())
 end
-function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y)
+function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y, offsets, attr)
 	local offsets = offsets or self.props.mapedit_tile_tex_offsets
 	local attr    = attr   or self.props.mapedit_map_mesh.mesh_atts
 
@@ -2929,7 +2949,6 @@ function ProvMapEdit:fitWallTextureToScale(x,z,side)
 	if not tex then return end
 	local texh = tex:getHeight()
 	local texw = tex:getWidth()
-	print(texh,texw,TILE_HEIGHT)
 	local start_i, end_i = self:getWallsIndexInMesh(x,z,side)
 	for i=start_i,end_i do
 		local x,y = mesh:getVertexAttribute(i, 1)
@@ -3291,17 +3310,16 @@ __tileobj_mt.__index = __tileobj_mt
 function ProvMapEdit:getTileVertexObject(x,z,i,overlay)
 	if overlay then
 		local obj = self.tilevertex_objs[z][x][i]
-		if obj and obj.__overlay then return obj.__overlay end
+		if obj and obj.__overlay then print("",obj.__overlay) return obj.__overlay end
+	else
+		local obj = self.tilevertex_objs[z][x][i]
+		if obj then return obj end
 	end
-	local obj = self.tilevertex_objs[z][x][i]
-	if obj then return obj end
 
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end
 	assert(i>= 1 and i<=6, "ProvMapEdit:getTileVertexObject(): i out of range [1,6]")
 
-	local mapedit = self
 	local tile = {
 		x=x,
 		z=z,
@@ -3349,7 +3367,6 @@ function ProvMapEdit:getWallObject(x,z,side)
 	if obj then return obj end
 
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-	--print(x,z,i,w,h)
 	if x<1 or x>w or z<1 or z>h then return nil end
 	assert(side>=1 and side<=5, "ProvMapEdit:getWallObject(): i out of range [1,5]")
 
@@ -4004,6 +4021,7 @@ function ProvMapEdit:drawViewport()
 
 		-- draw overlay
 		map_mesh:attachOverlayAttributes()
+		love.graphics.setColor(1,1,1,1)
 		love.graphics.draw(map_mesh.mesh)
 		map_mesh:attachAttributes()
 

@@ -476,7 +476,6 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 
 				local T = textures[tex_id]
 				local tex_height = (T:getHeight()/T:getWidth()) * (TILE_SIZE/TILE_HEIGHT)
-				print(TILE_SIZE,TILE_HEIGHT)
 				local tex_off = Map.getWallTexOffset(map,z,x,side) or {0,0}
 				local tex_scale = Map.getWallTexScale(map,z,x,side) or {1,1}
 
