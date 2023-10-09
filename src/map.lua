@@ -474,7 +474,9 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				vert_count  = vert_count  + 4
 				index_count = index_count + 6
 
-				local tex_height = textures[tex_id]:getHeight()/TILE_HEIGHT
+				local T = textures[tex_id]
+				local tex_height = (T:getHeight()/T:getWidth()) * (TILE_SIZE/TILE_HEIGHT)
+				print(TILE_SIZE,TILE_HEIGHT)
 				local tex_off = Map.getWallTexOffset(map,z,x,side) or {0,0}
 				local tex_scale = Map.getWallTexScale(map,z,x,side) or {1,1}
 
@@ -574,7 +576,8 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 			vert_count  = vert_count  + 4
 			index_count = index_count + 6
 
-			local tex_height = textures[tex_id]:getHeight()/TILE_HEIGHT
+			local T = textures[tex_id]
+			local tex_height = (T:getHeight()/T:getWidth()) * (TILE_SIZE/TILE_HEIGHT)
 			local tex_off = Map.getWallTexOffset(map,z,x,side) or {0,0}
 			local tex_scale = Map.getWallTexScale(map,z,x,side) or {1,1}
 

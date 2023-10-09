@@ -2329,7 +2329,7 @@ function ProvMapEdit:getWallsIndexInMesh( x,z , side )
 	assert(side>=1 and side<=5)
 	local wmap = self.props.mapedit_map_mesh.wall_vert_map
 	local index = wmap[z][x][side]
-	return index,index+4
+	return index,index+3
 end
 
 function ProvMapEdit:getWallVerts( x,z , side )
@@ -2790,6 +2790,7 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	mesh:setVertexAttribute(index+2, 3, tex_id)
 	mesh:setVertexAttribute(index+3, 3, tex_id)
 	self.props.mapedit_wall_textures[z][x][side] = tex_name
+	self:setWallTexScale(x,z,side)
 	return true, curr_texture
 end
 
@@ -2927,14 +2928,16 @@ function ProvMapEdit:fitWallTextureToScale(x,z,side)
 	tex=self:getTextureFromName( tex )
 	if not tex then return end
 	local texh = tex:getHeight()
+	local texw = tex:getWidth()
+	print(texh,texw,TILE_HEIGHT)
 	local start_i, end_i = self:getWallsIndexInMesh(x,z,side)
 	for i=start_i,end_i do
 		local x,y = mesh:getVertexAttribute(i, 1)
-		mesh:setVertexAttribute(i, 1, x, y * (texh/TILE_HEIGHT) )
+		mesh:setVertexAttribute(i, 1, x, y * (texh/texw) * (TILE_SIZE/TILE_HEIGHT) )
 	end
 end
 function ProvMapEdit:setWallTexScale(x,z,side, new_x,new_y)
-	local curr = self:getWallTexOffset(x,z,vert_i)
+	local curr = self:getWallTexScale(x,z,vert_i)
 	local new_x = new_x or curr[1]
 	local new_y = new_y or curr[2]
 	if new_x==0.0 then new_x = 0.01 end 
