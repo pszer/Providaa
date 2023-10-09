@@ -2564,10 +2564,15 @@ function ProvMapEdit:getObjectTexture(obj)
 	if obj[1] == "tile" then
 		local tile_v = obj[2]
 		local z,x=tile_v.z,tile_v.x
+
+		local overlay = tile_v.overlay
+		local t_texs = self.props.mapedit_tile_textures
+		if overlay then t_texs = self.props.mapedit_overlay_textures end
+
 		local tile_shape = self.props.mapedit_tile_shapes[tile_v.z][tile_v.x]
 		local texture_i = 1
 		if tile_shape~=0 and tile_v.vert_i>=4 then texture_i=2 end
-		local tex = self.props.mapedit_tile_textures[z][x]
+		local tex = t_texs[z][x]
 		if type(tex)=="table" then return tex[texture_i]
 		else return tex end
 	end
@@ -2583,11 +2588,30 @@ function ProvMapEdit:getObjectTexture(obj)
 	end
 end
 
+function ProvMapEdit:getTextureFromName(name)
+	local texs = self.props.mapedit_texture_list
+	local ti = texs[name]
+	if not ti then return end
+	local tex = texs[ti]
+	if tex then return tex[2] end
+	return nil
+end
+
+function ProvMapEdit:getOverlayTexTable()
+	return self.props.mapedit_overlay_textures end
+function ProvMapEdit:getOverlayAttrsMesh()
+	return self.props.mapedit_map_mesh.overlay_atts end
+
 function ProvMapEdit:setObjectTexture(obj, tex)
 	local o_type = obj[1]
 	if o_type == "tile" then
 		local t = obj[2]
-		self:setTileVertexTexture(t.x,t.z,t.vert_i,tex)
+		local overlay = t.overlay
+		if overlay then
+			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex,self:getOverlayTexTable(),self:getOverlayAttrsMesh())
+		else
+			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex)
+		end
 	elseif o_type == "wall" then
 		local t = obj[2]
 		self:setWallTexture(t.x,t.z,t.side,tex)
@@ -2596,7 +2620,10 @@ end
 
 -- returns true if texture changed, otherwise false
 -- also returns previous texture name
-function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
+function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name, tex_table, attrs)
+	local tex_table = tex_table or self.props.mapedit_tile_textures
+	local attrs = attrs or self.props.mapedit_map_mesh.mesh_atts
+
 	local tile_shape = self:getTileShape(x,z)
 	local texture_i = 1
 	local v1i,v2i,v3i,v4i
@@ -2634,10 +2661,12 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	end
 
 	-- convert to table for the future
-	local curr_texture = self.props.mapedit_tile_textures[z][x]
-	if type(curr_texture) ~= "table" then
-		self.props.mapedit_tile_textures[z][x] = {curr_texture, curr_texture}
-		curr_texture = self.props.mapedit_tile_textures[z][x][texture_i]
+	local curr_texture = tex_table[z][x]
+	if type(curr_texture) ~= "table" and curr_texture then
+		tex_table[z][x] = {curr_texture, curr_texture}
+		curr_texture = tex_table[z][x][texture_i]
+	else
+		tex_table[z][x] = {tex_name,tex_name}
 	end
 
 	if curr_texture == tex_name then return false, curr_texture end
@@ -2650,12 +2679,11 @@ function ProvMapEdit:setTileVertexTexture(x,z,i,tex_name)
 	local index = self:getTilesIndexInMesh( x,z )
 	if not index then return false, curr_texture end
 
-	local mesh = self.props.mapedit_map_mesh.mesh_atts
-	mesh:setVertexAttribute(index+v1i-1, 3, tex_id)
-	mesh:setVertexAttribute(index+v2i-1, 3, tex_id)
-	mesh:setVertexAttribute(index+v3i-1, 3, tex_id)
-	if v4i then mesh:setVertexAttribute(index+v4i-1, 3, tex_id) end
-	self.props.mapedit_tile_textures[z][x][texture_i] = tex_name
+	attrs:setVertexAttribute(index+v1i-1, 3, tex_id)
+	attrs:setVertexAttribute(index+v2i-1, 3, tex_id)
+	attrs:setVertexAttribute(index+v3i-1, 3, tex_id)
+	if v4i then attrs:setVertexAttribute(index+v4i-1, 3, tex_id) end
+	tex_table[z][x][texture_i] = tex_name
 
 	self.__object_painted = {"tile",{x=x,z=z,vert_i=i}}
 	self.__object_painted_time = getTickSmooth()
@@ -2765,13 +2793,18 @@ function ProvMapEdit:setWallTexture(x,z,side,tex_name)
 	return true, curr_texture
 end
 
+function ProvMapEdit:setOverlayVertexTexOffset(x,z,vert_i, new_x,new_y)
+	self:setTileVertexTexScale(x,z,vert_i, new_x,new_y, self.props.mapedit_overlay_tex_offsets, self:getOverlayAttrsMesh())
+end
 function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y)
+	local offsets = offsets or self.props.mapedit_tile_tex_offsets
+	local attr    = attr   or self.props.mapedit_map_mesh.mesh_atts
+
 	local curr = self:getTileVertexTexOffset(x,z,vert_i)
 	local new_x = new_x or curr[1]
 	local new_y = new_y or curr[2]
 	local tile_shape = self:getTileShape(x,z)
 
-	local offsets = self.props.mapedit_tile_tex_offsets
 	local start_i,end_i = 0,5
 	if tile_shape>0 then
 		if not offsets[z][x] then
@@ -2805,12 +2838,18 @@ function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y)
 	end
 	local tile_index = self:getTilesIndexInMesh(x,z)
 	start_i,end_i = start_i+tile_index,end_i+tile_index
-	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	for i=start_i,end_i do
-		mesh:setVertexAttribute(i, 2, new_x,new_y)
+		attr:setVertexAttribute(i, 2, new_x,new_y)
 	end
 end
-function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y)
+
+function ProvMapEdit:setOverlayVertexTexScale(x,z,vert_i, new_x,new_y)
+	self:setTileVertexTexScale(x,z,vert_i, new_x,new_y, self.props.mapedit_overlay_tex_scales, self:getOverlayAttrsMesh())
+end
+function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y, scales,attr)
+	local scales = scales or self.props.mapedit_tile_tex_scales
+	local attr   = attr   or self.props.mapedit_map_mesh.mesh_atts
+
 	local curr = self:getTileVertexTexScale(x,z,vert_i)
 	local new_x = new_x or curr[1]
 	local new_y = new_y or curr[2]
@@ -2852,9 +2891,8 @@ function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y)
 	end
 	local tile_index = self:getTilesIndexInMesh(x,z)
 	start_i,end_i = start_i+tile_index,end_i+tile_index
-	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	for i=start_i,end_i do
-		mesh:setVertexAttribute(i, 1, new_x,new_y)
+		attr:setVertexAttribute(i, 1, new_x,new_y)
 	end
 end
 
@@ -2864,7 +2902,9 @@ function ProvMapEdit:setWallTexOffset(x,z,side, new_x,new_y)
 	local new_y = new_y or curr[2]
 
 	local offsets = self.props.mapedit_wall_tex_offsets
-	local off = offsets[z][x][side]
+	local off = offsets[z][x]
+	if not off then offsets[z][x]={} end
+	off = offsets[z][x][side]
 	if not off then
 		offsets[z][x][side] = {new_x,new_y}
 	else
@@ -2879,6 +2919,20 @@ function ProvMapEdit:setWallTexOffset(x,z,side, new_x,new_y)
 	end
 end
 
+function ProvMapEdit:fitWallTextureToScale(x,z,side)
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	local wall = self:getWallObject(x,z,side)
+	local tex = self:getObjectTexture{"wall",wall}
+	if not tex then return end
+	tex=self:getTextureFromName( tex )
+	if not tex then return end
+	local texh = tex:getHeight()
+	local start_i, end_i = self:getWallsIndexInMesh(x,z,side)
+	for i=start_i,end_i do
+		local x,y = mesh:getVertexAttribute(i, 1)
+		mesh:setVertexAttribute(i, 1, x, y * (texh/TILE_HEIGHT) )
+	end
+end
 function ProvMapEdit:setWallTexScale(x,z,side, new_x,new_y)
 	local curr = self:getWallTexOffset(x,z,vert_i)
 	local new_x = new_x or curr[1]
@@ -2887,7 +2941,9 @@ function ProvMapEdit:setWallTexScale(x,z,side, new_x,new_y)
 	if new_y==0.0 then new_y = 0.01 end 
 
 	local scales = self.props.mapedit_wall_tex_scales
-	local scale = scales[z][x][side]
+	local scale = scales[z][x]
+	if not scale then scales[z][x]={} end
+	scale = scales[z][x][side]
 	if not scale then
 		scales[z][x][side] = {new_x,new_y}
 	else
@@ -2900,6 +2956,7 @@ function ProvMapEdit:setWallTexScale(x,z,side, new_x,new_y)
 	for i=start_i,end_i do
 		mesh:setVertexAttribute(i, 1, new_x,new_y)
 	end
+	self:fitWallTextureToScale(x,z,side)
 end
 
 
@@ -3285,7 +3342,7 @@ local __wallobj_mt = {
 }
 __wallobj_mt.__index = __wallobj_mt
 function ProvMapEdit:getWallObject(x,z,side)
-	local obj = self.wall_objs[z][x][i]
+	local obj = self.wall_objs[z][x][side]
 	if obj then return obj end
 
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
@@ -3928,14 +3985,18 @@ function ProvMapEdit:drawViewport()
 		map_mesh:pushAtlas( shader , true )
 
 		-- draw culled faces with opacity
-		love.graphics.setColor(1,1,1,0.9)
+		love.graphics.setColor(1,1,1,0.8)
 		love.graphics.setMeshCullMode("back")
 		love.graphics.setDepthMode( "less", false  )
 		self:invokeDrawMesh()
 		love.graphics.setMeshCullMode("front")
 		-- draw visible faces fully opaque
 		love.graphics.setDepthMode( "lequal", true  )
-		love.graphics.setColor(1,1,1,1)
+		if self.props.mapedit_overlay_edit then
+			love.graphics.setColor(1,1,1,0.8)
+		else
+			love.graphics.setColor(1,1,1,1)
+		end
 		love.graphics.draw(map_mesh.mesh)
 
 		-- draw overlay
