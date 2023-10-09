@@ -826,6 +826,11 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 	local attr_count = 0
 	local index_count = 0
 
+	--for i=1,vert_count do
+	--	attrs[i] = {1,1,0,0,-1}
+	--end
+	--local o_mesh = love.graphics.newMesh(MapMesh.atts_atypes, attrs, "triangles", "dynamic")
+
 	local int = math.floor
 	local I = 1
 
@@ -838,118 +843,107 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 
 		local index_start,index_end = tile_vert_map[z][x],nil
 
-		if index_start then
+		if tile_shape==0 then
+			index_end = index_start+6
+		else
+			index_end = index_start+4
+		end
 
+		local tileid2, tex_id2
+		local tex_id 
+
+		if type(tileid)=="table" then
+			tileid  = tileid[1]
+			tileid2 = tileid[2]
+			if tileid then
+				tex_id = tileset_id_to_tex[tileid] end
+			if tileid2 then
+				tileid2 = tileset_id_to_tex[tileid2] end
+		else
+			if tileid then
+				tex_id = tileset_id_to_tex[tileid] end
+			tex_id2 = tex_id
+		end
+
+		if tex_id then tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+		else tex_norm_id = nil end
+		if tex_id2 then tex_norm_id2 = (tex_id2-1) -- this will be the index sent to the shader
+		else tex_norm_id2 = nil end
+
+		if tex_id or tex_id2 then
+			local toff1 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,1)
+			local toff2 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,4)
+			local tscale1 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,1)
+			local tscale2 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,4)
+
+			local attr  =  { tscale1[1], tscale1[2], toff1[1], toff1[2], tex_norm_id }
+			local attr2 =  { tscale2[1], tscale2[2], toff2[1], toff2[2], tex_norm_id2 }
+			local indices = Map.getTileShapeIndices(tile_shape)
+
+			local vert_additions = 0
 			if tile_shape==0 then
-				index_end = index_start+6
+				local start_i = tile_vert_map[z][x]
+
+				for i=0, 3 do
+					local vert = mesh_verts[start_i+i]
+					verts[vert_count + i] = vert
+					attrs[vert_count + i] = attr
+				end
+				local i_count = #indices
+				for i=1,i_count do
+					index_map[index_count+i]=indices[i]+vert_count
+				end
+				vert_count=vert_count+4
+				attr_count=attr_count+4
+				index_count=index_count+i_count
 			else
-				index_end = index_start+4
-			end
-
-			local tileid2, tex_id2
-			local tex_id 
-
-			if type(tileid)=="table" then
-				tileid  = tileid[1]
-				tileid2 = tileid[2]
-				if tileid then
-					tex_id = tileset_id_to_tex[tileid] end
-				if tileid2 then
-					tileid2 = tileset_id_to_tex[tileid2] end
-			else
-				if tileid then
-					tex_id = tileset_id_to_tex[tileid] end
-				tex_id2 = tex_id
-			end
-
-			if tex_id then tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
-			else tex_norm_id = nil end
-			if tex_id2 then tex_norm_id2 = (tex_id2-1) -- this will be the index sent to the shader
-			else tex_norm_id2 = nil end
-
-			if tex_id or tex_id2 then
-				local toff1 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,1)
-				local toff2 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,4)
-				local tscale1 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,1)
-				local tscale2 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,4)
-
-				local attr  =  { tscale1[1], tscale1[2], toff1[1], toff1[2], tex_norm_id }
-				local attr2 =  { tscale2[1], tscale2[2], toff2[1], toff2[2], tex_norm_id2 }
-				local indices = Map.getTileShapeIndices(tile_shape)
-
-				if tile_shape==0 then
-					local start_i = tile_vert_map[z][x]
-
-					for i=0, 3 do
+				local start_i = tile_vert_map[z][x]
+				if tex_id then
+					for i=0,2 do
 						local vert = mesh_verts[start_i+i]
-						verts[vert_count + i+1] = vert
-						attrs[vert_count + i+1] = attr
+						verts[vert_count + i] = vert
+						attrs[vert_count + i] = attr
 					end
-					local i_count = #indices
-					for i=1,i_count do
+
+					for i=1,3 do
 						index_map[index_count+i]=indices[i]+vert_count
 					end
-					vert_count=vert_count+4
-					attr_count=attr_count+4
-					index_count=index_count+i_count
-				else
-					local start_i = tile_vert_map[z][x]
-					if tex_id then
-						for i=0,2 do
-							local vert = mesh_verts[start_i+i]
-							verts[vert_count + i+1] = vert
-							attrs[vert_count + i+1] = attr
-						end
-
-						for i=1,3 do
-							index_map[index_count+i]=indices[i]+vert_count
-						end
-						vert_count=vert_count+3
-						attr_count=attr_count+3
-						index_count=index_count+3
-					end
-
-					start_i=start_i+3
-					indices = {indices[4]-3,indices[5]-3,indices[6]-3}
-
-					if tex_id2 then
-						for i=0,2 do
-							local vert = mesh_verts[start_i+i]
-							verts[vert_count + i+1] = vert
-							attrs[vert_count + i+1] = attr2
-						end
-
-						for i=1,3 do
-							index_map[index_count+i]=indices[i]+vert_count
-						end
-						vert_count=vert_count+3
-						attr_count=attr_count+3
-						index_count=index_count+3
-					end
-
+					vert_count=vert_count+3
+					attr_count=attr_count+3
+					index_count=index_count+3
 				end
-			end--if tex_id or tex_id2
 
-		end
+				start_i=start_i+3
+				indices = {indices[4],indices[5],indices[6]}
+
+				if tex_id2 then
+					for i=0,2 do
+						local vert = mesh_verts[start_i+i]
+						verts[vert_count + i] = vert
+						attrs[vert_count + i] = attr2
+					end
+
+					for i=1,3 do
+						index_map[index_count+i]=indices[i]+vert_count
+					end
+					vert_count=vert_count+3
+					attr_count=attr_count+3
+					index_count=index_count+3
+				end
+
+			end
+		end--if tex_id or tex_id2
 
 		I=I+1
 	end
 
-	local o_mesh,a_mesh
-	if vert_count~= 0 then
-		o_mesh = love.graphics.newMesh(MapMesh.atypes,verts,"triangles","static")
-		a_mesh = love.graphics.newMesh(MapMesh.atts_atypes,attrs,"triangles","static")
-
-		for i,v in ipairs(MapMesh.atts_atypes) do
-			o_mesh:attachAttribute(v[1],a_mesh)
-		end
-		o_mesh:setVertexMap(index_map)
-	else
-		o_mesh = love.graphics.newMesh(3,"triangles","static")
-		a_mesh = love.graphics.newMesh(3,"triangles","static")
+	local o_mesh = love.graphics.newMesh(MapMesh.atypes,verts,"triangles","static")
+	local a_mesh = love.graphics.newMesh(MapMesh.atts_atypes,attrs,"triangles","static")
+	for i,v in ipairs(MapMesh.atts_atypes) do
+		o_mesh:attachAttribute(v[1],a_mesh)
 	end
 
-	return o_mesh,a_mesh
+	return o_mesh
 end
 
 -- generates and returns a MapMesh object from a given map and optional parameters
@@ -977,7 +971,7 @@ function Map.generateMapMesh( map , params )
 	local gen_nil_texture = params.gen_nil_texture
 	local nil_texture_id  = -1
 
-	local gen_index_map  = params.gen_index_map or true
+	local gen_index_map  = params.gen_index_map
 	local gen_newvert_buffer = params.gen_newvert_buffer
 
 	local keep_textures = params.keep_textures
@@ -1103,22 +1097,18 @@ function Map.generateMapMesh( map , params )
 													 textures)
 	end
 
-	local o_mesh,o_full_mesh = nil
+	local o_mesh = nil
 	if gen_overlay then
 		if gen_whole_overlay then
 			o_mesh = Map.internalGenerateOverlayBuffered(map, verts, tileset_id_to_tex, tile_vert_map)
 		else
-			o_full_mesh,o_mesh = Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, verts, tile_vert_map)
+			--error("unimplemented")
 		end
 	end
 
 	local mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
 	mesh:setVertexMap(index_map)
 	mesh:setTexture(atlas)
-
-	if o_full_mesh then
-		o_full_mesh:setTexture(atlas)
-	end
 
 	local attr_mesh = love.graphics.newMesh(MapMesh.atts_atypes, attr_verts, "triangles", "static")
 	mesh:attachAttribute("TextureScale", attr_mesh, "pervertex")
@@ -1149,7 +1139,6 @@ function Map.generateMapMesh( map , params )
 		wall_vert_map=wall_vert_map,
 		wall_exists=wall_exists,
 		overlay_atts=o_mesh,
-		overlay_mesh=o_full_mesh,
 
 		textures=textures,
 		texture_names=tex_names}

@@ -2623,7 +2623,6 @@ function ProvMapEdit:setObjectTexture(obj, tex)
 		local t = obj[2]
 		local overlay = t.overlay
 		if overlay then
-			print("grEH")
 			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex,self:getOverlayTexTable(),self:getOverlayAttrsMesh())
 		else
 			self:setTileVertexTexture(t.x,t.z,t.vert_i,tex)
@@ -3310,7 +3309,7 @@ __tileobj_mt.__index = __tileobj_mt
 function ProvMapEdit:getTileVertexObject(x,z,i,overlay)
 	if overlay then
 		local obj = self.tilevertex_objs[z][x][i]
-		if obj and obj.__overlay then print("",obj.__overlay) return obj.__overlay end
+		if obj and obj.__overlay then return obj.__overlay end
 	else
 		local obj = self.tilevertex_objs[z][x][i]
 		if obj then return obj end

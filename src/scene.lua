@@ -151,6 +151,13 @@ function Scene:drawGridMap()
 
 	shadersend(shader,"u_skinning", 0)
 	love.graphics.draw(self.map_mesh.mesh)
+
+	love.graphics.setDepthMode("lequal",false)
+
+	local o_mesh = self.map_mesh.overlay_mesh
+	love.graphics.draw(o_mesh)
+
+	love.graphics.setDepthMode("less",true)
 	shadersend(shader,"u_uses_tileatlas", false)
 end
 

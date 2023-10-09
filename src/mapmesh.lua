@@ -36,6 +36,7 @@ function MapMesh:new(args)
 
 		mesh = nil,
 		mesh_atts = nil,
+		overlay_mesh = nil,
 		overlay_atts = nil,
 		tex  = nil,
 

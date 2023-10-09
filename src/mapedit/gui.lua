@@ -454,8 +454,16 @@ function MapEditGUI:define(mapedit)
 			Yoff_input:setText(tostring(start_offset[2]))
 		end
 		if start_scale_unique then
-			Xscale_input:setText("1/"..tostring(1/start_scale[1]))
-			Yscale_input:setText("1/"..tostring(1/start_scale[2]))
+			if start_scale[1] < 1.0 then
+				Xscale_input:setText("1/"..tostring(1/start_scale[1]))
+			else
+				Xscale_input:setText(tostring(start_scale[1]))
+			end
+			if start_scale[2] < 1.0 then
+				Yscale_input:setText("1/"..tostring(1/start_scale[2]))
+			else
+				Yscale_input:setText(tostring(start_scale[2]))
+			end
 		end
 
 		local dummy_tex = love.graphics.newCanvas(1,1,{format="r8"})
@@ -572,11 +580,16 @@ function MapEditGUI:define(mapedit)
 					end
 					for i,v in ipairs(objs) do
 						if global_scaling then
-							local currx,curry = unpack(mapedit:getTexOffset(v))
-							local x,y = v[2].x + currx,v[2].z + curry
+							local _,curry = unpack(mapedit:getTexOffset(v))
+							if keep_scale then
+								sx,sy = unpack(mapedit:getTexScale(v))
+							end
+							local x,y = v[2].x, v[2].z
 							if v[1]=="wall" then y=curry end
-							x = (x / sx) % 1
-							y = (y / sy) % 1
+							if sx > 1.0 then x = (x * ((sx-1)/sx)) % 1
+							            else x = Xoff_status end
+							if sy > 1.0 then y = (y * ((sy-1)/sy)) % 1
+							            else y = Yoff_status end
 							offsets[i] = {Xoff_status+x, Yoff_status+y}
 						else
 							offsets[i] = {Xoff_status, Yoff_status}
@@ -585,12 +598,7 @@ function MapEditGUI:define(mapedit)
 				end
 				if not keep_scale then
 					for i,v in ipairs(objs) do
-						if global_scaling then
-							local currx,curry = unpack(mapedit:getTexScale(v))
-							scales[i] = {Xscale_status*currx, Yscale_status*curry}
-						else
-							scales[i] = {Xscale_status, Yscale_status}
-						end
+						scales[i] = {Xscale_status, Yscale_status}
 					end
 				end
 
