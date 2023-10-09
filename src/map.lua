@@ -772,8 +772,8 @@ function Map.internalGenerateOverlayBuffered(map, verts, tileset_id_to_tex, tile
 		local tex_id 
 
 		if type(tileid)=="table" then
-			tileid  = tileid[1]
 			tileid2 = tileid[2]
+			tileid  = tileid[1]
 			if tileid then
 				tex_id = tileset_id_to_tex[tileid] end
 			if tileid2 then
@@ -850,8 +850,8 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 			local tex_id 
 
 			if type(tileid)=="table" then
-				tileid  = tileid[1]
 				tileid2 = tileid[2]
+				tileid  = tileid[1]
 				if tileid then
 					tex_id = tileset_id_to_tex[tileid] end
 				if tileid2 then
@@ -1568,7 +1568,7 @@ function Map.getIdenticalSquareTilesCount(map, x,z)
 	local tile_id = map.tile_map[z][x]
 	local tile_shape = map.tile_shape[z][x]
 
-	if map.tile_set[tile_id].tile_texture == nil then
+	if map.tile_set[tile_id] == nil then
 		return 1,1 end
 	if tile_shape ~= 0 then
 		return 1,1 end

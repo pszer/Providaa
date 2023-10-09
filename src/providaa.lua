@@ -18,7 +18,7 @@ require "assetloader"
 
 local camcontrol = require "cameracontrollers"
 
-local testmap = require "maps.test"
+local testmap = require "maps.test2"
 
 Prov = {
 	grid = {},

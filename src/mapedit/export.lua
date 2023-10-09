@@ -31,12 +31,23 @@ local function MapEditExport(props, name, settings)
 	local height_map = props.mapedit_tile_heights
 	local tile_map = {}
 	local wall_map = {}
+	local overlay_map = {}
+
+	local tile_tex_offset = props.mapedit_tile_tex_offsets
+	local tile_tex_scale = props.mapedit_tile_tex_scales
+	local wall_tex_offset = props.mapedit_wall_tex_offsets
+	local wall_tex_scale = props.mapedit_wall_tex_scales
+	local overlay_tile_offset = props.mapedit_overlay_tex_offsets
+	local overlay_tile_scale = props.mapedit_overlay_tex_scales
+
+	local tile_shapes = props.mapedit_tile_shapes
 
 	local anim_tex = props.mapedit_anim_tex
 
 	for z=1,h do
 		tile_map[z] = {}
 		wall_map[z] = {}
+		overlay_map[z] = {}
 		for x=1,w do
 			wall_map[z][x] = {nil,nil,nil,nil}
 		end
@@ -113,6 +124,7 @@ local function MapEditExport(props, name, settings)
 	-- fill out tile_map and wall_map
 	local tile_texs = props.mapedit_tile_textures
 	local wall_texs = props.mapedit_wall_textures
+	local o_texs = props.mapedit_overlay_textures
 	for z=1,h do
 		for x=1,w do
 			local t_tex = tile_texs[z][x]
@@ -136,6 +148,32 @@ local function MapEditExport(props, name, settings)
 			else
 				tile_map[z][x] = {1,1}
 				Log(string.format("MapExport: tile (%d,%d) untextured.",x,z))
+			end
+
+			local o_tex = o_texs[z][x]
+			if o_tex then
+				if type(o_tex) ~= "table" then
+					local id = tex_to_tile_set[t_tex]
+					overlay_map[z][x] = id
+					if not id then
+						overlay_map[z][x] = nil
+						Log(string.format("MapExport: tile overlay (%d,%d) uses texture outside of texture list. Defaulting to nil",x,z))
+					end
+				else
+					local id1 = o_tex[1] and tex_to_tile_set[o_tex[1]]
+					local id2 = o_tex[2] and tex_to_tile_set[o_tex[2]]
+					overlay_map[z][x] = {id1,id2}
+					if o_tex[1] and not id1 then
+						overlay_map[z][x][1]=nil
+						Log(string.format("MapExport: tile overlay (%d,%d)[1] uses texture outside of texture list. Defaulting to nil",x,z))
+					end
+					if o_tex[2] and not id2 then
+						overlay_map[z][x][2]=nil
+						Log(string.format("MapExport: tile overlay (%d,%d)[2] uses texture outside of texture list. Defaulting to nil",x,z))
+					end
+				end
+			else
+				overlay_map[z][x] = nil
 			end
 
 			local w_tex = wall_texs[z][x]
@@ -177,11 +215,20 @@ local function MapEditExport(props, name, settings)
 		wall_set = wall_set,
 		anim_tex = anim_tex,
 		height_map = height_map,
+		tile_shape = tile_shapes,
 		tile_map = tile_map,
 		wall_map = wall_map,
+		overlay_tile_map = overlay_map,
 		models = models,
 		groups = groups,
-		skybox = skybox
+		skybox = skybox,
+
+		tile_tex_offset     = tile_tex_offset,
+		tile_tex_scale      = tile_tex_scale,
+		wall_tex_offset     = wall_tex_offset,
+		wall_tex_scale      = wall_tex_scale,
+		overlay_tile_offset = overlay_tile_offset,
+		overlay_tile_scale  = overlay_tile_scale 
 	}
 
 	local result = "return "..serializeTable(MAP, nil, not newlines)
