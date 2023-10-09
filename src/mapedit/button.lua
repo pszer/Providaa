@@ -24,7 +24,7 @@ local MapEditGUIButton = {
 MapEditGUIButton.__index = MapEditGUIButton
 
 function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y,toggle,start_held)
-	assert((str or icon) and action)
+	assert((str or icon))
 
 	local this = {
 		x=x,
@@ -44,9 +44,16 @@ function MapEditGUIButton:new(str,icon,x,y,action,align_x,align_y,toggle,start_h
 	}
 
 	if toggle then
-		local toggleable_action = function(self,win)
-			self.held = true
-			return action(self,win)
+		local toggleable_action = nil
+		if action then
+			toggleable_action = function(self,win)
+				self.held = true
+				return action(self,win)
+			end
+		else
+			toggleable_action = function(self,win)
+				self.held = not self.held
+			end
 		end
 		this.action = toggleable_action
 	end

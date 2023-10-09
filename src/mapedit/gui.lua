@@ -18,6 +18,7 @@ local lang         = require 'mapedit.guilang'
 local maptransform = require "mapedit.transform"
 
 local transobj     = require "transobj"
+local utf8         = require "utf8"
 
 require "inputhandler"
 require "input"
@@ -177,31 +178,18 @@ function MapEditGUI:define(mapedit)
 	local function make_scale_win(objs)
 		local header = guitextbox:new(lang["Scale selection."],0,0,155,"left")
 
-		local local_button,global_button=nil,nil
-		local mode = "local"
-		local_button = guibutton:new(lang["Locally"],nil,0,0,
-			function(self,win)
-				mode="local"
-				global_button.held=false
-			end,"left","top",true,true)
-		global_button = guibutton:new(lang["Globally"],nil,0,0,
-			function(self,win)
-				mode="global"
-				local_button.held=false
-			end,"left","top",true,false)
-
 		local X_text = guitextbox:new("~b~(lred)X:",0,0,165,nil,nil,nil,true)
 		local Y_text = guitextbox:new("~b~(lgreen)Y:",0,0,165,nil,nil,nil,true)
 		local Z_text = guitextbox:new("~b~(lblue)Z:",0,0,165,nil,nil,nil,true)
 
 		local validator = function(t)
-			local V = guitextinput.float_validator(t)
+			local V = guitextinput.rational_validator(t)
 			if not V then return nil end
 			if V == 0.0 then return nil end
 			return V
 		end
 		local format_func = function(str)
-			local S = guitextinput.float_format_func(str)
+			local S = guitextinput.rational_format_func(str)
 			if tonumber(S)==0.0 then
 				return "~(red)"..S
 			end
@@ -316,11 +304,334 @@ function MapEditGUI:define(mapedit)
 	--
 	-- rotation window
 	--
+	
+	--
+	-- tile texture edit window
+	--
+	local texedit_win_layout = guilayout:define(
+		{id="region",
+		 split_type=nil},
+		{"region", region_pixoffset_f(10,10)},-- header
+		{"region", region_pixoffset_f(5,35)}, -- X-off
+		{"region", region_pixoffset_f(5,60)}, -- Y-off
+		{"region", region_pixoffset_f(27,30)}, -- X-off textbox
+		{"region", region_pixoffset_f(27,55)}, -- Y-off textbox
+		{"region", region_pixoffset_f(95,35)}, -- X-scale
+		{"region", region_pixoffset_f(95,60)}, -- Y-scale
+		{"region", region_pixoffset_f(110,30)}, -- X-scale textbox
+		{"region", region_pixoffset_f(110,55)}, -- Y-scale textbox
+		{"region", region_pixoffset_f(10,85) }, -- Texture preview
+		{"region", region_pixoffset_f(120,140)}, -- Lock scale toggle
+		{"region", region_pixoffset_f(120,165)}, -- Lock offset toggle
+		{"region", region_pixoffset_f(120,90)},-- Flip X button
+		{"region", region_pixoffset_f(120,115)},-- Flip Y button
+		{"region", region_pixoffset_f(10,193)},-- Global Scale toggle
+		{"region", region_pixoffset_f(10,193+25)},-- Commit button
+		{"region", region_pixoffset_f(80,193+25)}  -- Cancel button
+	)
+	local texedit_win = guiwindow:define({
+		win_min_w=230,
+		win_max_w=230,
+		win_min_h=245,
+		win_max_h=245,
+		win_focus=false,
+	}, texedit_win_layout)
+	local function make_texedit_win(objs)
+		local tile_exists,wall_exists = false,false
+		for i,v in ipairs(objs) do
+			local o_type=v[1]
+			if o_type=="tile" then
+				tile_exists=true
+				if wall_exists then
+					MapEditGUI:displayPopup(lang["Can't texture edit tiles and walls at the same time"])
+					return nil
+				end
+			elseif o_type=="wall" then
+				wall_exists=true
+				if tile_exists then
+					MapEditGUI:displayPopup(lang["Can't texture edit tiles and walls at the same time"])
+					return nil
+				end
+			end
+		end
+
+		if not (tile_exists or wall_exists) then return nil end
+
+		local keep_offset_button,keep_scale_button=nil,nil
+		keep_offset_button = guibutton:new(lang["Keep offset"],nil,0,0,
+			nil,"left","top",true,false)
+		keep_scale_button = guibutton:new(lang["Keep scale"],nil,0,0,
+			nil,"left","top",true,false)
+		local global_scale_button=nil
+		global_scale_button = guibutton:new(lang["Enable global scaling."], nil,0,0,
+			nil, "left","top",true,true)
+
+		local header
+		if tile_exists then
+			header = guitextbox:new(lang["Edit tile texture attributes."],0,0,290,"left")
+		else
+			header = guitextbox:new(lang["Edit wall texture attributes."],0,0,155,"left")
+		end
+
+		-- extends rational number validator/formatter to
+		-- not allow 0.0 for scale factors
+		local nonzero_validator = function(t)
+			local V = guitextinput.rational_validator(t)
+			if not V then return nil end
+			if V == 0.0 then return nil end
+			return V
+		end
+		local nonzero_format_func = function(str)
+			local S = guitextinput.rational_format_func(str)
+			if tonumber(S)==0.0 then
+				return "~(red)"..S
+			end
+			return S
+		end
+
+		local Xoff_text = guitextbox:new("~b~(lred)Δx",0,0,165,nil,nil,nil,true)
+		local Yoff_text = guitextbox:new("~b~(lgreen)Δy",0,0,165,nil,nil,nil,true)
+		local Xscale_text = guitextbox:new("~b~(lred)Cx",0,0,165,nil,nil,nil,true)
+		local Yscale_text = guitextbox:new("~b~(lgreen)Cy",0,0,165,nil,nil,nil,true)
+		local Xoff_input = guitextinput:new("0",0,0,60,20,guitextinput.rational_validator,guitextinput.rational_format_func,"left","top")
+		local Yoff_input = guitextinput:new("0",0,0,60,20,guitextinput.rational_validator,guitextinput.rational_format_func,"left","top")
+		local Xscale_input = guitextinput:new("1/1",0,0,60,20,nonzero_validator, nonzero_format_func,"left","top")
+		local Yscale_input = guitextinput:new("1/1",0,0,60,20,nonzero_validator, nonzero_format_func,"left","top")
+
+		-- find the most common texture in selection
+		local tex_occurs = {}
+		local max_occur_tex = nil
+		local max_occur_c = -1/0
+		local start_offset = nil
+		local start_scale  = nil
+		local start_offset_unique = true
+		local start_scale_unique = true
+		for i,v in ipairs(objs) do
+			local tex = mapedit:getObjectTexture(v)
+			if tex then
+				local count = tex_occurs[tex]
+				if count then
+					tex_occurs[tex]=count+1
+				else
+					tex_occurs[tex]=1
+				end
+
+				if tex_occurs[tex] > max_occur_c then
+					max_occur_tex = tex
+					max_occur_c = tex_occurs[tex]
+				end
+			end
+
+			if start_offset_unique or start_scale_unique then
+				local off,scale = mapedit:getTexOffset(v),mapedit:getTexScale(v)
+				if not start_offset then
+					start_offset = off
+					start_scale  = scale
+				else
+					local function mod1(x) return x%1 end
+					local off_eq = mod1(off[1])==mod1(start_offset[1]) and mod1(off[2])==mod1(start_offset[2])
+					local scale_eq = scale[1]==start_scale[1] and scale[2]==start_scale[2]
+
+					if not off_eq then start_offset_unique=false end
+					if not scale_eq then start_scale_unique=false end
+				end
+			end
+		end
+		if not max_occur_tex then return end
+		
+		local tex_i = mapedit.props.mapedit_texture_list[max_occur_tex]
+		if not tex_i then return end
+		local tex = mapedit.props.mapedit_texture_list[tex_i]
+		if not tex then return end
+		tex = tex[2]
+		if not tex then return end
+
+		local last_ok_offset = (start_offset_unique and {unpack(start_offset)}) or {0,0}
+		local last_ok_scale  = (start_scale_unique and {unpack(start_scale)}) or {1,1}
+
+		if start_offset_unique then
+			Xoff_input:setText(tostring(start_offset[1]))
+			Yoff_input:setText(tostring(start_offset[2]))
+		end
+		if start_scale_unique then
+			Xscale_input:setText("1/"..tostring(1/start_scale[1]))
+			Yscale_input:setText("1/"..tostring(1/start_scale[2]))
+		end
+
+		local dummy_tex = love.graphics.newCanvas(1,1,{format="r8"})
+		dummy_tex:setFilter("linear","linear")
+		local tex_preview = guiimage:new(tex,0,0,100,100,function()end,"left","top")
+		local shader = mapedit.tex_preview_shader
+		shader:send("tex",tex)
+		tex_preview.draw = function(self)
+			local offset = last_ok_offset
+			local scale  = last_ok_scale
+			local keep_offset = keep_offset_button.held
+			local keep_scale  = keep_scale_button.held
+			if not keep_offset then
+				local Xoff_s= Xoff_input:get()
+				local Yoff_s= Yoff_input:get()
+				if Xoff_s and Yoff_s then
+					last_ok_offset[1],last_ok_offset[2]=Xoff_s,Yoff_s
+				end
+			else
+				last_ok_offset[1],last_ok_offset[2]=start_offset[1],start_offset[2]
+			end
+			if not keep_scale then
+				local Xscale_s= Xscale_input:get()
+				local Yscale_s= Yscale_input:get()
+				if Xscale_s and Yscale_s then
+					last_ok_scale[1],last_ok_scale[2]=Xscale_s,Yscale_s
+				end
+			else
+				last_ok_scale[1],last_ok_scale[2]=start_scale[1],start_scale[2]
+			end
+
+			shader:send("texture_offset", last_ok_offset)
+			shader:send("texture_scale", last_ok_scale)
+			local x,y,w,h = self.x,self.y,self.w,self.h
+			love.graphics.setShader(shader)
+			love.graphics.draw(dummy_tex,x,y,0,w,h)
+			love.graphics.setShader()
+		end
+
+		local flipx_button,flipy_button=nil,nil
+		flipx_button = guibutton:new(lang["Flip ~(lred)~bX"],nil,0,0,
+			function(self,win)
+				local ScaleX = last_ok_scale[1]
+				ScaleX = -ScaleX
+				last_ok_scale[1] = ScaleX
+				local str = Xscale_input.text.string
+				if not Xscale_input:get() then
+					Xscale_input:setText(tostring(ScaleX))
+					return
+				end
+				local offset = utf8.offset(str,2)
+				local first_c = string.sub(str,1,offset-1)
+				local rem = string.sub(str,offset,-1)
+				if first_c == "-" then
+					str = "+"..rem
+				elseif first_c == "+" then
+					str = "-"..rem
+				else
+					str = "-"..str
+				end
+				Xscale_input.text:set(str)
+			end,"left","top")
+		flipy_button = guibutton:new(lang["Flip ~(lgreen)~bY"],nil,0,0,
+			function(self,win)
+				local ScaleY = last_ok_scale[2]
+				ScaleY = -ScaleY
+				last_ok_scale[2] = ScaleY
+				local str = Yscale_input.text.string
+				if not Yscale_input:get() then
+					Yscale_input:setText(tostring(ScaleY))
+					return
+				end
+				local offset = utf8.offset(str,2)
+				local first_c = string.sub(str,1,offset-1)
+				local rem = string.sub(str,offset,-1)
+				if first_c == "-" then
+					str = "+"..rem
+				elseif first_c == "+" then
+					str = "-"..rem
+				else
+					str = "-"..str
+				end
+				Yscale_input.text:set(str)
+			end,"left","top")
+
+		local commit_button = guibutton:new(lang["~bCommit"],nil,0,0,
+			function(self,win)
+				local Xoff_status = Xoff_input:get()
+				local Yoff_status = Yoff_input:get()
+				local Xscale_status = Xscale_input:get()
+				local Yscale_status = Yscale_input:get()
+
+				if not Xoff_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lred)Δx") return end
+				if not Yoff_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lgreen)Δy") return end
+				if not Xscale_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lred)Cx") return end
+				if not Yscale_status then MapEditGUI:displayPopup(lang["~(red)%s~(red) is malformed."],2.75,"~b~(lgreen)Cy") return end
+
+				local keep_offset = keep_offset_button.held
+				local keep_scale  = keep_scale_button.held
+				local global_scaling = global_scale_button.held
+				if keep_offset and keep_scale then win:delete() return end
+
+				local offsets={}
+				local scales={}
+
+				if not keep_offset then
+					local sx,sy
+					if not keep_scale then
+						sx = Xscale_status
+						sy = Yscale_status
+					else
+						sx = start_scale[1]
+						sy = start_scale[2]
+					end
+					for i,v in ipairs(objs) do
+						if global_scaling then
+							local currx,curry = unpack(mapedit:getTexOffset(v))
+							local x,y = v[2].x + currx,v[2].z + curry
+							if v[1]=="wall" then y=curry end
+							x = (x / sx) % 1
+							y = (y / sy) % 1
+							offsets[i] = {Xoff_status+x, Yoff_status+y}
+						else
+							offsets[i] = {Xoff_status, Yoff_status}
+						end
+					end
+				end
+				if not keep_scale then
+					for i,v in ipairs(objs) do
+						if global_scaling then
+							local currx,curry = unpack(mapedit:getTexScale(v))
+							scales[i] = {Xscale_status*currx, Yscale_status*curry}
+						else
+							scales[i] = {Xscale_status, Yscale_status}
+						end
+					end
+				end
+
+				mapedit:commitCommand("change_texture_attributes", {
+					objects=objs,
+					offsets=offsets,
+					scales=scales,
+				})
+				win:delete()
+			end,"left","top")
+		local close_button = guibutton:new(lang["~bClose."],nil,0,0, function(self,win) win:delete() end,"left","top")
+
+		local win = texedit_win:new({},
+		{
+			header,
+
+			Xoff_text,Yoff_text,
+			Xoff_input,Yoff_input,
+			Xscale_text,Yscale_text,
+			Xscale_input,Yscale_input,
+
+			tex_preview,
+
+			keep_scale_button, keep_offset_button,
+			flipx_button,flipy_button,
+			global_scale_button,
+
+			commit_button,close_button
+		},
+		0,0,100,130)
+		print("swagdem")
+		return win
+	end
+	--
+	-- tile texture edit window
+	--
 
 	context["select_models_context"] = 
 		contextmenu:define(
 		{
-		 {"select_objects", "table", nil, PropDefaultTable{ProvMapEdit.active_selection}},
+		 {"select_objects", "table", nil, PropDefaultTable(ProvMapEdit.active_selection)},
 		 {"group_info", "table", nil, PropDefaultTable{create_enable=false,
 		                                               merge_groups_enable=false,
 		                                               add_to_group_enable=false,
@@ -547,6 +858,52 @@ function MapEditGUI:define(mapedit)
 		  disable = true},
 
 		 {lang["~bReset"],disable = true, icon = nil},
+
+		 {lang["~(lgray)--Actions--"]},
+		 {lang["Place model"], suboptions = function(props)
+		 	local at_sel, at_origin = mapedit:getPlaceModelFunctions()
+		 	return {
+				{lang["... at ~(lpink)selection~r."], action=at_sel    , disable=not at_sel   },
+				{lang["... at world origin."]       , action=at_origin , disable=not at_origin},
+			} end}
+		 end)
+
+	context["select_mesh_context"] = 
+		contextmenu:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable(ProvMapEdit.active_selection)},
+		}
+		,
+		function(props) return
+		 {lang["~bCopy"],
+		  action=function(props)
+		    mapedit:copySelectionToClipboard() end,
+			disable = true,
+		  icon = "mapedit/icon_copy.png"},
+
+		 {lang["Paste"],
+		  action=function(props)
+		    mapedit:pasteClipboard() end,
+			disable = not mapedit:canPaste(),
+		  icon = "mapedit/icon_dup.png"},
+
+		 {lang["Undo"],
+		  action=function(props)
+		    mapedit:commitUndo() end,
+			disable = not mapedit:canUndo(),
+		  icon = nil},
+
+		 {lang["Redo"],
+		  action=function(props)
+		    mapedit:commitRedo() end,
+			disable = not mapedit:canRedo(),
+		  icon = nil},
+
+		 {lang["Texture Edit"],
+		  action = function(props)
+		 		return make_texedit_win(props.select_objects)
+				end,
+			icon=nil},
 
 		 {lang["~(lgray)--Actions--"]},
 		 {lang["Place model"], suboptions = function(props)

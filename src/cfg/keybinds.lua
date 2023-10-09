@@ -70,6 +70,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["edit_cycle_tool"] = { "tab"      ,  nil   , default = "tab" },
 	["edit_edit_tool"]  = { "1"        ,  nil   , default = "1" },
 	["edit_paint_tool"] = { "2"        ,  nil   , default = "2" },
+	["edit_overlay_toggle"] = { "o"        ,  nil   , default = "o" },
 
 	["transform_move"]   = { "g"      , nil , default = "g" },
 	["transform_rotate"] = { "r"      , nil , default = "r" },

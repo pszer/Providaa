@@ -7,6 +7,7 @@ require "bit"
 require "math"
 
 local lang = require 'mapedit.guilang'
+local utf8 = require("utf8")
 
 local MapEditGUIRender = {
 	font        = nil,
@@ -58,6 +59,25 @@ local MapEditGUIRender = {
 }
 MapEditGUIRender.__index = MapEditGUIRender
 
+function MapEditGUIRender:getFonts(l)
+	local l = l or "eng"
+	local fonts = lang:getFontInfo(l)
+
+	local font = Loader:getTTFReference(fonts.regular.fname)
+	font = love.graphics.newFont(font, fonts.regular.size, fonts.regular.hinting)
+
+	local font_bold = Loader:getTTFReference(fonts.bold.fname)
+	font_bold = love.graphics.newFont(font_bold, fonts.bold.size, fonts.bold.hinting)
+
+	local font_italic = Loader:getTTFReference(fonts.italic.fname)
+	font_italic = love.graphics.newFont(font_italic, fonts.italic.size, fonts.italic.hinting)
+
+	local font_ibold = Loader:getTTFReference(fonts.ibold.fname)
+	font_ibold = love.graphics.newFont(font_ibold, fonts.ibold.size, fonts.ibold.hinting)
+
+	return font, font_bold, font_italic, font_ibold
+end
+
 function MapEditGUIRender:loadFonts(fonts)
 
 	self.font = Loader:getTTFReference(fonts.regular.fname)
@@ -79,25 +99,6 @@ function MapEditGUIRender:loadFonts(fonts)
 end
 
 function MapEditGUIRender:initAssets()
-	-- get the font filedata from Loader
-	--[[self.font = Loader:getTTFReference(self.__font_fname)
-	-- convert to a love2d font object
-	self.font = love.graphics.newFont(self.font, 12, "normal")
-	assert(self.font)
-
-	self.font_bold = Loader:getTTFReference(self.__font_bold_fname)
-	self.font_bold = love.graphics.newFont(self.font_bold, 12, "normal")
-	assert(self.font_bold)
-
-	self.font_italic = Loader:getTTFReference(self.__font_italic_fname)
-	self.font_italic = love.graphics.newFont(self.font_italic, 12, "normal")
-	assert(self.font_italic)
-
-	self.font_ibold = Loader:getTTFReference(self.__font_ibold_fname)
-	self.font_ibold = love.graphics.newFont(self.font_ibold, 12, "normal")
-	assert(self.font_ibold)--]]
-	print(lang)
-	print(lang.getFontInfo)
 	self:loadFonts(lang:getFontInfo())
 
 	self.__cxtm_bb = Loader:getTextureReference("mapedit/cxtm_bb.png")
@@ -450,13 +451,16 @@ function MapEditGUIRender:createDynamicTextObject(init_string, width, format_fun
 			self:set(text)
 		end,
 		insert = function(self,text,i)
-			local str_len = #self.string
+			local str_len = utf8.len(self.string)
 			if i>str_len then self:concat(text) return end
 			local result = self.string
 			if i<=1 then
 				result = text..result
 			else
-				result = string.sub(self.string,1,i-1)..text..string.sub(self.string,i,-1)
+				local offset = utf8.offset(self.string,i-1)
+				if i==0 then offset = 0 end
+				local offset2 = utf8.offset(self.string,i)
+				result = string.sub(self.string,1,offset)..text..string.sub(self.string,offset2,-1)
 			end
 			self:set(result)
 		end,
@@ -467,14 +471,21 @@ function MapEditGUIRender:createDynamicTextObject(init_string, width, format_fun
 			if self.string == "" then return end
 			local str
 			if not index then
-				str = string.sub(self.string,1,-2)
+				local offset = utf8.offset(self.string,-1)
+				str = string.sub(self.string,1,offset-1)
 			else
-				str = string.sub(self.string,1,index-1)..string.sub(self.string,index+1,-1)
+				local offset1 = math.max(utf8.offset(self.string,math.max(index,1))-1,0)
+				local offset2 = utf8.offset(self.string,index+1)
+				str = string.sub(self.string,1,offset1)..string.sub(self.string,offset2,-1)
 			end
 			self:set(str)
 		end,
+		strlen = function(self)
+			return utf8.len(self.string)
+		end,
 		getcharpos = function(self, pos)
-			self.dummytext:set(string.sub(self.string,1,pos-1))
+			local offset = utf8.offset(self.string,pos)
+			self.dummytext:set(string.sub(self.string,1,offset-1))
 			return self.dummytext:getWidth()
 		end,
 		draw = function(self,x,y,r,sx,sy)

@@ -34,6 +34,7 @@ Renderer = {
 	scene_dt_exposure_buffer = nil,
 
 	bloom_renderer = nil,
+	bloom_strength = 0.08,
 
 	viewport_w = 1000,
 	viewport_h = 1000,
@@ -42,7 +43,7 @@ Renderer = {
 	hdr_exposure = 0.15,
 	hdr_exposure_min = 0.05,
 	hdr_exposure_max = 2.0,
-	hdr_exposure_nudge = 0.80,
+	hdr_exposure_nudge = 0.65,
 	hdr_exposure_adjust_speed = 2.5,
 
 	light_depthmap_pool = {},
@@ -170,28 +171,6 @@ function Renderer.setupSkyboxModel()
 	Renderer.skybox_model:setVertexMap(indices)
 end
 
---[[local pixelcode = [[
-#pragma language glsl3
-		//uniform int layer;
-		//uniform sampler2D texx;
-    vec4 effect( vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords )
-    {
-        vec4 texcolor = Texel(tex, texture_coords);
-        //vec4 texcolor = vec4(textureLod(texx, texture_coords, layer-1).xyz,1.0);
-        return texcolor ;;
-    }
-]]
-
---[[local vertexcode = [[
-#pragma language glsl3
-    vec4 position( mat4 transform_projection, vec4 vertex_position )
-    {
-        return transform_projection * vertex_position;
-    }
-]]--[[
-
-local testshader = love.graphics.newShader(pixelcode, vertexcode)--]]
-
 function Renderer.renderScaled(canvas, hdr)
 	local canvas = canvas or Renderer.scene_viewport
 	local hdr = hdr or {}
@@ -232,6 +211,7 @@ function Renderer.renderScaled(canvas, hdr)
 		Renderer.stepGradualExposure( love.timer.getDelta() , Renderer.hdr_exposure_adjust_speed )
 		prof.pop("step_exp")--]]
 		--Renderer.renderLuminance( Renderer.scene_viewport , Renderer.scene_avglum_buffer )
+		
 		Renderer.stepGradualExposure( love.timer.getDelta() , Renderer.hdr_exposure_adjust_speed )
 		prof.pop("exposure_adjust")
 
@@ -241,6 +221,7 @@ function Renderer.renderScaled(canvas, hdr)
 		Renderer.hdr_shader:send("exposure_max", exposure_max)
 		Renderer.hdr_shader:send("exposure_nudge", exposure_nudge)
 		Renderer.hdr_shader:send("bloom_blur", bbuf)
+		Renderer.hdr_shader:send("bloom_strength", Renderer.bloom_strength)
 		Renderer.hdr_shader:send("bloom_layer", blayer-1)
 		Renderer.hdr_shader:send("bloom_viewport", bviewport)
 		Renderer.hdr_shader:send("gradual_luminance", Renderer.scene_dt_exposure_buffer)
@@ -537,6 +518,15 @@ end
 function Renderer.clearDepthBuffer()
 	love.graphics.setCanvas{depthstencil = Renderer.scene_depthbuffer}
 	love.graphics.clear(0,0,0,0)
+end
+
+function Renderer.enableDepthBias(shader,bias)
+	shader:send("u_depth_bias",bias)
+	shader:send("u_depth_bias_enable",true)
+end
+function Renderer.disableDepthBias(shader,bias)
+	shader:send("u_depth_bias",bias)
+	shader:send("u_depth_bias_enable",false)
 end
 
 function Renderer.drawFPS()

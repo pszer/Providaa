@@ -127,7 +127,7 @@ local MapEditGUILanguageStrings = {
 		jp="拡大縮小す",
 	},
 	["Scale selection."]={
-		pl="Zmien rozmiaj selekcji.",
+		pl="Zmien rozmiar.",
 		jp="選択を拡大縮小する。"
 	},
 	["~bReset"]={
@@ -263,6 +263,35 @@ local MapEditGUILanguageStrings = {
 		jp="選択を動かす。"
 	},
 
+	["Edit wall texture attributes."]={
+		pl="Zmien atrybuty tekstury.",
+		jp="テクスチャのプロパティを改める",
+	},
+	["Edit tile texture attributes."]={
+		pl="Zmien atrybuty tekstury.",
+		jp="テクスチャのプロパティを改める",
+	},
+	["Keep offset"]={
+		pl="Zostaw offset",
+		jp="位置を温存",
+	},
+	["Keep scale"]={
+		pl="Zostaw rozmiar",
+		jp="規模を温存",
+	},
+	["Flip ~(lred)~bX"]={
+		pl="Odbij ~(lred)~bX",
+		jp="~(lred)~bX~rで反転",
+	},
+	["Flip ~(lgreen)~bY"]={
+		pl="Odbij ~(lgreen)~bY",
+		jp="~(lgreen)~bY~rで反転",
+	},
+	["Enable global scaling."]={
+		pl="Włącz globalny skalowanie",
+		jp="大域的の拡大縮小",
+	},
+
 	["~(red)%s~(red) is malformed."]={
 		pl="~(red)%s~(red) jest błędny.",
 		jp="~(red)%s~(red)の入力は無効です。"
@@ -294,8 +323,8 @@ function MapEditGUILanguage:setLanguage(lang)
 	self.__curr_lang = lang
 end
 
-function MapEditGUILanguage:getFontInfo()
-	local curr_lang = MapEditGUILanguage.__curr_lang
+function MapEditGUILanguage:getFontInfo(lang)
+	local curr_lang = lang or MapEditGUILanguage.__curr_lang
 	return __lang_fonts[curr_lang]
 end
 

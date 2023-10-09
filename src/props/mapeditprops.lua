@@ -37,6 +37,7 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_skybox_img", nil, nil, nil, "skybox img to use in the viewport"},
 
 	{"mapedit_enable_tex_anim", "boolean", true, nil, "whether or not to play animated texture animations"},
+	{"mapedit_overlay_edit", "boolean", false, nil, "overlay edit mode flag"},
 
 	{"mapedit_map_width" , "number", 0, nil, "active map width"},
 	{"mapedit_map_height", "number", 0, nil, "active map height"},
@@ -45,11 +46,14 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_tile_shapes" , "table", nil, PropDefaultTable{}, "map_width x map_height table of tile shapes" },
 	{"mapedit_tile_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each tile"},
 	{"mapedit_wall_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each wall"},
+	{"mapedit_overlay_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each tile"},
 
 	{"mapedit_tile_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of two vec2s."},
 	{"mapedit_tile_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture scales, each entry is nil,a vec2, or a table of two vec2s."},
 	{"mapedit_wall_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of five vec2s."},
 	{"mapedit_wall_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture scales, each entry is nil,a vec2, or a table of five vec2s."},
+	{"mapedit_overlay_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile overlay offsets, each entry is nil,a vec2, or a table of two vec2s."},
+	{"mapedit_overlay_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile overlay scales, each entry is nil,a vec2, or a table of two vec2s."},
 
 	{"mapedit_anim_tex", "table", nil, PropDefaultTable{}, "active map animated texture definitions"},
 

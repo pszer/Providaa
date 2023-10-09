@@ -25,6 +25,7 @@ ProvMapEdit = {
 	props = nil,
 
 	map_edit_shader = nil,
+	tex_preview_shader = nil,
 
 	viewport_input = nil,
 	transform_input = nil,
@@ -86,6 +87,8 @@ function ProvMapEdit:load(args)
 	SET_ACTIVE_KEYBINDS(MAPEDIT_KEY_SETTINGS)
 	if not self.map_edit_shader then
 		self.map_edit_shader = love.graphics.newShader("shader/mapedit.glsl") end
+	if not self.tex_preview_shader then
+		self.tex_preview_shader = love.graphics.newShader("shader/texpreview.glsl") end
 	
 	local lvledit_arg = args["lvledit"]
 	assert(lvledit_arg and lvledit_arg[1], "ProvMapEdit:load(): no level specified in lvledit launch argument")
@@ -179,7 +182,7 @@ function ProvMapEdit:loadMap(map_name)
 
 	local map_mesh = Map.generateMapMesh( map_file ,
 		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true,
-		  gen_newvert_buffer = true, keep_textures=true} )
+		  gen_newvert_buffer = true, keep_textures=true, gen_whole_overlay=true} )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -443,18 +446,23 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 	clone(props.mapedit_wall_tex_offsets, map_file.wall_tex_offset)
 	clone(props.mapedit_tile_tex_scales, map_file.tile_tex_scale)
 	clone(props.mapedit_wall_tex_scales, map_file.wall_tex_scale)
+	clone(props.mapedit_overlay_tex_offsets, map_file.overlay_tile_offset)
+	clone(props.mapedit_overlay_tex_scales, map_file.overlay_tile_scale)
 
 	-- get the texture names for each of the tile and walls
 	local t_tex = props.mapedit_tile_textures
 	local w_tex = props.mapedit_wall_textures
+	local o_tex = props.mapedit_overlay_textures
 	for z=1,map_file.height do
 		t_tex[z] = {}
 		w_tex[z] = {}
+		o_tex[z] = {}
 		for x=1,map_file.width do
 			w_tex[z][x] = {}
 
 			local tile_id = map_file.tile_map[z][x]
 			local wall_id = map_file.wall_map[z][x]
+			local over_id = map_file.overlay_tile_map[z][x]
 
 			if tile_id then
 				if type(tile_id)=="table" then
@@ -464,6 +472,17 @@ function ProvMapEdit:copyPropsFromMap(map_file)
 				else
 					local tex = map_file.tile_set[tile_id]
 					t_tex[z][x] = {tex,tex}
+				end
+			end
+
+			if over_id then
+				if type(over_id)=="table" then
+					local tex1 = map_file.tile_set[over_id[1]]
+					local tex2 = map_file.tile_set[over_id[2]]
+					o_tex[z][x] = {tex1,tex2}
+				else
+					local tex = map_file.tile_set[over_id]
+					o_tex[z][x] = {tex,tex}
 				end
 			end
 
@@ -501,6 +520,7 @@ function ProvMapEdit:allocateObjects()
 			self.wall_objs[z][x]={}
 			for i=1,6 do
 				self.tilevertex_objs[z][x][i]=self:getTileVertexObject(x,z,i)
+				self.tilevertex_objs[z][x][i].__overlay=self:getTileVertexObject(x,z,i,true)
 			end
 			for i=1,5 do
 				self.wall_objs[z][x][i]=self:getWallObject(x,z,i)
@@ -921,6 +941,39 @@ function ProvMapEdit:defineCommands()
 		end -- undo command function
 	)
 
+	coms["change_texture_attributes"] = commands:define(
+		{
+			{"objects","table",nil,nil},
+			{"offsets","table",nil,nil},
+			{"scales","table",nil,nil},
+			{"offset_memory" ,"table",nil,PropDefaultTable{}},
+			{"scale_memory" ,"table",nil,PropDefaultTable{}},
+		},
+		function(props) -- command function
+			for i,v in ipairs(props.objects) do
+				if not props.offset_memory[i] then
+					local offset, scale = ProvMapEdit:getTexOffset(v),
+					                      ProvMapEdit:getTexScale(v)
+					props.offset_memory[i] = {offset[1],offset[2]}
+					props.scale_memory[i] = {scale[1] ,scale[2]}
+				end
+			end
+
+			for i,v in ipairs(props.objects) do
+				local off,scale = props.offsets[i], props.scales[i]
+				if off then self:setTexOffset(v,off) end
+				if scale then self:setTexScale(v,scale) end
+			end
+		end, -- command function
+		function(props) -- undo command function
+			for i,v in ipairs(props.objects) do
+				local off,scale = props.offset_memory[i], props.scale_memory[i]
+				if off then self:setTexOffset(v,off) end
+				if scale then self:setTexScale(v,scale) end
+			end
+		end -- undo command function
+	)
+
 end
 
 function ProvMapEdit:commitCommand(command_name, props)
@@ -1064,7 +1117,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input = InputHandler:new(CONTROL_LOCK.MAPEDIT_VIEW,
 	                    {"cam_forward","cam_backward","cam_left","cam_right","cam_down","cam_up",
 										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
-										   "cam_zoom_in","cam_zoom_out","edit_cycle_tool", "edit_edit_tool", "edit_paint_tool",
+										   "cam_zoom_in","cam_zoom_out","edit_cycle_tool", "edit_edit_tool", "edit_paint_tool", "edit_overlay_toggle",
 										   {"super",CONTROL_LOCK.META},{"toggle_anim_tex",CONTROL_LOCK.META},{"ctrl",CONTROL_LOCK.META},{"alt",CONTROL_LOCK.META},
 
 										   "transform_move","transform_rotate","transform_scale"})
@@ -1268,6 +1321,10 @@ function ProvMapEdit:setupInputHandling()
 	local viewport_cycle_tool = Hook:new(function () self:cycleTool() end)
 	local viewport_edit_tool  = Hook:new(function () self:cycleTool("edit") end)
 	local viewport_paint_tool = Hook:new(function () self:cycleTool("paint") end)
+	local viewport_overlay_toggle = Hook:new(function ()
+		self.props.mapedit_overlay_edit = not self.props.mapedit_overlay_edit	
+	end)
+
 
 	self.viewport_input:getEvent("edit_undo","down"):addHook(viewport_undo)
 	self.viewport_input:getEvent("edit_redo","down"):addHook(viewport_redo)
@@ -1281,6 +1338,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("edit_cycle_tool", "down"):addHook(viewport_cycle_tool)
 	self.viewport_input:getEvent("edit_edit_tool", "down"):addHook(viewport_edit_tool)
 	self.viewport_input:getEvent("edit_paint_tool", "down"):addHook(viewport_paint_tool)
+	self.viewport_input:getEvent("edit_overlay_toggle", "down"):addHook(viewport_overlay_toggle)
 
 	-- 
 	-- VIEWPORT MODE ----> TRANSFORM MODE INPUTS
@@ -2151,6 +2209,8 @@ function ProvMapEdit:getSelectionContextMenu()
 
 		--gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
 		return "select_models_context", {select_objects=self.active_selection, group_info=group_flags}
+	elseif not model and (tile or wall) then
+		return "select_mesh_context", {select_objects=self.active_selection}
 	else
 		return "select_undef_context", {}
 	end
@@ -2301,6 +2361,60 @@ function ProvMapEdit:getTileVertexTexScale(x,z,vert_i)
 end
 function ProvMapEdit:getWallTexScale(x,z,side)
 	return __getWallTexScale(self.props.mapedit_wall_tex_scales,x,z,side)
+end
+
+function ProvMapEdit:getTexOffset(obj)
+	local o_type = obj[1]
+	if o_type=="tile" then
+		local t = obj[2]
+		return self:getTileVertexTexOffset(t.x,t.z,t.vert_i)
+	elseif o_type=="wall" then
+		local w = obj[2]
+		return self:getWallTexOffset(w.x,w.z,w.side)
+	else
+		error("ProvMapEdit:getTexOffset(): unexpected object")
+	end
+end
+
+function ProvMapEdit:getTexScale(obj)
+	local o_type = obj[1]
+	if o_type=="tile" then
+		local t = obj[2]
+		return self:getTileVertexTexScale(t.x,t.z,t.vert_i)
+	elseif o_type=="wall" then
+		local w = obj[2]
+		return self:getWallTexScale(w.x,w.z,w.side)
+	else
+		error("ProvMapEdit:getTexScale(): unexpected object")
+	end
+end
+
+function ProvMapEdit:setTexOffset(obj, offset)
+	if not offset then return end
+	local o_type = obj[1]
+	if o_type=="tile" then
+		local t = obj[2]
+		self:setTileVertexTexOffset(t.x,t.z,t.vert_i, offset[1], offset[2])
+	elseif o_type=="wall" then
+		local w = obj[2]
+		self:setWallTexOffset(w.x,w.z,w.side, offset[1], offset[2])
+	else
+		error("ProvMapEdit:setTexOffset(): unexpected object")
+	end
+end
+
+function ProvMapEdit:setTexScale(obj, scale)
+	if not scale then return end
+	local o_type = obj[1]
+	if o_type=="tile" then
+		local t = obj[2]
+		self:setTileVertexTexScale(t.x,t.z,t.vert_i, scale[1], scale[2])
+	elseif o_type=="wall" then
+		local w = obj[2]
+		self:setWallTexScale(w.x,w.z,w.side, scale[1], scale[2])
+	else
+		error("ProvMapEdit:setTexScale(): unexpected object")
+	end
 end
 
 local __temphtable = {0,0,0,0}
@@ -2468,27 +2582,6 @@ function ProvMapEdit:getObjectTexture(obj)
 		return nil
 	end
 end
-
---[[function ProvMapEdit:setTileTexture(x,z,tex_name)
-	local curr_texture = self.props.mapedit_tile_textures[z][x]
-	if curr_texture == tex_name then return true end
-
-	local loaded_textures = self.props.mapedit_texture_list
-	local tex_id = loaded_textures[tex_name]
-	assert(tex_id)
-	tex_id = tex_id - 1 -- shift to 0-index for GLSL
-
-	local index = self:getTilesIndexInMesh( x,z )
-	if not index then return nil end
-
-	local mesh = self.props.mapedit_map_mesh.mesh_atts
-	mesh:setVertexAttribute(index+0, 3, tex_id)
-	mesh:setVertexAttribute(index+1, 3, tex_id)
-	mesh:setVertexAttribute(index+2, 3, tex_id)
-	mesh:setVertexAttribute(index+3, 3, tex_id)
-	self.props.mapedit_tile_textures[z][x] = tex_name
-	return true
-end--]]
 
 function ProvMapEdit:setObjectTexture(obj, tex)
 	local o_type = obj[1]
@@ -2712,9 +2805,9 @@ function ProvMapEdit:setTileVertexTexOffset(x,z,vert_i, new_x,new_y)
 	end
 	local tile_index = self:getTilesIndexInMesh(x,z)
 	start_i,end_i = start_i+tile_index,end_i+tile_index
-	local mesh = self.props.mapedit_map_mesh.mesh
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	for i=start_i,end_i do
-		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+		mesh:setVertexAttribute(i, 2, new_x,new_y)
 	end
 end
 function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y)
@@ -2759,57 +2852,56 @@ function ProvMapEdit:setTileVertexTexScale(x,z,vert_i, new_x,new_y)
 	end
 	local tile_index = self:getTilesIndexInMesh(x,z)
 	start_i,end_i = start_i+tile_index,end_i+tile_index
-	local mesh = self.props.mapedit_map_mesh.mesh
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	for i=start_i,end_i do
-		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+		mesh:setVertexAttribute(i, 1, new_x,new_y)
 	end
 end
 
-function ProvMapEdit:setWallTexOffset(x,z,vert_i, new_x,new_y)
+function ProvMapEdit:setWallTexOffset(x,z,side, new_x,new_y)
 	local curr = self:getWallTexOffset(x,z,vert_i)
 	local new_x = new_x or curr[1]
 	local new_y = new_y or curr[2]
-	local tile_shape = self:getTileShape(x,z)
 
-	local offsets = self.props.mapedit_tile_tex_offsets
-	local start_i,end_i = 0,5
-	if tile_shape>0 then
-		if not offsets[z][x] then
-			offsets[z][x]={nil,nil}
-		end
-		if vert_i>=4 then
-			start_i,end_i=3,5
-			local o_type = type(offsets[z][x][1])
-			if o_type=="table" then
-				offsets[z][x][2] = {new_x,new_y}
-			elseif o_type==nil then
-				offsets[z][x][1] = {1,1}
-				offsets[z][x][2] = {new_x,new_y}
-			else
-				offsets[z][x] = {{1,1},{new_x,new_y}}
-			end
-		else
-			start_i,end_i=0,2
-			local o_type = type(offsets[z][x][2])
-			if o_type=="table" then
-				offsets[z][x][1] = {new_x,new_y}
-			elseif o_type==nil then
-				offsets[z][x][2] = {1,1}
-				offsets[z][x][1] = {new_x,new_y}
-			else
-				offsets[z][x] = {{new_x,new_y},{1,1}}
-			end
-		end
+	local offsets = self.props.mapedit_wall_tex_offsets
+	local off = offsets[z][x][side]
+	if not off then
+		offsets[z][x][side] = {new_x,new_y}
 	else
-		offsets[z][x] = {{new_x,new_y},{new_x,new_y}}
+		off[1] = new_x
+		off[2] = new_y
 	end
-	local tile_index = self:getTilesIndexInMesh(x,z)
-	start_i,end_i = start_i+tile_index,end_i+tile_index
-	local mesh = self.props.mapedit_map_mesh.mesh
+
+	local start_i, end_i = self:getWallsIndexInMesh(x,z,side)
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
 	for i=start_i,end_i do
-		mesh:setVertexAttribute(i, 2, {new_x,new_y})
+		mesh:setVertexAttribute(i, 2, new_x,new_y)
 	end
 end
+
+function ProvMapEdit:setWallTexScale(x,z,side, new_x,new_y)
+	local curr = self:getWallTexOffset(x,z,vert_i)
+	local new_x = new_x or curr[1]
+	local new_y = new_y or curr[2]
+	if new_x==0.0 then new_x = 0.01 end 
+	if new_y==0.0 then new_y = 0.01 end 
+
+	local scales = self.props.mapedit_wall_tex_scales
+	local scale = scales[z][x][side]
+	if not scale then
+		scales[z][x][side] = {new_x,new_y}
+	else
+		scale[1] = new_x
+		scale[2] = new_y
+	end
+
+	local start_i, end_i = self:getWallsIndexInMesh(x,z,side)
+	local mesh = self.props.mapedit_map_mesh.mesh_atts
+	for i=start_i,end_i do
+		mesh:setVertexAttribute(i, 1, new_x,new_y)
+	end
+end
+
 
 function ProvMapEdit:__getScaleByDist()
 	local w = love.graphics.getDimensions()
@@ -3136,7 +3228,11 @@ local __tileobj_mt = {
 }
 __tileobj_mt.__index = __tileobj_mt
 -- each tile has 4 vertices, i specifies which vertex going from 1 to 4
-function ProvMapEdit:getTileVertexObject(x,z,i)
+function ProvMapEdit:getTileVertexObject(x,z,i,overlay)
+	if overlay then
+		local obj = self.tilevertex_objs[z][x][i]
+		if obj and obj.__overlay then return obj.__overlay end
+	end
 	local obj = self.tilevertex_objs[z][x][i]
 	if obj then return obj end
 
@@ -3150,6 +3246,7 @@ function ProvMapEdit:getTileVertexObject(x,z,i)
 		x=x,
 		z=z,
 		vert_i=i,
+		overlay=overlay
 	}
 	setmetatable(tile, __tileobj_mt)
 
@@ -3837,10 +3934,14 @@ function ProvMapEdit:drawViewport()
 		self:invokeDrawMesh()
 		love.graphics.setMeshCullMode("front")
 		-- draw visible faces fully opaque
-		love.graphics.setDepthMode( "less", true  )
+		love.graphics.setDepthMode( "lequal", true  )
 		love.graphics.setColor(1,1,1,1)
 		love.graphics.draw(map_mesh.mesh)
 
+		-- draw overlay
+		map_mesh:attachOverlayAttributes()
+		love.graphics.draw(map_mesh.mesh)
+		map_mesh:attachAttributes()
 
 		love.graphics.setWireframe( true )
 		shadersend(shader,"u_wireframe_enabled", true)

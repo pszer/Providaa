@@ -3,8 +3,10 @@
 --
 
 local guirender = require 'mapedit.guidraw'
+local utf8 = require("utf8")
 
-local MapEditGUITextInput = {
+local MapEditGUITextInput
+MapEditGUITextInput = {
 	__type = "mapedittextinput",
 	__maketextinputhook = nil,
 	__deltextinputhook  = nil,
@@ -33,15 +35,15 @@ local MapEditGUITextInput = {
 	end,
 	int_format_func = function(str)
 		local result = nil
-		local d = string.sub(str,2,-1)
-		local s = string.sub(str,1,1)
+		local d = string.sub(str,utf8.offset(str,2) or 1,-1)
+		local s = string.sub(str,1,(utf8.offset(str,2) or 1)-1)
 		if not string.match(s,"[-+%d]") then
 			result = string.format("~(red)%s~r",s)
 		else
 			result = s or ""
 		end
 		local red = false
-		for char in string.gmatch(d,".") do
+		for char in string.gmatch(d,utf8.charpattern) do
 			if not string.match(char,"%d") then
 				if not red then
 					result = result .. "~(red)" .. char
@@ -64,8 +66,8 @@ local MapEditGUITextInput = {
 	end,
 	float_format_func = function(str)
 		local result = nil
-		local d = string.sub(str,2,-1)
-		local s = string.sub(str,1,1)
+		local d = string.sub(str,utf8.offset(str,2) or 1,-1)
+		local s = string.sub(str,1,(utf8.offset(str,2) or 1)-1)
 		if not string.match(s,"[-+%d]") then
 			result = string.format("~(red)%s~r",s)
 		else
@@ -73,7 +75,7 @@ local MapEditGUITextInput = {
 		end
 		local red = false
 		local point_count=0
-		for char in string.gmatch(d,".") do
+		for char in string.gmatch(d,utf8.charpattern) do
 			if not string.match(char,"[%d%.]") then
 				if not red then
 					result = result .. "~(red)"
@@ -93,6 +95,81 @@ local MapEditGUITextInput = {
 				result = result .. char
 			end
 		end
+		return result
+	end,
+
+	rational_validator = function(str)
+		local div_pos = nil
+		for p,c in utf8.codes(str) do
+			local char=utf8.char(c)
+			if char=="/" then
+				div_pos=p
+				break
+			end
+		end
+
+		if not div_pos then
+			local extract = string.match(str,"^[-+]?%d+%.?%d-$")
+			if not extract then return nil end
+			local num = tonumber(extract)
+			return num
+		end
+
+		local str_len = utf8.len(str)
+		local a,b = string.sub(str,1,div_pos-1),
+		            string.sub(str,div_pos+1,-1)
+		if not a or a=="" then return nil end
+
+		local extract_a = string.match(a,"^[-+]?%d+%.?%d-$")
+		if not extract_a then return nil end
+
+		local num, denom = tonumber(extract_a), nil
+		if not num then return nil end
+
+		local extract_b = string.match(b,"^[-+]?%d+%.?%d-$")
+		if not extract_b then
+			if b=="" then denom=1.0
+			         else return nil end
+		else
+			denom = tonumber(extract_b)
+			if not denom then return nil end
+			if denom==0.0 or denom==-0.0 then return nil end
+		end
+		return num/denom
+	end,
+	rational_format_func = function(str)
+		local div_pos = nil
+		for p,c in utf8.codes(str) do
+			local char=utf8.char(c)
+			if char=="/" then
+				div_pos=p
+				break
+			end
+		end
+
+		if not div_pos then
+			return MapEditGUITextInput.float_format_func(str)
+		end
+
+		local result = ""
+
+		local a,b = string.sub(str,1,div_pos-1),
+		            string.sub(str,div_pos+1,-1)
+		if not (not a or a=="") then
+			result = MapEditGUITextInput.float_format_func(a)
+		end
+		result = result .. "~r/"
+		if not (not b or b=="") then
+			local B = tonumber(b)
+			if B and B==0.0 then
+				result = result .. "~(red)" .. b
+			else
+				result = result .. MapEditGUITextInput.float_format_func(b)
+			end
+		else
+			result = result .. "~(lblue)1.0"
+		end
+
 		return result
 	end,
 
@@ -179,7 +256,7 @@ function MapEditGUITextInput:new(init_str,x,y,w,h,validator,format_func,align_x,
 	function this:shiftCursor(dir)
 		local dir = dir
 		if dir then
-			local str_len = #self.text.string
+			local str_len = self.text:strlen()
 			self.cursor_pos = self.cursor_pos + dir
 			if self.cursor_pos < 1 then self.cursor_pos = 1 end
 			if self.cursor_pos > str_len+1 then self.cursor_pos = str_len+1 end
@@ -201,9 +278,14 @@ function MapEditGUITextInput:new(init_str,x,y,w,h,validator,format_func,align_x,
 			self:shiftCursor( 1/0)
 		else
 			self.text:insert(t, self.cursor_pos)
-			local chars = #t
+			local chars = utf8.len(t)
 			self:shiftCursor(chars)
 		end
+	end
+
+	function this:setText(t)
+		self.text:set(t)
+		self:shiftCursor(0)
 	end
 
 	--self.__maketextinputhook(self,this.textinput)

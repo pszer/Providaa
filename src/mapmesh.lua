@@ -36,6 +36,7 @@ function MapMesh:new(args)
 
 		mesh = nil,
 		mesh_atts = nil,
+		overlay_atts = nil,
 		tex  = nil,
 
 		uvs = nil,
@@ -159,4 +160,21 @@ function MapMesh:pushAtlas(shader, push_img)
 	if push_img then
 		shadersend(shader,"u_tileatlas_uv", unpack(self.uvs_buffer))
 	end
+end
+
+function MapMesh:attachAttributes()
+	self.mesh:detachAttribute("TextureScale")
+	self.mesh:detachAttribute("TextureOffset")
+	self.mesh:detachAttribute("TextureUvIndex")
+	self.mesh:attachAttribute("TextureScale",self.mesh_atts)
+	self.mesh:attachAttribute("TextureOffset",self.mesh_atts)
+	self.mesh:attachAttribute("TextureUvIndex",self.mesh_atts)
+end
+function MapMesh:attachOverlayAttributes()
+	self.mesh:detachAttribute("TextureScale")
+	self.mesh:detachAttribute("TextureOffset")
+	self.mesh:detachAttribute("TextureUvIndex")
+	self.mesh:attachAttribute("TextureScale",self.overlay_atts)
+	self.mesh:attachAttribute("TextureOffset",self.overlay_atts)
+	self.mesh:attachAttribute("TextureUvIndex",self.overlay_atts)
 end

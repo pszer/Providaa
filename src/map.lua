@@ -673,7 +673,6 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 
 	local tile_in_simple_set = {}
 	-- generated simplified floor tile vertices for the shadow mapping mesh
-	I = 1
 	while I <= map.width * map.height do
 		local x = (I-1) % map.width + 1
 		--local z = map.height - int((I-1) / map.width)
@@ -745,6 +744,75 @@ function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map
 	return simple_vert_count, simple_index_count
 end
 
+function Map.internalGenerateOverlayBuffered(map, verts, tileset_id_to_tex, tile_vert_map)
+	local w,h = map.width,map.height
+
+	local attrs = {}
+	local vert_count = #verts
+	for i=1,vert_count do
+		attrs[i] = {1,1,0,0,-1}
+	end
+	local o_mesh = love.graphics.newMesh(MapMesh.atts_atypes, attrs, "triangles", "dynamic")
+
+	local int = math.floor
+	local I = 1
+
+	while I <= map.width * map.height do
+		local x = (I-1) % map.width + 1
+		local z = map.height - int((I-1) / map.width)
+
+		local index_start,index_end = tile_vert_map[z][x],nil
+		index_end = index_start+6
+
+		local tile_shape = map.tile_shape[z][x]
+		local tileid = map.overlay_tile_map[z][x]
+		local tileid2, tex_id2
+		local tex_id 
+
+		if type(tileid)=="table" then
+			tileid  = tileid[1]
+			tileid2 = tileid[2]
+			if tileid then
+				tex_id = tileset_id_to_tex[tileid] end
+			if tileid2 then
+				tileid2 = tileset_id_to_tex[tileid2] end
+		else
+			if tileid then
+				tex_id = tileset_id_to_tex[tileid] end
+			tex_id2 = tex_id
+		end
+
+		if tex_id then tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
+		else tex_norm_id = (-1) end
+		if tex_id2 then tex_norm_id2 = (tex_id2-1) -- this will be the index sent to the shader
+		else tex_norm_id2 = (-1) end
+
+		local toff1 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,1)
+		local toff2 = __getTileVertexTexOffset(map.overlay_tile_offset,x,z,4)
+		local tscale1 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,1)
+		local tscale2 = __getTileVertexTexScale(map.overlay_tile_scale,x,z,4)
+
+		local attr  =  { tscale1[1], tscale1[2], toff1[1], toff1[2], tex_norm_id }
+		local attr2 =  { tscale2[1], tscale2[2], toff2[1], toff2[2], tex_norm_id2 }
+		if tile_shape==0 then
+			for i=0,3 do
+				o_mesh:setVertex(index_start+i,attr)
+			end
+		else
+			for i=0,2 do
+				o_mesh:setVertex(index_start+i,attr)
+			end
+			for i=3,5 do
+				o_mesh:setVertex(index_start+i,attr2)
+			end
+		end
+
+		I=I+1
+	end
+
+	return o_mesh
+end
+
 -- generates and returns a MapMesh object from a given map and optional parameters
 --
 -- dont_optimise      = true : dont optimise tile mesh by merging identical consecutive tiles
@@ -774,6 +842,8 @@ function Map.generateMapMesh( map , params )
 	local gen_newvert_buffer = params.gen_newvert_buffer
 
 	local keep_textures = params.keep_textures
+	local gen_overlay   = not params.dont_gen_overlay
+	local gen_whole_overlay = params.gen_whole_overlay
 
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_verts enabled, but no gen_nil_texture supplied. give either a filename/texture")
@@ -894,6 +964,15 @@ function Map.generateMapMesh( map , params )
 													 textures)
 	end
 
+	local o_mesh = nil
+	if gen_overlay then
+		if gen_whole_overlay then
+			o_mesh = Map.internalGenerateOverlayBuffered(map, verts, tileset_id_to_tex, tile_vert_map)
+		else
+			--error("unimplemented")
+		end
+	end
+
 	local mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
 	mesh:setVertexMap(index_map)
 	mesh:setTexture(atlas)
@@ -926,6 +1005,7 @@ function Map.generateMapMesh( map , params )
 		tile_vert_map=tile_vert_map,
 		wall_vert_map=wall_vert_map,
 		wall_exists=wall_exists,
+		overlay_atts=o_mesh,
 
 		textures=textures,
 		texture_names=tex_names}

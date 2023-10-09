@@ -189,8 +189,8 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 		vec2 t_scale = texscale;
 		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
 
-		uv_coords.x = mod(uv_coords.x/t_scale.x + t_off.x, 1.0);
-		uv_coords.y = mod(uv_coords.y/t_scale.y + t_off.y, 1.0);
+		uv_coords.x = mod(uv_coords.x/t_scale.x - t_off.x, 1.0);
+		uv_coords.y = mod(uv_coords.y/t_scale.y - t_off.y, 1.0);
 		
 		return vec2(
 			uv_info.x + uv_info.z * uv_coords.x,
@@ -227,6 +227,11 @@ void effect( ) {
 		float dd = (wireframe_dist - frag_dist) / wireframe_dist;
 		float mul = frag_dist > wireframe_dist ? 0.0 : pow(dd, 1.5);
 		love_Canvases[0] = vec4(col.xyz, col.a * mul);
+		return;
+	}
+
+	if (u_uses_tileatlas && tex_uv_index < 0) {
+		love_Canvases[0] = vec4(0.0);
 		return;
 	}
 
