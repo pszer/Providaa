@@ -20,6 +20,8 @@ local lang        = require 'mapedit.guilang'
 local export_map  = require 'mapedit.export'
 local model_thumb = require 'modelthumbnail'
 
+local mapdecal = require 'mapdecal2'
+
 ProvMapEdit = {
 
 	props = nil,
@@ -107,6 +109,14 @@ function ProvMapEdit:load(args)
 	gui:init(self)
 	self:loadNito()
 
+	self.testdecal = mapdecal:new(
+		Loader:getTextureReference("undef.png"),"undef.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},cpml.quat.unit)
+	self.testdecal:generateVerts(self.props.mapedit_map_mesh.verts,
+	                        self.props.mapedit_map_width,
+	                        self.props.mapedit_map_height,
+	                        self.props.mapedit_map_mesh.tile_vert_map,nil
+													)
+	self.testdecal:generateMesh()
 end
 
 function ProvMapEdit:quit()
@@ -2253,7 +2263,7 @@ function ProvMapEdit:getTilesIndexInMesh( x,z )
 		return nil end
 
 	local vmap = self.props.mapedit_map_mesh.tile_vert_map
-	local index = vmap[z][x]
+	local index = vmap[z][x].first
 	local tile_shape = self.props.mapedit_tile_shapes[z][x]
 	local count = 3
 	if tile_shape > 0 then count = 5 end
@@ -4032,15 +4042,30 @@ function ProvMapEdit:drawViewport()
 		shadersend(shader,"u_wireframe_enabled", false)
 
 		love.graphics.setWireframe( false )
-
 	end
 
+	love.graphics.setDepthMode( "less", true  )
 	self:drawSelectedHighlight()
 	love.graphics.setDepthMode( "less", true  )
 
 	love.graphics.setStencilTest()
 	self:drawModelsInViewport(shader)
 	shadersend(shader,"u_uses_tileatlas", false)
+
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.setDepthMode( "lequal", true  )
+	shadersend(shader,"MainTex", self.testdecal.texture)
+	shadersend(shader,"u_model", "column", __id)
+	shadersend(shader,"u_normal_model", "column", __id)
+	shadersend(shader,"u_skinning", 0)
+	shadersend(shader,"u_wireframe_enabled", false)
+	shadersend(shader,"u_solid_colour_enable", false)
+	shadersend(shader,"u_draw_as_contour", false)
+	shadersend(shader,"u_wireframe_enabled", false)
+	shadersend(shader,"u_global_coord_uv_enable", false)
+	shadersend(shader,"u_highlight_pass", false)
+	love.graphics.setBlendMode("alpha")
+	love.graphics.draw(self.testdecal.mesh)
 
 	self:drawGroupBounds(shader)
 end

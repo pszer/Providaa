@@ -346,7 +346,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			else tex_norm_id2 = (nil_texture_id - 1) end
 
 			if tile_vert_map then
-				tile_vert_map[z][x] = vert_count+1
+				tile_vert_map[z][x] = {vert_count+1,first=vert_count+1}
 			end
 
 			local vert_additions = 4
@@ -367,6 +367,10 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			end
 			vert_count  = vert_count  + vert_additions
 			index_count = index_count + 6
+			if tile_vert_map then
+				tile_vert_map[z][x].last = vert_count
+				tile_vert_map[z][x].indices = {unpack(indices)}
+			end
 
 			local toff1 = Map.getTileVertexTexOffset(map,x,z,1)
 			local toff2 = Map.getTileVertexTexOffset(map,x,z,4)
@@ -763,7 +767,7 @@ function Map.internalGenerateOverlayBuffered(map, verts, tileset_id_to_tex, tile
 		local x = (I-1) % map.width + 1
 		local z = map.height - int((I-1) / map.width)
 
-		local index_start,index_end = tile_vert_map[z][x],nil
+		local index_start,index_end = tile_vert_map[z][x].first,nil
 		index_end = index_start+6
 
 		local tile_shape = map.tile_shape[z][x]
@@ -836,7 +840,7 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 		local tile_shape = map.tile_shape[z][x]
 		local tileid = map.overlay_tile_map[z][x]
 
-		local index_start,index_end = tile_vert_map[z][x],nil
+		local index_start,index_end = tile_vert_map[z][x].first,nil
 
 		if index_start then
 
@@ -878,7 +882,7 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 				local indices = Map.getTileShapeIndices(tile_shape)
 
 				if tile_shape==0 then
-					local start_i = tile_vert_map[z][x]
+					local start_i = tile_vert_map[z][x].first
 
 					for i=0, 3 do
 						local vert = mesh_verts[start_i+i]
@@ -893,7 +897,7 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 					attr_count=attr_count+4
 					index_count=index_count+i_count
 				else
-					local start_i = tile_vert_map[z][x]
+					local start_i = tile_vert_map[z][x].first
 					if tex_id then
 						for i=0,2 do
 							local vert = mesh_verts[start_i+i]
@@ -1138,6 +1142,10 @@ function Map.generateMapMesh( map , params )
 		tex_names = nil
 	end
 
+	if not gen_index_map then
+		verts = nil
+	end
+
 	return MapMesh:new{
 		mesh=mesh,
 		mesh_atts=attr_mesh,
@@ -1150,9 +1158,10 @@ function Map.generateMapMesh( map , params )
 		wall_exists=wall_exists,
 		overlay_atts=o_mesh,
 		overlay_mesh=o_full_mesh,
+		verts = verts,
 
 		textures=textures,
-		texture_names=tex_names}
+		texture_names=tex_names,}
 
 end
 

@@ -83,3 +83,11 @@ function atan3( a , b )
 	end
 	return angle
 end
+
+function normTheta(theta)
+	local norm_theta = theta % (2*math.pi)
+	if theta < 0 then
+		norm_theta = 2*math.pi - norm_theta
+	end
+	return norm_theta
+end

@@ -255,6 +255,7 @@ void effect( ) {
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	love_Canvases[0] = pix * VaryingColor;
+	//love_Canvases[0] = pix * VaryingColor*0.000001 + vec4(coords,1,1);
 }
 
 #endif

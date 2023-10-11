@@ -18,6 +18,10 @@ MapMesh = {__type="mapmesh",
 		{"TextureUvIndex",  "float", 1}
 	},
 
+	decal_atts_atypes = {
+		{"TextureUvIndex",  "float", 1}
+	},
+
 	simple_atypes = {
 	  {"VertexPosition", "float", 3}
 	},
@@ -52,8 +56,9 @@ function MapMesh:new(args)
 		tile_vert_map = nil,
 		wall_vert_map = nil,
 
-		wall_exists = nil
+		wall_exists = nil,
 
+		verts = nil,
 	}
 
 	for i,v in pairs(args) do

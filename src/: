@@ -1,0 +1,49 @@
+local MapDecal = {}
+MapDecal.__index = MapDecal
+
+-- texture = love2d texture file
+-- texture_name = texture filename
+-- base = {"tile",tile_obj} or {"wall",wall_obj}
+-- pos = {x,y}, with x in [0,1] and y in [0,1] (or {-inf,inf} in case of a wall base)
+-- size = {Cx,Cy}, in TILE_SIZE units
+-- rot  = angle in radians, rotation around middle
+function MapDecal:new(texture,texture_name,base,pos,size,rot)
+	local this = {
+		texture=texture,
+		texture_name=texture_name,
+		root = base,
+
+		pos = {0,0},
+		size = size or {1, 1 * texture:getHeight() / texture:getWidth()},
+		rot = rot or 0.0,
+
+		verts = {},
+	}
+
+	setmetatable(this, MapDecal)
+	return this
+end
+
+function MapDecal:generateVerts(mesh, vert_index_map, wall_index_map)
+	local root_type = self.root[1]
+	assert(root_type == "tile" or root_type == "wall")
+	if root_type=="tile" then
+		self:generateTileVerts(mesh, vert_index_map)	
+	else
+	
+	end
+end
+
+function MapDecal:generateTileVerts(mesh, vert_index_map)
+	local px,py = this.pos [1], this.pos [2]
+	local Sx,Sy = this.size[1], this.size[2]
+	px,py = px*TILE_SIZE, py*TILE_SIZE
+
+	local theta = self.rot
+	local sinT = math.sin(theta)
+	local cosT = math.cos(theta)
+
+	local v1,v2,v3,v4={px,py},{px,py},{px,py},{px,py}
+	v1[1] = px - (Sx*cosT * Sx*sinT)
+
+end
