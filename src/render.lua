@@ -524,8 +524,8 @@ function Renderer.enableDepthBias(shader,bias)
 	shader:send("u_depth_bias",bias)
 	shader:send("u_depth_bias_enable",true)
 end
-function Renderer.disableDepthBias(shader,bias)
-	shader:send("u_depth_bias",bias)
+function Renderer.disableDepthBias(shader)
+	--shader:send("u_depth_bias",bias)
 	shader:send("u_depth_bias_enable",false)
 end
 

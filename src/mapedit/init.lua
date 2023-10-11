@@ -109,8 +109,11 @@ function ProvMapEdit:load(args)
 	gui:init(self)
 	self:loadNito()
 
+	local quat = cpml.quat.from_angle_axis(math.pi/4.0,0,-1,0)
+	quat = quat * cpml.quat.from_angle_axis(math.pi/2.0,1,0,0)
+
 	self.testdecal = mapdecal:new(
-		Loader:getTextureReference("undef.png"),"undef.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},cpml.quat.unit)
+		Loader:getTextureReference("uv.png"),"uv.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},quat)
 	self.testdecal:generateVerts(self.props.mapedit_map_mesh.verts,
 	                        self.props.mapedit_map_width,
 	                        self.props.mapedit_map_height,
@@ -1128,6 +1131,7 @@ function ProvMapEdit:setupInputHandling()
 										   "cam_rotate","cam_reset","cam_centre","edit_select","edit_deselect","edit_undo","edit_redo",
 										   "cam_zoom_in","cam_zoom_out","edit_cycle_tool", "edit_edit_tool", "edit_paint_tool", "edit_overlay_toggle",
 										   {"super",CONTROL_LOCK.META},{"toggle_anim_tex",CONTROL_LOCK.META},{"ctrl",CONTROL_LOCK.META},{"alt",CONTROL_LOCK.META},
+											 {"cycle_vision",CONTROL_LOCK.META},
 
 										   "transform_move","transform_rotate","transform_scale"})
 
@@ -1322,6 +1326,16 @@ function ProvMapEdit:setupInputHandling()
 
 	local toggle_anim_tex = Hook:new(function ()
 		self.props.mapedit_enable_tex_anim = not self.props.mapedit_enable_tex_anim end)
+	local cycle_vision = Hook:new(function ()
+		local cycle = {
+			"default","normal","uv",}
+		local i=1
+		while i<=#cycle do
+			if cycle[i]==self.props.mapedit_vision then break end
+			i=i+1
+		end
+		i=((i+1)%#cycle)+1
+		self.props.mapedit_vision=cycle[i] end)
 
 	local __cycle = {
 		["edit"]  = "paint",
@@ -1344,6 +1358,7 @@ function ProvMapEdit:setupInputHandling()
 	self.viewport_input:getEvent("alt", "down"):addHook(enable_alt_hook)
 	self.viewport_input:getEvent("alt", "up"):addHook(disable_alt_hook)
 	self.viewport_input:getEvent("toggle_anim_tex", "up"):addHook(toggle_anim_tex)
+	self.viewport_input:getEvent("cycle_vision", "up"):addHook(cycle_vision)
 	self.viewport_input:getEvent("edit_cycle_tool", "down"):addHook(viewport_cycle_tool)
 	self.viewport_input:getEvent("edit_edit_tool", "down"):addHook(viewport_edit_tool)
 	self.viewport_input:getEvent("edit_paint_tool", "down"):addHook(viewport_paint_tool)
@@ -4052,9 +4067,10 @@ function ProvMapEdit:drawViewport()
 	self:drawModelsInViewport(shader)
 	shadersend(shader,"u_uses_tileatlas", false)
 
+	love.graphics.setShader(shader)
 	love.graphics.setColor(1,1,1,1)
 	love.graphics.setDepthMode( "lequal", true  )
-	shadersend(shader,"MainTex", self.testdecal.texture)
+	Renderer.enableDepthBias(shader,0.01)
 	shadersend(shader,"u_model", "column", __id)
 	shadersend(shader,"u_normal_model", "column", __id)
 	shadersend(shader,"u_skinning", 0)
@@ -4064,8 +4080,9 @@ function ProvMapEdit:drawViewport()
 	shadersend(shader,"u_wireframe_enabled", false)
 	shadersend(shader,"u_global_coord_uv_enable", false)
 	shadersend(shader,"u_highlight_pass", false)
-	love.graphics.setBlendMode("alpha")
+	love.graphics.setBlendMode("alpha","alphamultiply")
 	love.graphics.draw(self.testdecal.mesh)
+	Renderer.disableDepthBias(shader)
 
 	self:drawGroupBounds(shader)
 end
@@ -4437,6 +4454,11 @@ end
 
 
 function ProvMapEdit:draw()
+	if self.props.mapedit_vision == "uv" then self.map_edit_shader:send("u_uv_vision", true)
+	                                     else self.map_edit_shader:send("u_uv_vision", false) end
+	if self.props.mapedit_vision == "normal" then self.map_edit_shader:send("u_normal_vision", true)
+	                                         else self.map_edit_shader:send("u_normal_vision", false) end
+
 	self:drawViewport()
 	Renderer.renderScaledDefault()
 

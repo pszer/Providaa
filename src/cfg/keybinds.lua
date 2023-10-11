@@ -62,6 +62,7 @@ MAPEDIT_KEY_SETTINGS = {
 	["ctrl"]            = { "lctrl"  , nil    , default = "lctrl"},
 	["alt"]             = { "lalt"   , nil    , default = "lalt"},
 	["toggle_anim_tex"] = { "f3"     , nil    , default = "f3"},
+	["cycle_vision"]    = { "f9"     , nil    , default = "f9"},
 
 	["edit_select"]     = { "mouse1"   ,  nil   , default = "mouse1" },
 	["edit_deselect"]   = { "mouse2"   ,  "q"   , default = "mouse2" },

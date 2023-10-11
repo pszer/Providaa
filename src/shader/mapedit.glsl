@@ -55,6 +55,9 @@ uniform int  u_skinning;
 
 uniform float u_contour_outline_offset;
 
+uniform bool  u_depth_bias_enable;
+uniform float u_depth_bias;
+
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
 		return
@@ -138,7 +141,13 @@ vec4 position(mat4 transform, vec4 vertex) {
 
 	highlight_attr = HighlightAttribute;
 
-	return u_proj * view_v;
+	vec4 result_v = u_proj * view_v;
+	if (u_depth_bias_enable) {
+		result_v.z -= u_depth_bias;
+		return result_v;
+	} else {
+		return result_v;
+	}
 }
 #endif
 
@@ -161,6 +170,9 @@ uniform float u_time;
 
 uniform bool u_draw_as_contour;
 uniform vec4 u_contour_colour;
+
+uniform bool u_uv_vision;
+uniform bool u_normal_vision;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -254,8 +266,15 @@ void effect( ) {
 	vec4 texcolor = Texel(MainTex, coords);
 	vec4 pix = texcolor * vec4(light,1.0);
 
-	love_Canvases[0] = pix * VaryingColor;
-	//love_Canvases[0] = pix * VaryingColor*0.000001 + vec4(coords,1,1);
+	if (u_uv_vision) {
+		love_Canvases[0] = vec4(coords,0,1);
+		return;
+	} else if (u_normal_vision) {
+		love_Canvases[0] = vec4(frag_normal,1);
+		return;
+	}
+	//love_Canvases[0] = pix * VaryingColor;
+	love_Canvases[0] = pix ;
 }
 
 #endif
