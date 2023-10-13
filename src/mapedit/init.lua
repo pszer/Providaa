@@ -8,6 +8,7 @@ require "assetloader"
 require "tile"
 
 local maptransform = require "mapedit.transform"
+
 local shadersend   = require "shadersend"
 local cpml         = require "cpml"
 local transobj     = require "transobj"
@@ -20,7 +21,7 @@ local lang        = require 'mapedit.guilang'
 local export_map  = require 'mapedit.export'
 local model_thumb = require 'modelthumbnail'
 
-local mapdecal = require 'mapdecal2'
+local mapdecal = require 'mapdecal'
 
 ProvMapEdit = {
 
@@ -42,6 +43,9 @@ ProvMapEdit = {
 	wireframe_col = {19/255,66/255,72/255,0.8},
 	selection_col = {255/255,161/255,66/255,1.0},
 	mesh_trans_col = {255/255,224/255,194/255,0.8},
+
+	decal_box_col     = {19/255,66/255,72/255,1.0},
+	decal_box_sel_col = {255/255,161/255,66/255,1.0},
 
 	active_selection = {},
 	highlight_mesh = nil,
@@ -91,6 +95,8 @@ function ProvMapEdit:load(args)
 		self.map_edit_shader = love.graphics.newShader("shader/mapedit.glsl") end
 	if not self.tex_preview_shader then
 		self.tex_preview_shader = love.graphics.newShader("shader/texpreview.glsl") end
+
+	maptransform.positionAtCursor = function(tests) return function(x,y) ProvMapEdit:positionAtCursor(x,y,tests) end end
 	
 	local lvledit_arg = args["lvledit"]
 	assert(lvledit_arg and lvledit_arg[1], "ProvMapEdit:load(): no level specified in lvledit launch argument")
@@ -112,14 +118,17 @@ function ProvMapEdit:load(args)
 	local quat = cpml.quat.from_angle_axis(math.pi/4.0,0,-1,0)
 	quat = quat * cpml.quat.from_angle_axis(math.pi/2.0,1,0,0)
 
-	self.testdecal = mapdecal:new(
-		Loader:getTextureReference("uv.png"),"uv.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},quat)
-	self.testdecal:generateVerts(self.props.mapedit_map_mesh.verts,
+	local testdecal = mapdecal:new(
+		Loader:getTextureReference("uv.png"),"uv.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},math.pi/4,{0,-1,0})
+	testdecal:generateVerts(self.props.mapedit_map_mesh.verts,
 	                        self.props.mapedit_map_width,
 	                        self.props.mapedit_map_height,
 	                        self.props.mapedit_map_mesh.tile_vert_map,nil
 													)
-	self.testdecal:generateMesh()
+	testdecal:generateMesh()
+
+	local d_obj = self:makeDecalObject(testdecal)
+	self:addDecal(d_obj)
 end
 
 function ProvMapEdit:quit()
@@ -275,8 +284,10 @@ function ProvMapEdit:getPlaceModelFunctions()
 	local place_at_selection_func = nil
 	local place_at_origin_func = nil
 
-	local tile_s,wall_s,model_s= self:getObjectTypesInSelection()
-	local place_at_grid_flag = (tile_s or wall_s) and (not model_s)
+	--local tile_s,wall_s,model_s= self:getObjectTypesInSelection()
+	--local exists = self:getObjectTypesInSelection()
+	--local place_at_grid_flag = (exists.tile or exists.wall) and (not exists.model)
+	local place_at_grid_flag = self:objectTypesSelectedLimit{"tile","wall"}
 	
 	if place_at_grid_flag then
 		place_at_selection_func = function ()
@@ -310,6 +321,94 @@ function ProvMapEdit:getPlaceModelFunctions()
 	end
 
 	return place_at_selection_func, place_at_origin_func
+end
+
+function ProvMapEdit:addDecal(decal_obj)
+	assert_type(decal_obj, "decalobj")
+	table.insert(self.props.mapedit_decals, decal_obj)
+end
+function ProvMapEdit:removeDecal(decal_obj)
+	for i,v in ipairs(self.props.mapedit_decals) do
+		if v==decal_obj then
+			table.remove(self.props.mapedit_decals, i)
+			return
+		end
+	end
+end
+
+local __decalobj_mt = {
+	__type = "decalobj",
+	getPosition = function(self)
+		return self.decal.pos end,
+	getDirection = function(self)
+		local n = self.decal.normal
+		local t = {n[1],n[2],n[3],self.decal.rotation}
+		return t end,
+	getRotation = function(self)
+		return self.decal.rotation end,
+	getScale = function(self)
+		return self.decal.size end,
+
+	updateMesh = function(self)
+		self.decal:generateVerts(ProvMapEdit.props.mapedit_map_mesh.verts,
+		                         ProvMapEdit.props.mapedit_map_width,
+		                         ProvMapEdit.props.mapedit_map_height,
+		                         ProvMapEdit.props.mapedit_map_mesh.tile_vert_map,
+														 ProvMapEdit.props.mapedit_map_mesh.wall_vert_map, nil)
+		self.decal:generateMesh()
+		self:updateSelectBox()
+	end,
+	setPosition = function(self, pos)
+		self.decal.pos = pos
+		self:updateMesh()
+		end,
+	setDirection = function(self, dir)
+		self.decal.normal[1] = dir[1]
+		self.decal.normal[2] = dir[2]
+		self.decal.normal[3] = dir[3]
+		self.decal.rotation = dir[4]
+		self:updateMesh()
+		end,
+	setRotation = function(self, rot)
+		print(self.decal.rotation, rot)
+		self.decal.rotation = rot
+		self:updateMesh()
+	end,
+	setScale = function(self, scale)
+		self.decal.size[1] = scale[1]
+		self.decal.size[2] = scale[2]
+		self.decal.size[3] = scale[3]
+		self:updateMesh()
+		end,
+
+	updateSelectBox = function(self)
+		local pos = self:getPosition()
+		self.box_pos[1]=pos[1]-2
+		self.box_pos[2]=pos[2]-2
+		self.box_pos[3]=pos[3]-2
+	end
+}
+__decalobj_mt.__index = __decalobj_mt
+function ProvMapEdit:makeDecalObject(decal)
+	local this = {
+		decal=decal,
+
+		box_pos  = {decal.pos[1]-2,decal.pos[2]-2,decal.pos[3]-2},
+		box_size = {4,4,4},
+		box_col  = self.decal_box_col,
+		box_border_col  = self.decal_box_sel_col,
+	}
+	setmetatable(this,__decalobj_mt)
+	return this
+end
+
+function ProvMapEdit:removeDecal(decal)
+	for i,v in ipairs(self.props.mapedit_decals) do
+		if decal==v then
+			table.remove(self.props.mapedit_decals,i)
+			return
+		end
+	end
 end
 
 function ProvMapEdit:addTexture(tex_name, tex)
@@ -1202,13 +1301,15 @@ function ProvMapEdit:setupInputHandling()
 
 	local __viewport_select_edit_tool = function()
 		local x,y = love.mouse.getPosition()
-		local obj = self:objectAtCursor( x,y , true, true, true)
+		local obj = self:objectAtCursor( x,y , {tile=true,wall=true,model=true,decal=true})
 
 		if not obj then self:deselectSelection() return end
 
 		if not self.super_modifier then
 			self:commitCommand("invertible_select", {select_objects={self:decomposeObject(obj)}})
-			additive_select_obj = obj
+			if obj[1] == "tile" then
+				additive_select_obj = obj
+			end
 			return
 		end
 
@@ -1266,7 +1367,7 @@ function ProvMapEdit:setupInputHandling()
 
 	local __viewport_select_paint_tool = function()
 		local x,y = love.mouse.getPosition()
-		local obj = self:objectAtCursor( x,y , true, true, false)
+		local obj = self:objectAtCursor( x,y , {tile=true,wall=true})
 		if not obj then return end
 
 		local gui_texture_grid = gui.texture_grid
@@ -1483,9 +1584,10 @@ function ProvMapEdit:enterTransformMode(transform_mode)
 
 	if self:selectionEmpty() then return end
 
-	local tile_selected, wall_selected, model_selected = self:getObjectTypesInSelection()
+	--local tile_selected, wall_selected, model_selected = self:getObjectTypesInSelection()
+	local ok = self:objectTypesSelectedLimit{"tile","wall"}
 
-	if transform_mode ~= "translate" and (tile_selected or wall_selected) then
+	if transform_mode ~= "translate" and ok then
 		if transform_mode == "rotate" then
 			gui:displayPopup("Tiles cannot be rotated")
 		else
@@ -1735,8 +1837,14 @@ end
 local __tempregiontests = {}
 -- returns either nil, or {"tile",x,z}, {"wall",x,z,side}, {"model", model_i, ...}
 -- it may return multiple models in case a model group is clicked
-function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
+function ProvMapEdit:objectAtCursor(x, y, tests)
 	local unproject = cpml.mat4.unproject
+
+	local test_tiles  = tests and tests.tile
+	local test_walls  = tests and tests.wall
+	local test_models = tests and tests.model
+	local test_decals = tests and tests.decal
+	local test_all = not tests
 
 	local cam = self.props.mapedit_cam
 	local viewproj = cam:getViewProjMatrix()
@@ -1789,6 +1897,150 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 				mesh_test = {"model", model}
 			end
 			min_dist = dist
+		end
+	end
+
+	local function __test_decal(decal)
+		local p = decal.box_pos
+		local s = decal.box_size
+		local intersect, dist = self:testBoxAgainstRay(ray, p[1],p[2],p[3],s[1],s[2],s[3])
+		if intersect and dist-16 < min_dist then
+			print("mad")
+			mesh_test = {"decal", decal}
+			min_dist = dist
+		end
+	end
+
+	-- perform tests on each 4x4 section of the grid map
+	local grid_size = 3
+	local region_tests = __tempregiontests
+	local g_w,g_h
+	if test_tiles or test_walls or test_all then
+		local ceil = math.ceil
+		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+		g_w,g_h = ceil(w/grid_size), ceil(h/grid_size)
+		for z=1,g_h do
+			for x=1,g_w do
+				local X,Z = (x-1.5)*TILE_SIZE*(grid_size), (z-1.5)*TILE_SIZE*(grid_size)
+				local W   = TILE_SIZE*(grid_size+2.0)
+				local D=W
+				local Y = -5000
+				local H = 10000
+				local intersect = self:testBoxAgainstRay(ray,X,Y,Z,W,H,D)
+				region_tests[x + (z-1)*g_w] = intersect ~= false
+			end
+		end
+	end
+	local function get_region_test_result(X,Z)
+		return region_tests[X + (Z-1)*g_w]
+	end
+
+	local min = math.min
+	if test_tiles or test_all then
+		--for z=1,h do
+		--	for x=1,w do
+		--		__test_tile(x,z)
+		--	end
+		--end
+		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+		for X=1,g_w do
+			for Z=1,g_h do
+				local test_result = get_region_test_result(X,Z)
+				if test_result then
+					for z=(Z-1)*grid_size,min(Z*grid_size,h-1) do
+						for x=(X-1)*grid_size,min(X*grid_size,w-1) do
+							__test_tile(x+1,z+1)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if test_walls or test_all then
+		--for z=1,h do
+		--	for x=1,w do
+		--		__test_wall(x,z)
+		--	end
+		--end
+		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+		for X=1,g_w do
+			for Z=1,g_h do
+				local test_result = get_region_test_result(X,Z)
+				if test_result then
+					for z=(Z-1)*grid_size,min(Z*grid_size,h-1) do
+						for x=(X-1)*grid_size,min(X*grid_size,w-1) do
+							__test_wall(x+1,z+1)
+						end
+					end
+				end
+			end
+		end
+	end
+
+	if test_models or test_all then
+		for i,model in ipairs(self.props.mapedit_model_insts) do
+			__test_model(model)
+		end
+	end
+
+	if test_decals or test_all then
+		for i,d_obj in ipairs(self.props.mapedit_decals) do
+			__test_decal(d_obj)
+		end
+	end
+
+	local result_pos=nil
+	if mesh_test then
+		result_pos = {0,0,0}
+		result_pos[1] = ray.position.x + ray.direction.x * min_dist
+		result_pos[2] = ray.position.y + ray.direction.y * min_dist
+		result_pos[3] = ray.position.z + ray.direction.z * min_dist
+		print("cool!",unpack(result_pos))
+	end
+
+	return mesh_test, result_pos
+end
+
+function ProvMapEdit:positionAtCursor(x, y, tests)
+	local unproject = cpml.mat4.unproject
+
+	local test_tiles = tests.tiles
+	local test_walls = tests.tiles
+	local test_models = tests.tiles
+	local test_decals = tests and tests.decal
+
+	local cam = self.props.mapedit_cam
+	local viewproj = cam:getViewProjMatrix()
+	local vw,vh = love.window.getMode()
+	local viewport_xywh = {0,0,vw,vh}
+
+	local cursor_v = cpml.vec3.new(x,y,1)
+	local cam_pos = cpml.vec3.new(cam:getPosition())
+	local unproject_v = unproject(cursor_v, viewproj, viewport_xywh)
+	--local ray_dir_v = cpml.vec3.new(cam:getDirection())
+	local ray = {position=cam_pos, direction=cpml.vec3.normalize(unproject_v - cam_pos)}
+
+	local min_dist = 1/0
+	-- test against map mesh
+	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+
+	local overlay = self.props.mapedit_overlay_edit
+	local function __test_tile(x,z)
+		local test_type = "face"
+		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, test_type)
+		if intersect and dist < min_dist then
+			min_dist = dist
+		end
+	end
+
+	local function __test_wall(x,z)
+		local intersect, dist
+		for i=1,5 do
+			intersect, dist = self:testWallSideAgainstRay(ray, x,z, i)
+			if intersect and dist < min_dist  then
+				min_dist = dist
+			end
 		end
 	end
 
@@ -1859,13 +2111,12 @@ function ProvMapEdit:objectAtCursor(x, y, test_tiles, test_walls, test_models)
 		end
 	end
 
-	if test_models then
-		for i,model in ipairs(self.props.mapedit_model_insts) do
-			__test_model(model)
-		end
-	end
-
-	return mesh_test
+	if min_dist == 1/0 then return nil end
+	local result_pos={0,0,0}
+	result_pos[1] = ray.position.x + ray.direction.x * mist_dist
+	result_pos[2] = ray.position.y + ray.direction.y * mist_dist
+	result_pos[3] = ray.position.z + ray.direction.z * mist_dist
+	return result_pos
 end
 
 local __tempv1,__tempv2,__tempv3,__tempv4,__tempv5,__tempv6 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
@@ -2058,8 +2309,8 @@ function ProvMapEdit:testBoxAgainstRay(ray, x,y,z, w,h,d)
 	min.x,min.y,min.z = x  , y  , z
 	max.x,max.y,max.z = x+w, y+h, z+d
 
-	local intersect = ray_aabb(ray,aabb)
-	return intersect
+	local intersect,dist = ray_aabb(ray,aabb)
+	return intersect,dist
 end
 
 function ProvMapEdit:testWallSideAgainstRay(ray, x,z,side)
@@ -2166,8 +2417,10 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 	local x = x or love.mouse.getX()
 	local y = y or love.mouse.getY()
 
-	local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
-	local obj = self:objectAtCursor( x,y , tile,wall,model )
+	--local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
+	local types = self:getObjectTypesInSelection(self.active_selection)
+	--local obj = self:objectAtCursor( x,y , {tiles=tile,walls=wall,models=model} )
+	local obj = self:objectAtCursor( x,y , types )
 
 	if not obj then
 		self:commitCommand("deselect_all", {})
@@ -2192,12 +2445,13 @@ function ProvMapEdit:viewportRightClickAction(x,y)
 		end
 	end
 
-	self:openSelectionContextMenu(model,tile,wall)
+	self:openSelectionContextMenu(types)
 end
 
 function ProvMapEdit:getSelectionContextMenu()
-	local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
-	if model and not tile and not wall then
+	local exists = self:getObjectTypesInSelection(self.active_selection)
+	--local tile,wall,model = self:getObjectTypesInSelection(self.active_selection)
+	if self:objectTypesSelectedLimit{"model"} then
 		 	local objs = self.active_selection
 			local groups = {}
 			local function add_to_groups(g) -- ensures unique entries in groups
@@ -2231,7 +2485,7 @@ function ProvMapEdit:getSelectionContextMenu()
 
 		--gui:openContextMenu("select_models_context", {select_objects=self.active_selection, group_info=group_flags})
 		return "select_models_context", {select_objects=self.active_selection, group_info=group_flags}
-	elseif not model and (tile or wall) then
+	elseif self:objectTypesSelectedLimit{"tile","wall"} then
 		return "select_mesh_context", {select_objects=self.active_selection}
 	else
 		return "select_undef_context", {}
@@ -2256,20 +2510,37 @@ end
 function ProvMapEdit:getObjectTypesInSelection(selection)
 	local selection = selection or self.active_selection
 
-	local tile_exists   = false
-	local wall_exists   = false
-	local models_exists = false
+	local exists = {}
+	--local tile_exists   = false
+	--local wall_exists   = false
+	--local models_exists = false
 	for i,v in ipairs(selection) do
-		if     v[1] == "tile"  then tile_exists = true
-		elseif v[1] == "wall"  then wall_exists = true
-		elseif v[1] == "model" then models_exists = true
-		else error()
-		end
+		exists[v[1]] = true
+		--if     v[1] == "tile"  then tile_exists = true
+		--elseif v[1] == "wall"  then wall_exists = true
+		--elseif v[1] == "model" then models_exists = true
+		--end
 
 		-- prematurely break if all types already found
-		if tile_exists and wall_exists and models_exists then break end
+		--if tile_exists and wall_exists and models_exists then break end
 	end
-	return tile_exists, wall_exists, models_exists
+	--return tile_exists, wall_exists, models_exists
+	return exists
+end
+
+function ProvMapEdit:objectTypesSelectedLimit(lim, selection)
+	local l={}
+	for i,v in ipairs(lim) do
+		l[v]=true
+	end
+	local found = false
+	local selection = selection or self.active_selection
+	for i,v in ipairs(selection) do
+		local o_type = v[1]
+		if not l[o_type] then return false end
+		found = true
+	end
+	return found
 end
 
 function ProvMapEdit:getTilesIndexInMesh( x,z )
@@ -2350,8 +2621,9 @@ function ProvMapEdit:getWallsIndexInMesh( x,z , side )
 
 	assert(side>=1 and side<=5)
 	local wmap = self.props.mapedit_map_mesh.wall_vert_map
-	local index = wmap[z][x][side]
-	return index,index+3
+	local index = wmap[z][x][side].first
+	local last  = wmap[z][x][side].last
+	return index,last
 end
 
 function ProvMapEdit:getWallVerts( x,z , side )
@@ -2625,6 +2897,9 @@ function ProvMapEdit:getObjectTexture(obj)
 	end
 	if obj[1] == "model" then
 		return nil
+	end
+	if obj[1] == "decal" then
+		return obj[2].texture
 	end
 end
 
@@ -3189,6 +3464,65 @@ function ProvMapEdit:applyMapEditTransformOntoModel(model, trans, precomp_mat, p
 	self.__cache_recalc_selection_centre = true
 end
 
+function ProvMapEdit:applyMapEditTransformOntoDecal(decal, trans, _, precomp_info)
+	local t_type = trans:getTransformType()
+	local info = precomp_info or trans:getTransform(self.props.mapedit_cam)
+
+	if t_type == "translate" then
+		local x,y = love.mouse.getPosition()
+		local obj,pos = self:objectAtCursor(x,y,{tile=true,wall=true})
+		if not obj then return end
+
+		local normal_x,normal_y,normal_z
+		if obj[1]=="tile" then
+			local T = obj[2]
+			local x,z,vert_i = T.x,T.z,T.vert_i
+			local start_i=self:getTilesIndexInMesh(x,z,vert_i)
+			local nx,ny,nz = self.props.mapedit_map_mesh.mesh:getVertexAttribute(start_i,3)
+			decal.decal.normal[1] = nx
+			decal.decal.normal[2] = ny
+			decal.decal.normal[3] = nz
+		elseif obj[1] == "wall" then
+			local W = obj[2]
+			local x,z,side = W.x,W.z,W.side
+			local start_i=self:getWallsIndexInMesh(x,z,side)
+			local nx,ny,nz = self.props.mapedit_map_mesh.mesh:getVertexAttribute(start_i,3)
+			decal.decal.normal[1] = nx
+			decal.decal.normal[2] = ny
+			decal.decal.normal[3] = nz
+		end
+
+		--local pos = decal:getPosition()
+		--[[decal:setPosition{
+			pos[1]+info[1],
+			pos[2]+info[2],
+			pos[3]+info[3]
+		}--]]
+		decal:setPosition(pos)
+	end
+
+	if t_type == "rotate" then
+		local angle = info.angle
+		if not angle then
+			local quat = info[1]
+			angle = cpml.quat.to_angle_axis(quat)
+		end
+		local rot = decal:getRotation()
+		decal:setRotation(rot + angle)
+	end
+
+	if t_type == "scale" or t_type == "flip" then
+		local size = decal:getScale()
+		decal:setScale{
+			size[1]*info[1],
+			size[2]*info[2],
+			size[3]*info[3]
+		}
+	end
+	
+	self.__cache_recalc_selection_centre = true
+end
+
 function ProvMapEdit:applyMapEditTransformOntoTileVertex(tile_obj, trans, precomp_mat, precomp_info)
 	local t_type = trans:getTransformType()
 	local mat, info
@@ -3231,6 +3565,7 @@ function ProvMapEdit:applyTransformationFunction(objs, trans)
 
 	local mat,info = self:getSelectionTransformationModelMatrix(trans)
 	local tile_mat,tile_info = self:getTileTransformationMatrix(trans)
+	local generic_info = trans:getTransform(self.props.mapedit_cam)
 
 	-- clone
 	local __m_model = cpml.mat4.new()
@@ -3247,8 +3582,8 @@ function ProvMapEdit:applyTransformationFunction(objs, trans)
 				self:applyMapEditTransformOntoModel(v[2], trans, __m_model, __i_model)
 			elseif o_type == "tile" then
 				self:applyMapEditTransformOntoTileVertex(v[2], trans, __m_tile, __i_tile)
-			else
-				
+			elseif o_type == "decal" then
+				self:applyMapEditTransformOntoDecal(v[2], trans, nil, generic_info)
 			end
 		end
 	end
@@ -3299,12 +3634,6 @@ function ProvMapEdit:getTileTransformationMatrix(transform)
 end
 
 local __tileobj_mt = {
-	--[[__eq = function(a,b)
-		return a.x==b.x and
-		       a.z==b.z and
-					 a.vert_i==b.vert_i
-	end--]]
-
 	getPosition = function(self)
 		return ProvMapEdit:getTileVertex(self.x,self.z,self.vert_i)
 	end,
@@ -3488,7 +3817,7 @@ function ProvMapEdit:centreCamOnSelection()
 	end
 
 	local x,y = love.mouse.getPosition()
-	local obj_at_cursor = self:objectAtCursor(x,y,true,true,true)
+	local obj_at_cursor = self:objectAtCursor(x,y,{tile=true,wall=true,model=true,decal=true})
 	if not obj_at_cursor then return end
 	centre = self:getObjectCentre(obj_at_cursor)
 	if not centre then return end
@@ -3629,7 +3958,11 @@ function ProvMapEdit:getObjectsCentreAndMinMax(objs, __c, __min, __max)
 			_min_x, _min_y, _min_z = min[1],min[2],min[3]
 			_max_x, _max_y, _max_z = max[1],max[2],max[3]
 		else
-			error()
+			local obj = v[2]
+			local pos = obj:getPosition()
+			mx,my,mz = pos[1],pos[2],pos[3]
+			_min_x, _min_y, _min_z = pos[1],pos[2],pos[3]
+			_max_x, _max_y, _max_z = pos[1],pos[2],pos[3]
 		end
 
 		x,y,z = x + mx, y + my, z + mz
@@ -3722,7 +4055,9 @@ function ProvMapEdit:getObjectCentre(obj)
 		mx=mx/(count-1)
 		my=my/(count-1)
 		mz=mz/(count-1)
-	elseif obj_type == "tile" then
+		return {mx,my,mz}
+	end
+	if obj_type == "tile" then
 		local v1,v2,v3,v4,v5,v6 = self:getTileVerts(obj[2].x,obj[2].z)
 		mx = (v1[1]+v2[1]+v3[1]+v4[1]) 
 		my = (v1[2]+v2[2]+v3[2]+v4[2]) 
@@ -3739,16 +4074,20 @@ function ProvMapEdit:getObjectCentre(obj)
 			my=my*0.25
 			mz=mz*0.25
 		end
-	elseif obj_type == "wall" then
+		return {mx,my,mz}
+	end
+	if obj_type == "wall" then
 		--local v1,v2,v3,v4 = self:getWallVerts(obj[2],obj[3],obj[4])
 		local v1,v2,v3,v4 = self:getWallVerts(obj[2].x,obj[2].z,obj[2].side)
 		mx = (v1[1]+v2[1]+v3[1]+v4[1]) * 0.25
 		my = (v1[2]+v2[2]+v3[2]+v4[2]) * 0.25
 		mz = (v1[3]+v2[3]+v3[3]+v4[3]) * 0.25
-	else
-		error()
+		return {mx,my,mz}
 	end
-	return {mx,my,mz}
+	if obj_type == "decal" then
+		local pos=obj[2].pos
+		return {pos[1],pos[2],pos[3]}
+	end
 end
 
 local count = 0
@@ -3998,6 +4337,7 @@ function ProvMapEdit:drawViewport()
 		skybox_drawn = self:drawSkybox()
 	end
 
+	shadersend(shader,"u_solid_colour_enable", false) 
 	love.graphics.origin()
 	love.graphics.setCanvas{Renderer.scene_viewport,
 		depthstencil = Renderer.scene_depthbuffer,
@@ -4049,9 +4389,12 @@ function ProvMapEdit:drawViewport()
 		love.graphics.draw(map_mesh.mesh)
 		map_mesh:attachAttributes()
 
+		shadersend(shader,"u_uses_tileatlas", false)
+		self:drawDecals(shader)
+
 		love.graphics.setWireframe( true )
 		shadersend(shader,"u_wireframe_enabled", true)
-		shadersend(shader,"u_uses_tileatlas", false)
+		--shadersend(shader,"u_uses_tileatlas", false)
 		love.graphics.setDepthMode( "always", false  )
 		self:invokeDrawMesh()
 		shadersend(shader,"u_wireframe_enabled", false)
@@ -4064,25 +4407,9 @@ function ProvMapEdit:drawViewport()
 	love.graphics.setDepthMode( "less", true  )
 
 	love.graphics.setStencilTest()
+	shadersend(shader,"u_solid_colour_enable", false) 
 	self:drawModelsInViewport(shader)
 	shadersend(shader,"u_uses_tileatlas", false)
-
-	love.graphics.setShader(shader)
-	love.graphics.setColor(1,1,1,1)
-	love.graphics.setDepthMode( "lequal", true  )
-	Renderer.enableDepthBias(shader,0.01)
-	shadersend(shader,"u_model", "column", __id)
-	shadersend(shader,"u_normal_model", "column", __id)
-	shadersend(shader,"u_skinning", 0)
-	shadersend(shader,"u_wireframe_enabled", false)
-	shadersend(shader,"u_solid_colour_enable", false)
-	shadersend(shader,"u_draw_as_contour", false)
-	shadersend(shader,"u_wireframe_enabled", false)
-	shadersend(shader,"u_global_coord_uv_enable", false)
-	shadersend(shader,"u_highlight_pass", false)
-	love.graphics.setBlendMode("alpha","alphamultiply")
-	love.graphics.draw(self.testdecal.mesh)
-	Renderer.disableDepthBias(shader)
 
 	self:drawGroupBounds(shader)
 end
@@ -4135,8 +4462,11 @@ function ProvMapEdit:updateNitori(dt)
 	local nito = self.nito
 	local a1,a2 = nito:getAnimator()
 	if self.props.mapedit_mode == "transform" then
-		local tile,walls,models = self:getObjectTypesInSelection()
-		if tile or walls then return end
+		--local tile,walls,models = self:getObjectTypesInSelection()
+		--local exists = self:getObjectTypesInSelection()
+		--if exists.wall or exists.tile then return end
+		local ok = self:objectTypesSelectedLimit{"model"}
+		if not ok then return end
 
 		local c,min,max = self:getSelectionCentreAndMinMax()
 		if not c then return end
@@ -4262,6 +4592,50 @@ function ProvMapEdit:drawNitori(shader)
 	love.graphics.setStencilTest("notequal", 1)
 end
 
+function ProvMapEdit:drawDecals(shader)
+	love.graphics.setColor(1,1,1,1)
+	love.graphics.setDepthMode( "lequal", true  )
+	Renderer.enableDepthBias(shader,0.01)
+	shadersend(shader,"u_model", "column", __id)
+	shadersend(shader,"u_normal_model", "column", __id)
+	shadersend(shader,"u_skinning", 0)
+	shadersend(shader,"u_wireframe_enabled", false)
+	shadersend(shader,"u_solid_colour_enable", false)
+	shadersend(shader,"u_draw_as_contour", false)
+	shadersend(shader,"u_wireframe_enabled", false)
+	shadersend(shader,"u_global_coord_uv_enable", false)
+	shadersend(shader,"u_highlight_pass", false)
+	love.graphics.setBlendMode("alpha","alphamultiply")
+
+	for i,v in ipairs(self.props.mapedit_decals) do
+		local decal = v.decal
+		love.graphics.draw(decal.mesh)
+	end
+
+	local cam_pos = self.props.mapedit_cam:getPosition()
+
+	love.graphics.setDepthMode( "always", false  )
+	for i,v in ipairs(self.props.mapedit_decals) do
+		local decal = v.decal
+		local p  = v.box_pos
+		local s = v.box_size
+		local box_col  = v.box_col
+		local box_border_col  = v.box_border_col
+
+		local dx,dy,dz = cam_pos[1]-p[1],cam_pos[2]-p[2],cam_pos[3]-p[3]
+		local dist = dx*dx + dy*dy + dz*dz
+		if dist > 500*500 then break end
+
+		love.graphics.setWireframe(true)
+		guirender:draw3DCube(shader,p,{p[1]+s[1],p[2]+s[2],p[3]+s[3]},box_border_col,true,box_col,"fill")
+		love.graphics.setWireframe(false)
+	end
+	love.graphics.setDepthMode( "lequal", true  )
+	shadersend(shader, "u_solid_colour_enable", false)
+
+	Renderer.disableDepthBias(shader)
+end
+
 function ProvMapEdit:drawModelsInViewport(shader)
 	local models = self.props.mapedit_model_insts
 
@@ -4385,12 +4759,22 @@ function ProvMapEdit:highlightWall(x,z, side, highlight_val)
 	self:updateMeshTileHighlightAttribute(i, highlight_val)
 end
 
+function ProvMapEdit:highlightDecal(decal, highlight_val)
+	if highlight_val == 0.0 then
+		decal.box_col = self.decal_box_col
+	else
+		decal.box_col = self.decal_box_sel_col
+	end
+end
+
 function ProvMapEdit:highlightObject(obj, highlight_val)
 	local obj_type = obj[1]
 	if obj_type == "tile" then
 		self:highlightTileVertex(obj[2].x, obj[2].z, obj[2].vert_i, highlight_val)
 	elseif obj_type == "wall" then
 		self:highlightWall(obj[2].x, obj[2].z, obj[2].side, highlight_val)
+	elseif obj_type == "decal" then
+		self:highlightDecal(obj[2], highlight_val)
 	end
 end
 

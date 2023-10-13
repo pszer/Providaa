@@ -3,7 +3,7 @@ MapDecal.__index = MapDecal
 
 local cpml = require "cpml"
 
-function MapDecal:new( texture,texture_name, pos,size,quat )
+function MapDecal:new( texture,texture_name, pos,size,quat , extrude )
 	local this = {
 		texture=texture,
 		texture_name=texture_name,
@@ -12,6 +12,8 @@ function MapDecal:new( texture,texture_name, pos,size,quat )
 		pos = pos,
 		size = size,
 		quat = quat,
+
+		extrude = false,
 
 		verts = {}, -- tableof {x,y,z, u,v, Nx,Ny,Nz,}
 		mesh  = nil,
@@ -114,6 +116,11 @@ function MapDecal:generateTileVerts(mesh, grid_w, grid_h, vert_index_map, regen_
 			uc = (uc+1.0)*0.5
 			vc = (vc+1.0)*0.5
 
+			if self.extrude then
+				vc = vc + abs(v[3])
+				vc = math.min(vc,1.0)
+			end
+
 			local V = {v[1],v[2],v[3],1.0}
 			mulv4(V, decal_mat, V)
 			for j=6,__CLIP_TRIANGLE_VERT_ATTS do
@@ -167,10 +174,6 @@ function MapDecal:generateTileVerts(mesh, grid_w, grid_h, vert_index_map, regen_
 	end
 
 	self.verts = verts
-	print("verts")
-	for i,v in ipairs(verts) do
-		print("u,v",v[4],v[5])
-	end
 	return verts
 end
 

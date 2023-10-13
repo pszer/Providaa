@@ -589,7 +589,7 @@ local __tempcubemat4 = cpml.mat4.new()
 local __id = cpml.mat4.new()
 local __tempvec3t = cpml.vec3.new()
 local __tempvec3s = cpml.vec3.new()
-function MapEditGUIRender:draw3DCube(shader, min, max, col, solid, solid_col)
+function MapEditGUIRender:draw3DCube(shader, min, max, col, solid, solid_col, solid_type)
 	local shadersend = require 'shadersend'
 	shadersend(shader, "u_solid_colour_enable", true)
 
@@ -607,30 +607,38 @@ function MapEditGUIRender:draw3DCube(shader, min, max, col, solid, solid_col)
 	model_mat:scale(model_mat, size)
 	model_mat:translate(model_mat, pos)
 	shadersend(shader, "u_model", "column", model_mat)
-	love.graphics.setColor(col)
-	love.graphics.draw(self.cube_mesh)
-
-	shadersend(shader, "u_solid_colour_enable", false)
 
 	if solid then
 		local w = love.graphics.isWireframe()
 		local mode, alphamode = love.graphics.getBlendMode()
 		love.graphics.setColor(solid_col)
-		love.graphics.setBlendMode("screen","premultiplied")
+		if solid_type ~= "fill" then
+			love.graphics.setBlendMode("screen","premultiplied") end
 		love.graphics.setMeshCullMode("front")
 		love.graphics.setWireframe( false )
 		shadersend(shader, "u_global_coord_uv_enable", true)
+
+		if solid_type=="fill" then
+			shadersend(shader,"u_solid_colour_enable", true) end
+
 		love.graphics.draw(self.cube_solid_mesh)
 		shadersend(shader, "u_global_coord_uv_enable", false)
 		love.graphics.setWireframe( w )
 		love.graphics.setBlendMode(mode,alphamode)
 		love.graphics.setMeshCullMode("none")
+
+		if solid_type=="fill" then
+			shadersend(shader,"u_solid_colour_enable", false) end
 	end
+
+	love.graphics.setColor(col)
+	love.graphics.draw(self.cube_mesh)
+
+	shadersend(shader, "u_solid_colour_enable", false)
 
 	shadersend(shader, "u_model", "column", __id)
 	love.graphics.setColor(1,1,1,1)
 end
-
 
 function MapEditGUIRender:drawGenericOption(x,y,w,h, bg, txt, icon, arrow, state, buffer_info)
 	local bl = buffer_info.l_no_icon
@@ -806,6 +814,37 @@ function MapEditGUIRender:drawOption(x,y,w,h, txt, icon, arrow, state, buffer_in
 	end
 
 	love.graphics.setColor(1,1,1,1)
+end
+
+function MapEditGUIRender:generateSphereVertices(radius, numSegments, numRings)
+	local vertices = {}
+
+	for ring = 0, numRings do
+		local phi = math.pi * (ring / numRings)
+		local cosPhi = math.cos(phi)
+		local sinPhi = math.sin(phi)
+
+		for segment = 0, numSegments do
+			local theta = 2 * math.pi * (segment / numSegments)
+			local cosTheta = math.cos(theta)
+			local sinTheta = math.sin(theta)
+
+			local x = radius * sinPhi * cosTheta
+			local y = radius * cosPhi
+			local z = radius * sinPhi * sinTheta
+
+			local u = segment / numSegments
+			local v = ring / numRings
+
+			local normalX = x / radius
+			local normalY = y / radius
+			local normalZ = z / radius
+
+			table.insert(vertices, {x, y, z, u, v, normalX, normalY, normalZ})
+		end
+	end
+
+	return vertices
 end
 
 return MapEditGUIRender

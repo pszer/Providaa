@@ -49,6 +49,8 @@ MapEditPropPrototype = Props:prototype{
 	{"mapedit_wall_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each wall"},
 	{"mapedit_overlay_textures", "table", nil, PropDefaultTable{}, "map_width x map_height mapping of texture for each tile"},
 
+	{"mapedit_decals", "table", nil, PropDefaultTable{}, "list of map decals"},
+
 	{"mapedit_tile_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of two vec2s."},
 	{"mapedit_tile_tex_scales", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture scales, each entry is nil,a vec2, or a table of two vec2s."},
 	{"mapedit_wall_tex_offsets", "table", nil, PropDefaultTable{}, "map_width x map_height table of tile texture offsets, each entry is nil,a vec2, or a table of five vec2s."},

@@ -31,6 +31,7 @@
 local cpml = require 'cpml'
 
 local MapEditTransform = {
+	__pos_at_cursor = nil
 }
 MapEditTransform.__index = MapEditTransform
 
@@ -241,6 +242,7 @@ local function __getTransform_rotate(self, cam, granular)
 
 		return {
 			cpml.quat.from_angle_axis(angle, x,y,z),
+			angle = angle,
 			type="rotate"
 		}
 
@@ -285,7 +287,8 @@ local function __getTransform_rotate(self, cam, granular)
 
 		local axis = __tempdirright
 		local angle = granulate_theta(mouse_dy * dot_sign)
-		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]),
+		 angle = angle , type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -293,7 +296,8 @@ local function __getTransform_rotate(self, cam, granular)
 	if mode == "y" then
 		local axis = __tempdirup
 		local angle = granulate_theta(mouse_dx)
-		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), 
+		 angle = angle, type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -308,7 +312,8 @@ local function __getTransform_rotate(self, cam, granular)
 
 		local axis = __tempdirforward
 		local angle = granulate_theta(mouse_dy * dot_sign)
-		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]), type="rotate" }
+		local quat = { cpml.quat.from_angle_axis(angle, axis[1], axis[2], axis[3]),
+		 angle = angle, type="rotate" }
 		--return {quat.x, quat.y, quat.z, quat.w}
 		return quat
 	end
@@ -532,6 +537,30 @@ function MapEditTransform:__getTransform_flip(self, cam)
 	end
 end
 
+function MapEditTransform:__getTransform_cursor(self, cam)
+	local curr_mouse_x, curr_mouse_y = love.mouse.getX(), love.mouse.getY()
+	local get_at_cursor = self.get_at_cursor
+
+	local sel_centre = self.sel_centre
+	local last_pos = self.last_pos
+	local pos = self.pos_at_cursor(x,y)
+
+	if pos then
+		last_pos[1]=pos[1]
+		last_pos[2]=pos[2]
+		last_pos[3]=pos[3]
+	else
+		pos = last_pos
+	end
+
+	local result = {
+		pos[1]-sel_centre[1],
+		pos[2]-sel_centre[2],
+		pos[3]-sel_centre[3],
+		"translate"
+	}
+end
+
 function MapEditTransform:newTranslate(c)
 	local mx,my = love.mouse.getX(), love.mouse.getY()
 	local this = MapEditTransform:new(mx,my,c)
@@ -566,6 +595,15 @@ function MapEditTransform:newTransform(trans_type,centre)
 	if trans_type == "rotate" then return self:newRotate(centre) end
 	if trans_type == "scale" then return self:newScale(centre) end
 	if trans_type == "flip" then return self:newFlip(centre) end
+end
+function MapEditTransform:newCursorTransform(tests,centre)
+	local mx,my = love.mouse.getX(), love.mouse.getY()
+	local this = MapEditTransform:new(mx,my,centre)
+	this.getTransform = __getTransform_cursor
+	this.transformation_type = "translate"
+	this.pos_at_cursor = self.__pos_at_cursor(tests)
+	this.last_pos = {unpack(centre)}
+	return this
 end
 
 local __flipx = {-1, 1, 1, type="scale"}

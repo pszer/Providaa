@@ -322,7 +322,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 
 		-- we only add a floor tile to the mesh if it actually has a texture
 
-		if tex_id or tex_id2 or gen_all_verts then
+		if (tex_id and tex_id2) or gen_all_verts then
 			local consec_count = 1
 			if optimise then
 				consec_count = Map.getIdenticalConsecutiveTilesCount(map, x,z)
@@ -367,9 +367,13 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			end
 			vert_count  = vert_count  + vert_additions
 			index_count = index_count + 6
+
+			local ind_copy = {unpack(indices)}
 			if tile_vert_map then
-				tile_vert_map[z][x].last = vert_count
-				tile_vert_map[z][x].indices = {unpack(indices)}
+				for i=0,consec_count-1 do
+					tile_vert_map[z][x+i].last = vert_count
+					tile_vert_map[z][x+i].indices = ind_copy
+				end
 			end
 
 			local toff1 = Map.getTileVertexTexOffset(map,x,z,1)
@@ -466,7 +470,12 @@ function Map.internalGenerateWallVerts(map, verts, index_map, attr_verts,
 				local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
 
 				if wall_vert_map then
-					wall_vert_map[z][x][side] = vert_count+1
+					--wall_vert_map[z][x][side] = vert_count+1
+					wall_vert_map[z][x][side] = {
+						first=vert_count+1,
+						last =vert_count+4,
+						indices = rect_I
+					}
 				end
 
 				for i=1,4 do
@@ -565,7 +574,14 @@ function Map.internalGenerateWallVertsBuffered(map, verts, index_map, attr_verts
 			local tex_norm_id = (tex_id-1) -- this will be the index sent to the shader
 
 			if wall_vert_map then
-				wall_vert_map[z][x][side] = vert_count+1 end
+				--wall_vert_map[z][x][side] = vert_count+1
+				wall_vert_map[z][x][side] = {
+					first=vert_count+1,
+					last =vert_count+4,
+					indices = rect_I
+				}
+			end
+
 			if wall_exists then
 				wall_exists[z][x][side] = exists
 			end

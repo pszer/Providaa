@@ -1,570 +1,270 @@
 local MapDecal = {
-
+	__type = "mapdecal"
 }
 MapDecal.__index = MapDecal
 
-require "angle"
+local cpml = require "cpml"
+require "rotation"
 
--- texture = love2d texture file
--- texture_name = texture filename
--- base = {"tile",tile_obj} or {"wall",wall_obj}
--- pos = {x,y}, with x in [0,1] and y in [0,1] (or {-inf,inf} in case of a wall base)
--- size = {Cx,Cy}, in TILE_SIZE units
--- rot  = angle in radians, rotation around middle
-function MapDecal:new(texture,texture_name,base,pos,size,rot)
+function MapDecal:new( texture,texture_name, pos,size,rot,normal, extrude , flip_x, flip_y)
 	local this = {
 		texture=texture,
 		texture_name=texture_name,
 		root = base,
 
 		pos = pos,
-		size = size or {1, 1 * texture:getHeight() / texture:getWidth()},
-		rot = rot or 0.0,
+		size = size,
+		quat = nil,
+		normal = {0,0,-1},
+		rotation = rot,
+
+		flip_x = false,
+		flip_y = false,
+	
+		extrude = extrude,
 
 		verts = {}, -- tableof {x,y,z, u,v, Nx,Ny,Nz,}
-		index = nil,
 		mesh  = nil,
 	}
-
 	setmetatable(this, MapDecal)
+	this:setNormal(normal)
 	return this
 end
 
-function MapDecal:generateVerts(mesh, grid_w, grid_h, vert_index_map, wall_index_map, regen_verts, get_heights, get_shape)
-	local root_type = self.root[1]
-	assert(root_type == "tile" or root_type == "wall")
-	if root_type=="tile" then
-		self:generateTileVerts(mesh, grid_w, grid_h, vert_index_map, regen_verts, get_heights, get_shape)	
-	else
-		--self:generateTileVerts(mesh, vert_index_map)	
-	end
+function MapDecal:flipX()
+	self.flip_x = not self.flip_x end
+function MapDecal:flipY()
+	self.flip_y = not self.flip_y end
+
+function MapDecal:generateVerts(mesh, grid_w, grid_h, vert_index_map, wall_index_map) 
+	self:generateMeshVerts(mesh, grid_w, grid_h, vert_index_map, wall_index_map, nil)
 end
 
-function MapDecal:generateMesh()
+function MapDecal:setNormal(normal)
+	local x,y,z = normal[1],normal[2],normal[3]
+	local length = math.sqrt(x*x + y*y + z*z)
+	if length==0 then x,y,z=0,0,-1 end
+	x = x / length
+	y = y / length
+	z = z / length
+	self.normal[1]=x
+	self.normal[2]=y
+	self.normal[3]=z
+end
+function MapDecal:genQuat()
+	local norm = self.normal
+	local rot = self.rotation
+	local rot_quat = cpml.quat.from_angle_axis(rot,norm[1],norm[2],norm[3])
+	local quat = createQuat(norm, {0,0,1})
+	self.quat = rot_quat * quat 
+	return self.quat
+end
+
+function MapDecal:generateMesh(mode)
+	local mode = mode or "dynamic"
 	if not self.mesh then
-		local m = love.graphics.newMesh(MapMesh.atypes, self.verts, "triangles", "dynamic")
-		m:setVertexMap(self.index)
-		m:setTexture(texture)
+		local verts = self.verts
+		if #verts == 0 then
+			verts = {
+				{0,0,0,0,0,0,0,0},
+				{0,0,0,0,0,0,0,0},
+				{0,0,0,0,0,0,0,0},
+			}
+			local m = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", mode)
+			self.mesh=m
+			return nil
+		end
+		local m = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", mode)
+		m:setTexture(self.texture)
 		self.mesh=m
+		return m
+	else
+		local verts = self.verts
+		local vert_count = #verts
+		local mesh_vert_count = self.mesh:getVertexCount()
+
+		if vert_count > mesh_vert_count then
+			self.mesh:release()
+			self.mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", mode)
+			self.mesh:setTexture(self.texture)
+			return self.mesh
+		end
+
+		if vert_count == 0 then
+			self.mesh:setDrawRange(1,1)
+			return nil
+		end
+		self.mesh:setVertices(verts, 1, vert_count)
+		self.mesh:setDrawRange(1,vert_count)
+		return self.mesh
 	end
 end
 
-local function isPointInTriangle(px, py, ax, ay, bx, by, cx, cy)
-    -- Calculate the barycentric coordinates.
-    local denominator = ((by - cy) * (ax - cx) + (cx - bx) * (ay - cy))
-    local alpha = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / denominator
-    local beta = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / denominator
-    local gamma = 1.0 - alpha - beta
-
-    -- Check if the point is inside the triangle.
-    return alpha >= 0 and beta >= 0 and gamma >= 0
-end
-
--- Function to calculate the determinant of a 2x2 matrix.
-local function determinant(matrix)
-    return matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]
-end
-
--- Function to create the inverse matrix from two 2D vectors forming the basis.
-local function createInverseMatrix(v1, v2)
-    -- Create the matrix with the vectors as its columns.
-    local matrix = {
-        {v1[1], v2[1]},
-        {v1[2], v2[2]}
-    }
-
-    -- Calculate the determinant of the matrix.
-    local det = determinant(matrix)
-
-    -- Check if the determinant is not zero (to avoid division by zero).
-    if det ~= 0 then
-        -- Calculate the inverse matrix.
-        local inverseMatrix = {
-            {matrix[2][2] / det, -matrix[1][2] / det},
-            {-matrix[2][1] / det, matrix[1][1] / det}
-        }
-        return inverseMatrix
-    else
-        -- If the determinant is zero, the inverse does not exist.
-        return nil
-    end
-end
-
-local function findLineSegmentIntersection(x1, y1, x2, y2, x3, y3, x4, y4)
-    local denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-
-    if denominator == 0 then
-        -- The lines are parallel and do not intersect.
-        return nil
-    end
-
-    local t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator
-    local u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator
-
-    --if t >= 0 and t <= 1 and u >= 0 and u <= 1 then
-    if t >= 0 and t < 1 and u >= 0 and u < 1 then
-        -- The line segments intersect at a point.
-        local intersectionX = x1 + t * (x2 - x1)
-        local intersectionY = y1 + t * (y2 - y1)
-        return intersectionX, intersectionY
-    else
-        -- The line segments do not intersect.
-        return nil
-    end
-end
-local function lineIntersect(a1,a2,b1,b2)
-	return findLineSegmentIntersection(a1[1],a1[2],a2[1],a2[2],b1[1],b1[2],b2[1],b2[2])
-end
+local clipTri = require "cliptriangle"
 
 local ISQRT2 = (2^0.5)/2
-function MapDecal:generateTileVerts(mesh, grid_w, grid_h, vert_index_map, regen_verts, get_heights, get_shape)
-	local px,py = self.pos [1], self.pos [2]
-	local Sx,Sy = self.size[1], self.size[2]
-	px,py = px, py
+local SQRT2 = (2^0.5)
+local decal_mat = cpml.mat4.new()
+local decal_mat_inv = cpml.mat4.new()
+local __mat4ID = cpml.mat4.new()
+local __NDCproj = cpml.mat4.from_ortho(-1.0,1.0,-1.0,1.0,-1.0,1.0)
+local __tempvec3 = cpml.vec3.new()
+function MapDecal:generateMeshVerts(mesh, grid_w, grid_h, vert_index_map, wall_index_map, verts)
+	local pos = self.pos
+	local size = self.size
+	local rot = self:genQuat()
 
-	local theta = normTheta(self.rot)
-	local sinT = math.sin(theta)
-	local cosT = math.cos(theta)
-
-	local v = {{px,py},{px,py},{px,py},{px,py}}
-
-	-- edge normals for (v1,v2),(v2,v3),(v3,v4),(v4,v1)
-	local edge_n = {{0,0},{0,0},{0,0},{0,0}}
-
-	local SxCos = Sx*cosT*0.5
-	local SxSin = Sx*sinT*0.5
-	local SyCos = Sy*cosT*0.5
-	local SySin = Sy*sinT*0.5
-
-	v[1][1] = px - (SxCos - SySin)
-	v[1][2] = py - (SyCos + SxSin)
-	edge_n[1][1] =  sinT
-	edge_n[1][2] = -cosT
-
-	v[2][1] = px - (-SxSin - SyCos)
-	v[2][2] = py - (-SySin + SxCos)
-	edge_n[2][1] =   cosT
-	edge_n[2][2] =   sinT
-
-	v[3][1] = px + (SxCos - SySin)
-	v[3][2] = py + (SyCos + SxSin)
-	edge_n[3][1] = -sinT
-	edge_n[3][2] =  cosT
-
-	v[4][1] = px + (-SxSin - SyCos)
-	v[4][2] = py + (-SySin + SxCos)
-	edge_n[4][1] = -cosT
-	edge_n[4][2] = -sinT
-
-
-	-- distance from decal centre to corner squared
-	local loci_max_dist2 = (Sx*Sx)*0.25 + (Sy*Sy)*0.25
-	local corner_dist = math.sqrt(loci_max_dist2)
-	local test_dist = loci_max_dist2 + 1/4 -- 1/4 = (sqrt(2)/2 )^2
-
-	-- (minX,minY) <-> (maxX,maxY) covers entire possible region
-	-- the decal is applied to
-	local minX = math.max(math.min(v[1][1],v[2][1],v[3][1],v[4][1]),1)
-	local maxX = math.min(math.max(v[1][1],v[2][1],v[3][1],v[4][1]),grid_w)
-	local minY = math.max(math.min(v[1][2],v[2][2],v[3][2],v[4][2]),1)
-	local maxY = math.min(math.max(v[1][2],v[2][2],v[3][2],v[4][2]),grid_h)
-	--
-	local minZ = minY
-	local maxZ = maxY
-
-	-- small +epsilon added in case of float inaccuracy
-	local offset_v = {{},{},{},{}}
-	for i=1,4 do
-		offset_v[i][1] = px + (v[i][1] - px)*((corner_dist+1)/corner_dist)
-		offset_v[i][2] = py + (v[i][2] - py)*((corner_dist+1)/corner_dist)
-		--offset_v[i][2] = v[i][2] + edge_n[i][2] * (ISQRT2+0.005)
+	local vec = __tempvec3
+	for i=1,16 do
+		decal_mat[i] = __mat4ID[i]
 	end
 
-	for i,v in ipairs(v) do
-		print(string.format("V%d: %f,%f",i,v[1],v[2]))
-		print(string.format("N%d: %f,%f",i,edge_n[i][1],edge_n[i][2]))
-		print(string.format("ov%d: %f,%f",i,offset_v[i][1],offset_v[i][2]))
-		print()
+	vec.x,vec.y,vec.z = size[1],size[2],size[3]
+	decal_mat:scale(decal_mat, vec)
+	local rot_m = cpml.mat4.from_quaternion(rot)
+	decal_mat:mul(rot_m, decal_mat)
+	vec.x,vec.y,vec.z = pos[1],pos[2],pos[3]
+	decal_mat:translate(decal_mat,vec)
+
+	local decal_mat_inv = decal_mat_inv
+	decal_mat_inv:invert(decal_mat)
+
+	local minX,maxX=nil,nil
+	local minZ,maxZ=nil,nil
+
+	local floor,ceil=math.floor,math.ceil
+	local min,max=math.min,math.max
+	minX = max(1     , floor((pos[1] - size[1]*SQRT2)/TILE_SIZE)-2)
+	maxX = min(grid_w, ceil ((pos[1] + size[1]*SQRT2)/TILE_SIZE)+2)
+	minZ = max(1     , floor((pos[3] - size[3]*SQRT2)/TILE_SIZE)-2)
+	maxZ = min(grid_h, ceil ((pos[3] + size[3]*SQRT2)/TILE_SIZE)+2)
+
+	-- x,y,z, _,_, nx,ny,nz
+	__CLIP_TRIANGLE_VERT_ATTS=8
+	local mulv4 = cpml.mat4.mul_vec4
+
+	local verts=verts or {}
+	local vert_count=#verts
+	local function add_vert(v)
+		vert_count=vert_count+1
+		verts[vert_count]=v
 	end
 
-	-- to determine whether or not a tile lies inside the decals quad,
-	-- the centre-point of the tile is tested to be inside all four of the decals
-	-- edges with respect to their normals.
-	--
-	-- a centre-point can be outside the decals quad but the tile
-	-- itself can still intersect the quad. by offsetting the edges by their normals
-	-- these centre-points will count as being inside the quad as expected.
-	--
-	-- expanding the quad region like this may in rare cases cause false positives,
-	-- so an additional test is done, the distance from a tile centre-point to the decals
-	-- centre must be within loci_max_dist2 + sqrt(2)/2.
-	--
-	local function test_grid_xz(x,y)
-			local point_X = (x)+0.5
-			local point_Y = (y)+0.5
-			local dist2 = (point_X-px)^2 + (point_Y-py)^2
-			if dist2 > test_dist+0.25 then return false end
+	local decal_normal = self.normal
+	local function map_uv(v, normal)
+		local flat_u,flat_v = 0,0
+		local dot = normal[1]*decal_normal[1] + normal[2]*decal_normal[2]
+		if dot==0 then -- surface lies flat on the z-plane in decal space
+			return (v[1]+1.0)*0.5,(v[3]+1.0)*0.5
+		end
+		return (v[1]+1.0)*0.5,(v[2]+1.0)*0.5
+	end
 
-			for i,v in ipairs(offset_v) do
-				local Ex,Ey=v[1],v[2]
-				local Nx,Ny=edge_n[i][1],edge_n[i][2]
-				local Dx,Dy=Ex-point_X,Ey-point_Y
-				local dot = Nx*Dx + Ny*Dy
-				if dot<0 then return false end
+	local abs = math.abs
+	local function add_tri(t, normal)
+		for i,v in ipairs(t) do
+			local uc,vc = map_uv(v, normal)
+
+			if self.flip_x then
+				uc = 1.0 - uc end
+			if self.flip_y then
+				vc = 1.0 - vc end
+			if self.extrude then
+				vc = vc + v[3]
 			end
-			return true
-	end
 
-	local int = math.floor
-	local ceil = math.ceil
-	local Zl = ceil(maxX)-int(minX)
-	local pointInside = {nil,nil,nil,nil,nil,nil,nil}
-
-	local function test_point_xz(x,y)
-		if pointInside[x+(y-1)*Zl] then return pointInside[x+(y-1)*Zl]==1 end
-		for i,p in ipairs(v) do
-			local Ex,Ey=p[1],p[2]
-			local Nx,Ny=edge_n[i][1],edge_n[i][2]
-			local Dx,Dy=Ex-x,Ey-y
-			local dot = Nx*Dx + Ny*Dy
-			if dot<0 then pointInside[x+(y-1)*Zl]=0 return false end
-		end
-		pointInside[x+(y-1)*Zl]=1
-		return true
-	end
-
-	-- returns u,v
-	local uvXs = v[1][1]
-	local uvYs = v[1][2]
-	local uvXbase = {v[2][1]-v[1][1], v[2][2]-v[1][2]}
-	local uvYbase = {v[4][1]-v[1][1], v[4][2]-v[1][2]}
-	local uvInvM  = createInverseMatrix(uvXbase,uvYbase)
-	local function get_uv(x,y)
-		local x=x-uvXs
-		local y=y-uvYs
-		local u = uvInvM[1][1]*x + uvInvM[1][2]*y
-		local v = uvInvM[2][1]*x + uvInvM[2][2]*y
-		return u,v
-	end
-
-	--print ("uv test")
-	--print("xBase",uvXbase[1],uvXbase[2])
-	--print("yBase",uvYbase[1],uvYbase[2])
-	--print(get_uv(v[1][1],v[1][2]))
-	--print(get_uv(v[2][1],v[2][2]))
-	--print(get_uv(v[3][1],v[3][2]))
-	--print(get_uv(v[4][1],v[4][2]))
-	--
-
-	local vert_count=0
-	local verts = {}
-	local index_count=0
-	local indices = {}
-
-	local __verts={}
-
-	if regen_verts then
-		for z=int(minZ),ceil(maxZ) do
-			for x=int(minX),ceil(maxX) do
-				local I = x+(z-1)*Zl
-				local h1,h2,h3,h4,h5,h6 = get_heights(x,z)
-				local shape = get_shape(x,z)
-				__verts[I]={__getTileVerts(x,z,h1,h2,h3,h4,h5,h6,shape)}
+			local V = {v[1],v[2],v[3],1.0}
+			mulv4(V, decal_mat, V)
+			for j=6,__CLIP_TRIANGLE_VERT_ATTS do
+				V[j] = v[j]
 			end
+			V[4]=uc
+			V[5]=vc
+			add_vert(V)
 		end
 	end
 
-	local function get_vert(x,z,i)
-		if not regen_verts then
-			local index_start = vert_index_map[z][x].first
-			return {unpack(mesh[index_start+i-1])}
-		else
-			return {unpack(__verts[x+(z-1)*Zl][i])}
-		end
+	local function line(A,B)
+		local v = {0,0,0}
+		v[1]=B[1]-A[1]
+		v[2]=B[2]-A[2]
+		v[3]=B[3]-A[3]
+		return v
 	end
-	local function get_indices(x,z)
-		if not regen_verts then
-			return vert_index_map[z][x].indices
-		else
-			return {unpack(__verts[x+(z-1)*Zl][7])}
-		end
+	local function cross(A, B)
+    local x = A[2] * B[3] - A[3] * B[2]
+    local y = A[3] * B[1] - A[1] * B[3]
+    local z = A[1] * B[2] - A[2] * B[1]
+    return {x, y, z}
 	end
-	local function get_vcount(x,z)
-		if not regen_verts then
-			local vim = vert_index_map[z][x]
-			local index_start,index_end = vim.first, vim.last
-			return index_end-index_start+1
-		else
-		end
-	end
-	-- returns table of decal corner indices that land on a tile if any
-	-- if any corners do land inside the tile, it also returns which edges
-	-- intersect the square edges of the tile (but not any edges fully contained inside the tile)
-	local function get_decal_corners(x,z)
-		local any = false
-		local inside={nil,nil,nil,nil}
-		--            (1,2) (2,3) (3,4) (4,1)
-		local edges ={false,false,false,false}
-		for i=1,4 do
-			local V = v[i]
-			if V[1]>= x and V[1] < x+1 and
-			   V[2]>= z and V[2] < z+1
-			then
-				inside[i] = true
-				local j = i-1
-				if j<1 then j=4 end
-				edges[i] = not edges[i]
-				edges[j] = not edges[j]
-				any=true
-			end
-		end
-		if not any then return nil end
-		return inside,edges
-	end
-	local function get_edge_intersects(x,z)
-		local edge12 = {}
-		for i=1,4 do
-			local j=i+1
-			if j>4 then i=1 end
-			local X,Z=lineIntersect(v[i],v[j],{x,z},{x+1,z})
-			if X then table.insert(edge12,{X,Z}) end
-		end
-		local edge23 = {}
-		for i=1,4 do
-			local j=i+1
-			if j>4 then i=1 end
-			local X,Z=lineIntersect(v[i],v[j],{x+1,z},{x+1,z+1})
-			if X then table.insert(edge23,{X,Z}) end
-		end
-		local edge34 = {}
-		for i=1,4 do
-			local j=i+1
-			if j>4 then i=1 end
-			local X,Z=lineIntersect(v[i],v[j],{x+1,z+1},{x,z+1})
-			if X then table.insert(edge34,{X,Z}) end
-		end
-		local edge41 = {}
-		for i=1,4 do
-			local j=i+1
-			if j>4 then i=1 end
-			local X,Z=lineIntersect(v[i],v[j],{x,z+1},{x,z})
-			if X then table.insert(edge41,{X,Z}) end
-		end
-		return edge12,edge23,edge34,edge41
-	end
-	
-	local function gen_vert(x,z)
-		local P={}
-		local _P={{x,z},{x+1,z},{x+1,z+1},{x,z+1}}
-		P[1]=test_point_xz(x,  z  )
-		P[2]=test_point_xz(x+1,z  )
-		P[3]=test_point_xz(x+1,z+1)
-		P[4]=test_point_xz(x,  z+1)
 
-		local VC=0
-		for i=1,4 do
-			if P[i] then VC=VC+1 end
-		end
+	-- look up table for already clipped geometry
+	local done = {}
 
-		if VC==0 then return end
+	local function do_index(index_start,indices)
+			local iz=index_start-1
+			local tri1 = {mesh[iz+indices[1]],mesh[iz+indices[2]],mesh[iz+indices[3]]}
+			local tri2 = {mesh[iz+indices[4]],mesh[iz+indices[5]],mesh[iz+indices[6]]}
 
-		-- if all 4 corners of a tile are inside the decal,
-		-- copy the vertices of the tile 1:1
-		if VC==4 then
-			--local vim = vert_index_map[z][x]
-			--local index_start,index_end = vim.first, vim.last
-			local count = get_vcount(x,z)
-			print(count)
-			if count==4 then --4 verts
-				local uvs={
-					{get_uv(x  ,z  )},
-					{get_uv(x+1,z  )},
-					{get_uv(x+1,z+1)},
-					{get_uv(x  ,z+1)},
-				}
-				--local v_ind = vim.indices
-				local v_ind = get_indices(x,z)--vim.indices
-				for i=0,3 do
-					local k = get_vert(x,z,i+1) --{unpack(mesh[index_start+i])}
-					k[4],k[5] = uvs[i+1][1], uvs[i+1][2]
-					verts[vert_count+i+1]=k
+			-- average normal at 3 points to get the normal
+			local normal1 = cross(line(tri1[1],tri1[2]), line(tri1[1],tri1[3]))
+			local normal2 = cross(line(tri2[1],tri2[2]), line(tri2[1],tri2[3]))
+
+			for i=1,3 do
+				local v,u = {}, {}
+				local V,U = {tri1[i][1],tri1[i][2],tri1[i][3],1.0},{tri2[i][1],tri2[i][2],tri2[i][3],1.0}
+				mulv4(v, decal_mat_inv, V)
+				mulv4(u, decal_mat_inv, U)
+
+				for j=4,__CLIP_TRIANGLE_VERT_ATTS do
+					v[j]=tri1[i][j]
+					u[j]=tri2[i][j]
 				end
-				for i=1,#v_ind do
-					indices[i+index_count] = vert_count+v_ind[i]
-				end
-				vert_count=vert_count+4
-				index_count=index_count+#v_ind
-			else -- 6 verts
-				local uvs={
-					{get_uv(x  ,z  )},
-					{get_uv(x+1,z  )},
-					{get_uv(x+1,z+1)},
-					{get_uv(x  ,z+1)},
-				}
-				local v_ind = get_indices(x,z)--vim.indices
-				for i=0,count-1 do
-					--local k = {unpack(mesh[index_start+i])}
-					local k = get_vert(x,z,i+1) --{unpack(mesh[index_start+i])}
-					local _x,_y,_z = k[1],k[2],k[3]
-					_x=_x/TILE_SIZE
-					_z=_z/TILE_SIZE
-
-					k[4],k[5] = get_uv(_x,_z)
-					--print(unpack(k))
-					verts[vert_count+i+1]=k
-				end
-				for i=1,#v_ind do
-					indices[i+index_count] = vert_count+v_ind[i]
-				end
-				vert_count=vert_count+count
-				index_count=index_count+#v_ind
+				tri1[i] = v 
+				tri2[i] = u 
 			end
-			return
-		end
 
-		if VC==1 then
-			local point_inside
-			for i=1,4 do
-				if P[i] then point_inside=_P[i] break end
-			end
-		end
+			local c_tris1 = clipTri(tri1)
+			local c_tris2 = clipTri(tri2)
 
-		local corners,edges = get_decal_corners(x,z)
-
-		
+			for i,v in ipairs(c_tris1) do
+				add_tri(v, normal1) end
+			for i,v in ipairs(c_tris2) do
+				add_tri(v, normal2) end
 	end
 
-	for z=int(minZ),ceil(maxZ) do
-		local str = ""
-		for x=int(minX),ceil(maxX) do
-			local inside = test_grid_xz(x,z)
-			if inside then
-				str = str .. "@"
-				gen_vert(x,z)
-			else
-				str = str .. "."
+	for z=minZ,maxZ do
+		for x=minX,maxX do
+			-- tiles
+			if vert_index_map then
+				local index_start   = vert_index_map[z][x].first
+				local index_indices = vert_index_map[z][x].indices
+				if not done[index_start] then
+					do_index(index_start, index_indices)
+					done[index_start] = true
+				end
+			end
+			-- walls
+			if wall_index_map then
+				for side=1,5 do
+					local w_index = wall_index_map[z][x][side]
+					if w_index then
+						local w_index_start   = w_index.first
+						local w_index_indices = w_index.indices
+						if w_index_start then
+							if not done[w_index_start] then
+								do_index(w_index_start, w_index_indices)
+								done[w_index_start] = true
+							end
+						end
+					end
+				end
 			end
 		end
-		print(str)
 	end
 
-	for i,v in ipairs(verts) do
-		print(string.format("vert%d",i),unpack(v))
-	end
 	self.verts = verts
-	self.index = indices
-	return verts, indices
-end
-
---test ={pos={11.0,11.0},size={1.0,1.0},rot=1.0*math.pi/4}
---MapDecal.generateTileVerts(test, nil, 20, 20, nil)
-
-local cpml = require 'cpml'
-local __tempavec = cpml.vec3.new()
-local __tempbvec = cpml.vec3.new()
-local __tempnorm1 = cpml.vec3.new()
-local __tempnorm2 = cpml.vec3.new()
-
-local __rect_I = {1,2,3,3,4,1}
-local __tri1_I = {1,2,3,4,5,6}
-local __tri2_I = {1,2,3,4,5,6}
-local function __getTileShapeIndices(tile_shape)
-	if tile_shape==0 or tile_shape==nil then return __rect_I
-	else return __tri2_I end
-end
-local function __getTileVerts(x,z, h1,h2,h3,h4,h5,h6, tile_shape)
-	require "tile"
-	local u = {0,1,1,0}
-	local v = {0,0,1,1}
-
-	local x1,y1,z1 = Tile.tileCoordToWorld( x+0 , h1 , -(z+0) )
-	local x2,y2,z2 = Tile.tileCoordToWorld( x+1 , h2 , -(z+0) )
-	local x3,y3,z3 = Tile.tileCoordToWorld( x+1 , h3 , -(z+1) )
-	local x4,y4,z4 = Tile.tileCoordToWorld( x+0 , h4 , -(z+1) )
-	local __,y5,__ = Tile.tileCoordToWorld( x+0 , h5 , -(z+1) )
-	local __,y6,__ = Tile.tileCoordToWorld( x+0 , h6 , -(z+1) )
-
-	local norm1 = __tempnorm1
-	local norm2 = __tempnorm2
-	local function calcnorm(norm, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
-
-		x2 = x2 - x1
-		y2 = y2 - y1
-		z2 = z2 - z1
-
-		x3 = x3 - x1
-		y3 = y3 - y1
-		z3 = z3 - z1
-
-		--local a,b = cpml.vec3(x2,y2,z2), cpml.vec3(x3,y3,z3)
-		local a,b = __tempavec, __tempbvec
-		a.x, a.y, a.z = x2,y2,z2
-		b.x, b.y, b.z = x3,y3,z3
-
-		norm = cpml.vec3.cross(a,b)
-		norm = cpml.vec3.normalize(norm)
-		return norm
-	end
-
-	local indices
-	if tile_shape == 0 or tile_shape == nil then
-		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
-		norm2 = calcnorm(norm2, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
-
-		local norm3x = (norm1.x + norm2.x) * 0.5
-		local norm3y = (norm1.y + norm2.y) * 0.5
-		local norm3z = (norm1.z + norm2.z) * 0.5
-
-		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
-		v2 = {x2,y2,z2, u[2], v[2], norm3x, norm3y, norm3z }
-		v3 = {x3,y3,z3, u[3], v[3], norm3x, norm3y, norm3z }
-		v4 = {x4,y4,z4, u[4], v[4], norm2.x, norm2.y, norm2.z }
-		v5 = {0,0,0, 0,0, 0,1,0}
-		v6 = {0,0,0, 0,0, 0,1,0}
-		indices = __rect_I
-	elseif tile_shape == 1 then
-		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
-		norm2 = calcnorm(norm2, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
-		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
-		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
-		v3 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
-		v4 = {x3,y5,z3, u[3], v[3], norm2.x, norm2.y, norm2.z }
-		v5 = {x4,y4,z4, u[4], v[4], norm2.x, norm2.y, norm2.z } 
-		v6 = {x1,y6,z1, u[1], v[1], norm2.x, norm2.y, norm2.z }
-		indices = __tri1_I
-	elseif tile_shape == 2 then
-		norm1 = calcnorm(norm1, x1,y1,z1, x2,y2,z2, x4,y4,z4 )
-		norm2 = calcnorm(norm2, x2,y2,z2, x3,y3,z3, x4,y4,z4 )
-		v1 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
-		v2 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
-		v3 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z }
-		v4 = {x2,y5,z2, u[2], v[2], norm2.x, norm2.y, norm2.z }
-		v5 = {x3,y3,z3, u[3], v[3], norm2.x, norm2.y, norm2.z } 
-		v6 = {x4,y6,z4, u[4], v[4], norm2.x, norm2.y, norm2.z }
-		indices = __tri1_I
-	elseif tile_shape == 3 then
-		norm1 = calcnorm(norm1, x3,y3,z3, x4,y4,z4, x1,y1,z1 )
-		norm2 = calcnorm(norm2, x1,y1,z1, x2,y2,z2, x3,y3,z3 )
-		v1 = {x1,y6,z1, u[1], v[1], norm2.x, norm2.y, norm2.z }
-		v2 = {x2,y2,z2, u[2], v[2], norm2.x, norm2.y, norm2.z }
-		v3 = {x3,y5,z3, u[3], v[3], norm2.x, norm2.y, norm2.z }
-		v4 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z }
-		v5 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z } 
-		v6 = {x1,y1,z1, u[1], v[1], norm1.x, norm1.y, norm1.z }
-		indices = __tri1_I
-	else
-		norm1 = calcnorm(norm1, x2,y2,z2, x3,y3,z3, x4,y4,z4 )
-		norm2 = calcnorm(norm2, x1,y1,z1, x2,y2,z2, x4,y4,z4 )
-		v1 = {x1,y1,z1, u[1], v[1], norm2.x, norm2.y, norm2.z  }
-		v2 = {x2,y5,z2, u[2], v[2], norm2.x, norm2.y, norm2.z  }
-		v3 = {x4,y6,z4, u[4], v[4], norm2.x, norm2.y, norm2.z  }
-		v4 = {x2,y2,z2, u[2], v[2], norm1.x, norm1.y, norm1.z }
-		v5 = {x3,y3,z3, u[3], v[3], norm1.x, norm1.y, norm1.z } 
-		v6 = {x4,y4,z4, u[4], v[4], norm1.x, norm1.y, norm1.z }
-		indices = __tri1_I
-	end
-
-	return v1,v2,v3,v4,v5,v6,indices
+	return verts
 end
 
 return MapDecal

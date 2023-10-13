@@ -9,8 +9,12 @@ varying vec3 frag_normal;
 uniform bool  u_uses_tileatlas;
 uniform Image u_tileatlas;
 uniform vec4  u_tileatlas_uv[128];
+uniform bool  u_tileatlas_clampzero;
 
 uniform bool u_wireframe_enabled;
+
+uniform bool  u_depth_bias_enable;
+uniform float u_depth_bias;
 
 #ifdef VERTEX
 
@@ -54,9 +58,6 @@ uniform mat4 u_bone_matrices[48];
 uniform int  u_skinning;
 
 uniform float u_contour_outline_offset;
-
-uniform bool  u_depth_bias_enable;
-uniform float u_depth_bias;
 
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
@@ -213,6 +214,31 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 	}
 }
 
+vec4 get_tex_colour( Image tex, vec2 uv_coords ) {
+	if (u_uses_tileatlas) {
+		if (u_tileatlas_clampzero &&
+		    (uv_coords.x<0 || uv_coords.y<0 ||
+		    uv_coords.x>1 || uv_coords.y>1))
+		{
+			return vec4(0,0,0,0);
+		}
+
+		vec2 t_off = texoffset;
+		vec2 t_scale = texscale;
+		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
+
+		uv_coords.x = mod(uv_coords.x/t_scale.x - t_off.x, 1.0);
+		uv_coords.y = mod(uv_coords.y/t_scale.y - t_off.y, 1.0);
+		
+		return Texel(tex,vec2(
+			uv_info.x + uv_info.z * uv_coords.x,
+			uv_info.y + uv_info.w * uv_coords.y
+		));
+	} else {
+		return Texel(tex,uv_coords);
+	}
+}
+
 void effect( ) {
 	if (u_draw_as_contour) {
 		love_Canvases[0] = u_contour_colour;
@@ -227,6 +253,7 @@ void effect( ) {
 	}
 	if (u_solid_colour_enable) {
 		love_Canvases[0] = VaryingColor;
+		return;
 	}
 	if (u_wireframe_enabled) {
 		vec4 col = u_wireframe_colour;
@@ -260,10 +287,10 @@ void effect( ) {
 		float v = frag_w_position.y + frag_w_position.z*ny;
 		coords = vec2((u + 6*u_time)/16.0, (v + 6*u_time)/16.0);
 	} else {
-		coords = calc_tex_coords(vec2(VaryingTexCoord));
+		coords = VaryingTexCoord.xy;
 	}
 
-	vec4 texcolor = Texel(MainTex, coords);
+	vec4 texcolor = get_tex_colour(MainTex, coords);
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	if (u_uv_vision) {
@@ -273,8 +300,7 @@ void effect( ) {
 		love_Canvases[0] = vec4(frag_normal,1);
 		return;
 	}
-	//love_Canvases[0] = pix * VaryingColor;
-	love_Canvases[0] = pix ;
+	love_Canvases[0] = pix * VaryingColor;
 }
 
 #endif

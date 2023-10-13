@@ -39,9 +39,6 @@ function TransObj:newFromMatrix(mat)
 		scale     = nil,
 		matrix    = cpml.mat4.new()
 	}
-	--s_clone(this.position, pos)
-	--s_clone(this.direction, dir)
-	--s_clone(this.scale, scale)
 	for i=1,16 do this.matrix[i] = mat[i] end
 	setmetatable(this, TransObj)
 
@@ -54,7 +51,12 @@ end
 -- getScale()
 -- functions
 function TransObj:from(obj)
-	local m = obj:getTransformMode()
+	local m
+	if obj.getTransformMode then
+		m = obj:getTransformMode()
+	else
+		m = "component"
+	end
 	if m == "component" then
 		local pos,rot,scale=obj:getPosition(),obj:getDirection(),obj:getScale()
 		return TransObj:new(pos,rot,scale)
@@ -106,15 +108,20 @@ function TransObj:applyMatrix(mat, mat_info)
 		self.scale[2] = self.scale[2] * ys
 		self.scale[3] = self.scale[3] * zs
 	elseif has_rot and not has_scale then
-		local d_v = p_v
-		d_v[1] = self.direction[1]
-		d_v[2] = self.direction[2]
-		d_v[3] = self.direction[3]
-		d_v[4] = 0.0
-		cpml.mat4.mul_vec4(d_v, mat, d_v)
-		self.direction[1] = d_v[1]
-		self.direction[2] = d_v[2]
-		self.direction[3] = d_v[3]
+		local d = self.direction
+		if type(d) == "cdata" then
+		elseif type(d) == "number" then
+		else
+			local d_v = p_v
+			d_v[1] = self.direction[1]
+			d_v[2] = self.direction[2]
+			d_v[3] = self.direction[3]
+			d_v[4] = 0.0
+			cpml.mat4.mul_vec4(d_v, mat, d_v)
+			self.direction[1] = d_v[1]
+			self.direction[2] = d_v[2]
+			self.direction[3] = d_v[3]
+		end
 	else
 		-- uuhhhh		
 	end

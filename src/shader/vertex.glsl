@@ -60,6 +60,9 @@ uniform int  u_skinning;
 
 uniform float u_contour_outline_offset;
 
+uniform bool  u_depth_bias_enable;
+uniform float u_depth_bias;
+
 mat4 get_deform_matrix() {
 	if (u_skinning != 0) {
 		return
@@ -137,7 +140,13 @@ vec4 position(mat4 transform, vec4 vertex) {
 		tex_uv_index = int(TextureUvIndex);
 	}
 
-	return u_proj * view_v;
+	vec4 result_v = u_proj * view_v;
+	if (u_depth_bias_enable) {
+		result_v.z -= u_depth_bias;
+		return result_v;
+	} else {
+		return result_v;
+	}
 }
 #endif
 

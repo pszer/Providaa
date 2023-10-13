@@ -72,3 +72,32 @@ function rotateMatrix(mat, rot)
 		return mat
 	end
 end
+
+local cpml = require 'cpml'
+function createQuatTheta(A, B, theta)
+	-- Calculate the axis of rotation
+	local axis = {
+		A[2] * B[3] - A[3] * B[2],
+		A[3] * B[1] - A[1] * B[3],
+		A[1] * B[2] - A[2] * B[1]
+	}
+
+	local halfTheta = 0.5 * theta
+	local sinHalfTheta = math.sin(halfTheta)
+	local cosHalfTheta = math.cos(halfTheta)
+
+	-- Construct the quaternion
+	return cpml.quat.new(
+		sinHalfTheta * axis[1],
+		sinHalfTheta * axis[2],
+		sinHalfTheta * axis[3],
+		cosHalfTheta
+	)
+end
+
+function createQuat(A, B)
+	-- Calculate the axis of rotation
+	local dot = A[1]*B[1] + A[2]*B[2] + A[3]*B[3]
+	local angle = math.acos(dot)
+	return createQuatTheta(A,B,angle)
+end
