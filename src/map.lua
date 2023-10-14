@@ -722,8 +722,6 @@ function Map.internalGenerateDecalsStatic(map, map_verts, vert_index_map, wall_i
 	local vert_count = 0
 
 	for i,v in ipairs(decal_info) do
-		local flip_x = v.flip_x == true
-		local flip_y = v.flip_y == true
 		local pos  = v.pos
 		local size = v.size
 		local normal = v.normal
@@ -733,8 +731,7 @@ function Map.internalGenerateDecalsStatic(map, map_verts, vert_index_map, wall_i
 		local decal_obj = mapdecal:new(
 			textures[tex_id],
 			texture_name[tex_id],
-			pos,size,rot,normal,
-			flip_x,flip_y)
+			pos,size,rot,normal)
 		local decal_verts = decal_obj:generateVerts(
 			map_verts, w,h,
 			vert_index_map,
@@ -742,8 +739,6 @@ function Map.internalGenerateDecalsStatic(map, map_verts, vert_index_map, wall_i
 
 		if decal_verts then
 			local count = #decal_verts
-			print("count:)",count)
-
 			for i=1,count do
 				vert_count = vert_count + 1
 				verts[vert_count] = decal_verts[i]

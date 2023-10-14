@@ -6,7 +6,7 @@ MapDecal.__index = MapDecal
 local cpml = require "cpml"
 require "rotation"
 
-function MapDecal:new( texture,texture_name, pos,size,rot,normal, flip_x,flip_y)
+function MapDecal:new( texture,texture_name, pos,size,rot,normal)
 	local this = {
 		texture=texture,
 		texture_name=texture_name,
@@ -17,9 +17,6 @@ function MapDecal:new( texture,texture_name, pos,size,rot,normal, flip_x,flip_y)
 		quat = nil,
 		normal = {0,0,-1},
 		rotation = rot,
-
-		flip_x = false,
-		flip_y = false,
 
 		verts = {}, -- tableof {x,y,z, u,v, Nx,Ny,Nz,}
 		mesh  = nil,
@@ -122,7 +119,22 @@ function MapDecal:generateMeshVerts(mesh, grid_w, grid_h, vert_index_map, wall_i
 		decal_mat[i] = __mat4ID[i]
 	end
 
+	local flip_x = false
+	local flip_y = false
+
 	vec.x,vec.y,vec.z = size[1],size[2],size[3]
+	if vec.x<0 then
+		vec.x=-vec.x
+		flip_x = true
+	end
+	if vec.y<0 then
+		vec.y=-vec.y
+		flip_y = true
+	end
+	if vec.z<0 then
+		vec.z=-vec.z
+	end
+
 	decal_mat:scale(decal_mat, vec)
 	local rot_m = cpml.mat4.from_quaternion(rot)
 	decal_mat:mul(rot_m, decal_mat)
@@ -174,13 +186,10 @@ function MapDecal:generateMeshVerts(mesh, grid_w, grid_h, vert_index_map, wall_i
 			local uc,vc = map_uv(v, normal)
 			--print(i,uc,vc)
 
-			if self.flip_x then
+			if flip_x then
 				uc = 1.0 - uc end
-			if self.flip_y then
+			if flip_y then
 				vc = 1.0 - vc end
-			if self.extrude then
-				vc = vc + v[3]
-			end
 
 			local V = {v[1],v[2],v[3],1.0}
 			mulv4(V, decal_mat, V)

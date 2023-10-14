@@ -816,6 +816,89 @@ function MapEditGUI:define(mapedit)
 		 end}
 
 		 end)
+
+	context["select_decal_context"] = 
+		contextmenu:define(
+		{
+		 {"select_objects", "table", nil, PropDefaultTable(ProvMapEdit.active_selection)},
+		}
+		,
+		function(props) return
+		 {lang["~bCopy"],
+		  action=function(props)
+		    mapedit:copySelectionToClipboard() end,
+			disable = not mapedit:canCopy(),
+		  icon = "mapedit/icon_copy.png"},
+
+		 {lang["Paste"],
+		  action=function(props)
+		    mapedit:pasteClipboard() end,
+			disable = not mapedit:canPaste(),
+		  icon = "mapedit/icon_dup.png"},
+
+		 {lang["Undo"],
+		  action=function(props)
+		    mapedit:commitUndo() end,
+			disable = not mapedit:canUndo(),
+		  icon = nil},
+
+		 {lang["Redo"],
+		  action=function(props)
+		    mapedit:commitRedo() end,
+			disable = not mapedit:canRedo(),
+		  icon = nil},
+
+		 {lang["~b~(orange)Delete"],
+		  action=function(props)
+		    mapedit:commitCommand("delete_obj", {select_objects=props.select_objects}) end,
+		  icon = "mapedit/icon_del.png"},
+
+		 {lang["~(lgray)--Transform--"]},
+
+		 {lang["Scale"], action = function(props)
+		 		return make_scale_win(props.select_objects)
+		  end},
+
+		 {lang["Flip"], suboptions = function(props)
+		  return {
+			 {lang["... by ~i~(lred)X~r Axis"],
+			  action=
+			    function()
+			      mapedit:commitCommand("transform", {transform_info=maptransform.flip_x_const}) end},
+			 {lang["... by ~i~(lgreen)Y~r Axis"],
+			  action=
+			    function()
+			       mapedit:commitCommand("transform", {transform_info=maptransform.flip_y_const}) end},
+			 {lang["... by ~i~(lblue)Z~r Axis"], action=function()
+			   mapedit:commitCommand("transform", {transform_info=maptransform.flip_z_const}) end},
+			}
+		 end},
+
+		 {lang["Rotate"], suboptions = function(props)
+		 	return {
+			{lang["... by angle°"], action = function(props)
+		     return make_rotation_win(props.select_objects, "Y") end},
+			{"+~i45~b°", 
+				action=
+					function()
+						mapedit:commitCommand("transform", {transform_info=maptransform.rot_z_090}) end},
+			{"+~i190~b°",
+				action=
+					function()
+						mapedit:commitCommand("transform", {transform_info=maptransform.rot_z_180}) end},
+			{"+~i135~b°",
+				action=
+					function()
+						mapedit:commitCommand("transform", {transform_info=maptransform.rot_z_270}) end}}
+			 end
+		 },
+
+		 {lang["~bReset"],action=function(props)
+		   mapedit:commitCommand("reset_transformation", {select_objects = props.select_objects}) end,
+		   icon = nil},
+
+		 {lang["~(lgray)--Actions--"]}
+		 end)
 	
 	context["select_undef_context"] = 
 		contextmenu:define(

@@ -1034,7 +1034,7 @@ function ProvMapEdit:defineCommands()
 		function(props) -- command function
 			local calc = props.memory[1]==nil
 			for i,v in ipairs(props.select_objects) do
-				if v[1] == "model" then
+				if v[1] == "model" or v[1] == "decal" then
 					if calc then
 						props.memory[i] = transobj:from(v[2]) end
 					local reset = transobj:from(v[2])
@@ -1045,7 +1045,7 @@ function ProvMapEdit:defineCommands()
 		end, -- command function
 		function(props) -- undo command function
 			for i,v in ipairs(props.select_objects) do
-				if v[1] == "model" then
+				if v[1] == "model" or v[1] == "decal" then
 					local old_trans = props.memory[i]
 					old_trans:send(v[2])
 				end
@@ -1105,6 +1105,21 @@ function ProvMapEdit:defineCommands()
 			end
 		end -- undo command function
 	)
+
+	--[[coms["flip_decals"] = commands:define(
+		{
+			{"decals","table",nil,nil},
+			{"flip_mem","table",nil,PropDefaultTable{}},
+			{"flip_xy","string","x",PropIsOneOf{"x","y","X","Y"}},
+		},
+		function(props) -- command function
+			for i,v in ipairs(decals) do
+				
+			end
+		end, -- command function
+		function(props) -- command function
+		end -- command function
+	)--]]
 
 end
 
@@ -2458,6 +2473,8 @@ function ProvMapEdit:getSelectionContextMenu()
 		return "select_models_context", {select_objects=self.active_selection, group_info=group_flags}
 	elseif self:objectTypesSelectedLimit{"tile","wall"} then
 		return "select_mesh_context", {select_objects=self.active_selection}
+	elseif self:objectTypesSelectedLimit{"decal"} then
+		return "select_decal_context", {select_objects=self.active_selection}
 	else
 		return "select_undef_context", {}
 	end
