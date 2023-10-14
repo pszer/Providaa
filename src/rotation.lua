@@ -81,7 +81,23 @@ function createQuatTheta(A, B, theta)
 		A[3] * B[1] - A[1] * B[3],
 		A[1] * B[2] - A[2] * B[1]
 	}
+	print("AXIS",unpack(axis))
+	if axis[1]==0 and axis[2]==0 and axis[3]==0 then
+		print("AYO")
+		local sign = A[1]*B[1] + A[2]*B[2] + A[3]*B[3]
+		print(sign)
+		local id = nil
+		if sign>0 then
+			--id = cpml.quat.new(0,0,0,-1)
+			id = cpml.quat.from_angle_axis(math.pi,0,1,0)
+		else
+			id = cpml.quat.new(0,0,0,1)
+		end
+		return id
+	end
 
+	return cpml.quat.from_angle_axis(theta,axis[1],axis[2],axis[3])
+	--[[
 	local halfTheta = 0.5 * theta
 	local sinHalfTheta = math.sin(halfTheta)
 	local cosHalfTheta = math.cos(halfTheta)
@@ -92,12 +108,15 @@ function createQuatTheta(A, B, theta)
 		sinHalfTheta * axis[2],
 		sinHalfTheta * axis[3],
 		cosHalfTheta
-	)
+	)--]]
 end
 
 function createQuat(A, B)
 	-- Calculate the axis of rotation
 	local dot = A[1]*B[1] + A[2]*B[2] + A[3]*B[3]
 	local angle = math.acos(dot)
+	print("A",unpack(A))
+	print("B",unpack(B))
+	print("ANGLE",angle)
 	return createQuatTheta(A,B,angle)
 end

@@ -58,6 +58,10 @@ function MapMesh:new(args)
 
 		wall_exists = nil,
 
+		decal_mesh = nil,
+		decal_atlas = nil,
+		decal_uvs = nil,
+
 		verts = nil,
 	}
 
@@ -165,6 +169,13 @@ function MapMesh:pushAtlas(shader, push_img)
 	shadersend(shader,"u_uses_tileatlas", true)
 	if push_img then
 		shadersend(shader,"u_tileatlas_uv", unpack(self.uvs_buffer))
+	end
+end
+
+function MapMesh:pushDecalAtlas(shader, push_img)
+	shadersend(shader, "u_uses_tileatlas", true)
+	if push_img then
+		shadersend(shader,"u_tileatlas_uv", unpack(self.decal_uvs))
 	end
 end
 

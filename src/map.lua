@@ -120,6 +120,12 @@
 --      {name="model.iqm", matrix={1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1}}
 --     }
 --
+--     decals =
+--     {
+--			{name="decal.png", pos={x,y,z}, size={x,y,z}, normal={x,y,z}, rot=angle},
+--			...
+--     }
+--
 -- }
 
 --require "grid"
@@ -128,6 +134,7 @@ require "mapmesh"
 require "model"
 
 local cpml = require 'cpml'
+local mapdecal = require 'mapdecal'
 
 Map = { __dir = "maps/" }
 Map.__index = Map
@@ -688,6 +695,130 @@ function Map.internalGenerateSimpleWallVerts(map, simple_verts, simple_index_map
 	return simple_vert_count, simple_index_count
 end
 
+function Map.internalGenerateDecalsStatic(map, map_verts, vert_index_map, wall_index_map)
+	local w,h = map.width, map.height
+
+	local name_to_id     = {}
+	local texture_name   = {}
+	local textures       = {}
+	local tex_count = 0
+
+	local decal_info = map.decals
+	for i,v in ipairs(decal_info) do
+		local tex_name = v.name
+		if not name_to_id[tex_name] then
+			local tex = Loader:getTextureReference(tex_name)
+			name_to_id[tex_name]      = tex_count+1
+			texture_name[tex_count+1] = tex_name
+			textures[tex_count+1]     = tex
+			tex_count = tex_count+1
+		end
+	end
+
+	local atlas, atlas_uvs = MapMesh:generateTextureAtlas( textures )
+
+	local verts = {}
+	local attrs = {}
+	local vert_count = 0
+
+	for i,v in ipairs(decal_info) do
+		local flip_x = v.flip_x == true
+		local flip_y = v.flip_y == true
+		local pos  = v.pos
+		local size = v.size
+		local normal = v.normal
+		local rot  = v.rot
+
+		local tex_id = name_to_id[v.name]
+		local decal_obj = mapdecal:new(
+			textures[tex_id],
+			texture_name[tex_id],
+			pos,size,rot,normal,
+			flip_x,flip_y)
+		local decal_verts = decal_obj:generateVerts(
+			map_verts, w,h,
+			vert_index_map,
+			wall_index_map)
+
+		if decal_verts then
+			local count = #decal_verts
+			print("count:)",count)
+
+			for i=1,count do
+				vert_count = vert_count + 1
+				verts[vert_count] = decal_verts[i]
+				attrs[vert_count] = {tex_id-1}
+			end
+		end
+	end
+
+	local mesh, attr
+	if #verts > 0 then
+		mesh = love.graphics.newMesh(MapMesh.atypes, verts, "triangles", "static")
+		attr = love.graphics.newMesh(MapMesh.decal_atts_atypes, attrs, "triangles", "static")
+		mesh:attachAttribute("TextureUvIndex", attr)
+		mesh:setTexture(atlas)
+	else
+		mesh = love.graphics.newMesh(MapMesh.atypes, {{0,0,0,0,0,0,-1,0},{0,0,0,0,0,0,-1,0},{0,0,0,0,0,0,-1,0}}, "triangles", "static")
+		attr = love.graphics.newMesh(MapMesh.decal_atts_atypes, {{-1},{-1},{-1}}, "triangles", "static")
+	end
+
+	return mesh, atlas, atlas_uvs
+end
+
+-- returns table of MapDecal objects, and table of decal textures {{"texture_name.png", texture}}
+function Map.internalGenerateDecalsDynamic(map, verts, vert_index_map, wall_index_map)
+	local w,h = map.width, map.height
+
+	local name_to_id     = {}
+	local texture_name   = {}
+	local textures       = {}
+	local tex_count = 0
+
+	local decal_info = map.decals
+	for i,v in ipairs(decal_info) do
+		local tex_name = v.name
+		if not name_to_id[tex_name] then
+			local tex = Loader:getTextureReference(tex_name)
+			name_to_id[tex_name]      = tex_count+1
+			texture_name[tex_count+1] = tex_name
+			textures[tex_count+1]     = tex
+			tex_count = tex_count+1
+		end
+	end
+
+	local tex_table = {}
+	for i,v in ipairs(texture_name) do
+		table.insert(tex_table, {texture_name[i], textures[i]})
+	end
+
+	local decals = {}
+
+	for i,v in ipairs(decal_info) do
+		local flip_x = v.flip_x == true
+		local flip_y = v.flip_y == true
+		local pos  = v.pos
+		local size = v.size
+		local normal = v.normal
+		local rot  = v.rot
+
+		local tex_id = name_to_id[v.name]
+		local decal_obj = mapdecal:new(
+			textures[tex_id],
+			texture_name[tex_id],
+			pos,size,rot,normal,
+			flip_x,flip_y)
+		decal_obj:generateVerts(
+			verts, w,h,
+			vert_index_map,
+			wall_index_map)
+		decal_obj:generateMesh()
+		table.insert(decals, decal_obj)
+	end
+	
+	return decals, tex_table
+end
+
 function Map.internalGenerateSimpleTileVerts(map, simple_verts, simple_index_map, simple_vert_count, simple_index_count, tileset_id_to_tex)
 	local int = math.floor
 	local I = 1
@@ -856,7 +987,8 @@ function Map.internalGenerateOverlayMesh(map, tileset_id_to_tex, mesh_verts, til
 		local tile_shape = map.tile_shape[z][x]
 		local tileid = map.overlay_tile_map[z][x]
 
-		local index_start,index_end = tile_vert_map[z][x].first,nil
+		local index = tile_vert_map[z][x]
+		local index_start,index_end = index and tile_vert_map[z][x].first,nil
 
 		if index_start then
 
@@ -1004,6 +1136,8 @@ function Map.generateMapMesh( map , params )
 	local gen_overlay   = not params.dont_gen_overlay
 	local gen_whole_overlay = params.gen_whole_overlay
 
+	local dont_gen_decals = params.dont_gen_decals
+
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_verts enabled, but no gen_nil_texture supplied. give either a filename/texture")
 	end
@@ -1123,6 +1257,11 @@ function Map.generateMapMesh( map , params )
 													 textures)
 	end
 
+	local decals, decals_atlas, decals_uvs=nil,nil,nil
+	if not dont_gen_decals then
+		decals, decals_atlas, decals_uvs = Map.internalGenerateDecalsStatic(map, verts, tile_vert_map, wall_vert_map)
+	end
+
 	local o_mesh,o_full_mesh = nil
 	if gen_overlay then
 		if gen_whole_overlay then
@@ -1158,9 +1297,9 @@ function Map.generateMapMesh( map , params )
 		tex_names = nil
 	end
 
-	if not gen_index_map then
-		verts = nil
-	end
+	--if not gen_index_map then
+	--	verts = nil
+	--end
 
 	return MapMesh:new{
 		mesh=mesh,
@@ -1177,8 +1316,11 @@ function Map.generateMapMesh( map , params )
 		verts = verts,
 
 		textures=textures,
-		texture_names=tex_names,}
+		texture_names=tex_names,
 
+		decal_mesh  = decals,
+		decal_atlas = decals_atlas,
+		decal_uvs   = decals_uvs}
 end
 
 function Map.getHeights(map, x,z)
@@ -1909,6 +2051,10 @@ function Map.malformedCheck(map)
 	local wall_tex_scale = map.wall_tex_scale
 	if not wall_tex_scale then
 		return string.format("Map %s is missing a wall texure scale map", name) end
+
+	local decals = map.decals
+	if not decals then
+		return string.format("Map %s is missing a decal table", name) end
 
 	--[[
 	local tile_tex_info = map.tile_tex_info

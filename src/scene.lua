@@ -142,10 +142,12 @@ function Scene:drawGridMap()
 	local shader = love.graphics.getShader()
 
 	shadersend(shader,"u_uses_tileatlas", true)
-	if self.resend_map_mesh_uv then
+	self.map_mesh:pushAtlas(shader,true)
+	--[[if self.resend_map_mesh_uv then
+		self.map_mesh:pushAtlas(shader,true)
 		shadersend(shader,"u_tileatlas_uv", unpack(self.map_mesh.uvs_buffer))
 		resend_map_mesh_uv = false
-	end
+	end--]]
 	shadersend(shader,"u_model", "column", __id)
 	shadersend(shader,"u_normal_model", "column", __id)
 
@@ -169,6 +171,20 @@ function Scene:drawGridMapForShadowMapping()
 	shadersend(shader,"u_normal_model", "column", __id)
 	--shadersend(shader,"u_uses_tileatlas", false)
 	love.graphics.draw(self.map_mesh.simple_mesh)
+end
+
+function Scene:drawDecals(shader)
+	local shader = shader or love.graphics.getShader()
+
+	local decal_mesh = self.map_mesh.decal_mesh
+	if not decal_mesh then return end
+	self.map_mesh:pushDecalAtlas(shader, true)
+	Renderer.enableDepthBias(shader, 0.01)
+	shader:send("u_tileatlas_clampzero",true)
+	love.graphics.draw(decal_mesh)
+	Renderer.disableDepthBias(shader)
+	shader:send("u_tileatlas_clampzero",false)
+	shadersend(shader,"u_uses_tileatlas", false)
 end
 
 function Scene:drawModels(is_main_pass, model_subset)
@@ -282,6 +298,7 @@ function Scene:draw(cam)
 	love.graphics.setShader(Renderer.vertex_shader)
 	prof.push("drawgrid")
 	self:drawGridMap()
+	self:drawDecals()
 	prof.pop("drawgrid")
 	prof.push("drawmodels")
 	local models = self:getModelsInViewFrustrum()

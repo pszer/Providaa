@@ -837,6 +837,7 @@ function MapEditGUI:define(mapedit)
 
 		 {lang["Undo"],
 		  action=function(props)
+				print("yea")
 		    mapedit:commitUndo() end,
 			disable = not mapedit:canUndo(),
 		  icon = nil},

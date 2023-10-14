@@ -23,6 +23,7 @@ uniform float skybox_brightness;
 uniform bool  u_uses_tileatlas;
 uniform Image u_tileatlas;
 uniform vec4  u_tileatlas_uv[128];
+uniform bool  u_tileatlas_clampzero;
 
 #ifdef VERTEX
 
@@ -237,8 +238,15 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
 
-vec2 calc_tex_coords( vec2 uv_coords ) {
+/*vec2 calc_tex_coords( vec2 uv_coords ) {
 	if (u_uses_tileatlas) {
+		if (u_tileatlas_clampzero &&
+		    (uv_coords.x<0 || uv_coords.y<0 ||
+		    uv_coords.x>1 || uv_coords.y>1))
+		{
+			return vec4(0,0,0,0);
+		}
+
 		vec2 t_off = texoffset;
 		vec2 t_scale = texscale;
 		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
@@ -252,6 +260,31 @@ vec2 calc_tex_coords( vec2 uv_coords ) {
 		);
 	} else {
 		return uv_coords;
+	}
+}*/
+
+vec4 get_tex_colour( Image tex, vec2 uv_coords ) {
+	if (u_uses_tileatlas) {
+		if (u_tileatlas_clampzero &&
+		    (uv_coords.x<0 || uv_coords.y<0 ||
+		    uv_coords.x>1 || uv_coords.y>1))
+		{
+			return vec4(0,0,0,0);
+		}
+
+		vec2 t_off = texoffset;
+		vec2 t_scale = texscale;
+		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
+
+		uv_coords.x = mod(uv_coords.x/t_scale.x - t_off.x, 1.0);
+		uv_coords.y = mod(uv_coords.y/t_scale.y - t_off.y, 1.0);
+		
+		return Texel(tex,vec2(
+			uv_info.x + uv_info.z * uv_coords.x,
+			uv_info.y + uv_info.w * uv_coords.y
+		));
+	} else {
+		return Texel(tex,uv_coords);
 	}
 }
 
@@ -516,18 +549,15 @@ void effect( ) {
 	DO_POINT_LIGHT(7);
 	DO_POINT_LIGHT(8);
 
-	vec2 coords = calc_tex_coords(vec2(VaryingTexCoord));
-
 	vec4 texcolor;
-	texcolor = Texel(MainTex, coords);
-
+	texcolor = get_tex_colour(MainTex, VaryingTexCoord.xy);
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	float rim_dark = dot(frag_v_normal, -normalize(frag_w_position - view_pos));
 	if (rim_dark < 0) {
 		rim_dark = 0.0;
 	} else {
-		rim_dark = min(pow(min(1.0,rim_dark),1),0.22);
+		rim_dark = min(pow(min(1.0,rim_dark),1.0),0.49);
 	}
 	vec3 rim_ambient = 0.15 * (1.0-min(1.4*rim_dark,1.0)) * ambient_col.rgb;
 	rim_dark = max(min(rim_dark*1.2,1.0),0.3);
@@ -536,7 +566,6 @@ void effect( ) {
 	vec4 result = vec4(rim_dark*((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour) + rim_ambient, pix.a);
 
 	love_Canvases[0] = result;
-	//love_Canvases[1] = vec4(outline_colour) * draw_to_outline_buffer;
 }
 
 #endif

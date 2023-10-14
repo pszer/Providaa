@@ -778,6 +778,10 @@ return {
 
 	groups = {
 		{name="TestGroup",insts={1,2,3}}
+	},
+
+	decals = {
+		{name="uv.png",pos={51*24,1*-16,61*24},size={80,80,80},normal={0,-1,0},rot=math.pi/4},
 	}
 
 }

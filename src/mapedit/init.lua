@@ -119,7 +119,7 @@ function ProvMapEdit:load(args)
 	quat = quat * cpml.quat.from_angle_axis(math.pi/2.0,1,0,0)
 
 	local testdecal = mapdecal:new(
-		Loader:getTextureReference("uv.png"),"uv.png",{51*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},math.pi/4,{0,-1,0})
+		Loader:getTextureReference("uv.png"),"uv.png",{40*TILE_SIZE,1*TILE_HEIGHT,61*TILE_SIZE},{80,80,80},0.0*math.pi/4,{0,-1,0})
 	testdecal:generateVerts(self.props.mapedit_map_mesh.verts,
 	                        self.props.mapedit_map_width,
 	                        self.props.mapedit_map_height,
@@ -204,7 +204,7 @@ function ProvMapEdit:loadMap(map_name)
 
 	local map_mesh = Map.generateMapMesh( map_file ,
 		{ dont_optimise=true, dont_gen_simple=true , gen_all_verts = true, gen_nil_texture = "nil.png", gen_index_map = true,
-		  gen_newvert_buffer = true, keep_textures=true, gen_whole_overlay=true} )
+		  gen_newvert_buffer = true, keep_textures=true, gen_whole_overlay=true, dont_gen_decals=true } )
 	if map_mesh then
 		self.props.mapedit_map_mesh = map_mesh
 	else
@@ -235,6 +235,15 @@ function ProvMapEdit:loadMap(map_name)
 	self:updateModelMatrices()
 	for _,v in ipairs(model_set) do
 		self:addModelToList(v)
+	end
+
+	local decals, decal_textures = Map.internalGenerateDecalsDynamic( map_file, map_mesh.verts, map_mesh.tile_vert_map, map_mesh.wall_vert_map )
+	for i,v in ipairs(decals) do
+		local obj = self:makeDecalObject(v)
+		self:addDecal(obj)
+	end
+	for i,v in ipairs(decal_textures) do
+		self:addTexture(v[1], v[2])
 	end
 
 	self:copyPropsFromMap(map_file)
@@ -882,33 +891,45 @@ function ProvMapEdit:defineCommands()
 		 {"select_objects", "table", nil, PropDefaultTable(self.active_selection)},
 		 {"transform_info", nil, nil, nil},
 		 {"memory", "table", nil, PropDefaultTable{}},
+		 {"memory_to", "table", nil, PropDefaultTable{}},
 		 {"transform_function", nil, nil, nil}
 		},
 		function(props) -- command function
 			local groups = {}
 			local calc_mem = props.memory[1] == nil
+			local calc_trans = props.memory_to[1] == nil
 			for i,v in ipairs(props.select_objects) do
-				local o_type = v[1]
-				if o_type=="tile" then
-				end
-
 				if calc_mem then -- if memory hasn't been calculated yet
 					props.memory[i] = transobj:from(v[2])
 				end
-					
+			
+				local o_type = v[1]
 				if o_type == "model" then -- remember any groups models are in, their bounding box has to be updated
 					local g = self:isModelInAGroup(v[2])
 					if g then add_to_set(groups,g) end
 				end
 			end
 
-			if not props.transform_function then
-				--props.transform_function = self:applyActiveTransformationFunction(props.select_objects)
-				props.transform_function = self:applyTransformationFunction(props.select_objects, props.transform_info)
+			if calc_trans then
+				if not props.transform_function then
+					--props.transform_function = self:applyActiveTransformationFunction(props.select_objects)
+					props.transform_function = self:applyTransformationFunction(props.select_objects, props.transform_info)
+				end
+				props.transform_function()
+
+				for i,v in ipairs(props.select_objects) do
+					props.memory_to[i] = transobj:from(v[2])
+				end
+			else
+				for i,v in ipairs(props.select_objects) do
+					local memory_to = props.memory_to[i]
+					memory_to:send(v[2])
+					--props.memory_to[i] = transobj:from(v[2])
+				end
 			end
-			props.transform_function()
 
 			self:updateModelMatrices()
+
 			for i,g in ipairs(groups) do
 				g:calcMinMax()
 			end
@@ -1859,6 +1880,7 @@ function ProvMapEdit:objectAtCursor(x, y, tests)
 
 	local min_dist = 1/0
 	local mesh_test = nil
+	local normal = nil
 	-- test against map mesh
 	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
 
@@ -1866,29 +1888,31 @@ function ProvMapEdit:objectAtCursor(x, y, tests)
 	local function __test_tile(x,z)
 		local test_type = "face"
 		if self.alt_modifier then test_type = "vert" end
-		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, test_type)
+		local intersect, dist, verts, n= self:testTileAgainstRay(ray, x,z, test_type)
 		if intersect and dist < min_dist then
 			mesh_test = {"tile"}
 			for i,v in ipairs(verts) do
 				mesh_test[i+1] = self:getTileVertexObject(x,z,v,overlay)
 			end
 			min_dist = dist
+			normal = n
 		end
 	end
 
 	local function __test_wall(x,z)
 		local intersect, dist
 		for i=1,5 do
-			intersect, dist = self:testWallSideAgainstRay(ray, x,z, i)
+			intersect, dist, n = self:testWallSideAgainstRay(ray, x,z, i)
 			if intersect and dist < min_dist  then
 				mesh_test = {"wall",self:getWallObject(x,z,i)}
 				min_dist = dist
+				normal = n
 			end
 		end
 	end
 
 	local function __test_model(model)
-		local intersect, dist = self:testModelAgainstRay(ray, model)
+		local intersect, dist, normal = self:testModelAgainstRay(ray, model)
 		if intersect and dist < min_dist then
 			local group = self:isModelInAGroup(model)
 			if group then
@@ -1996,127 +2020,9 @@ function ProvMapEdit:objectAtCursor(x, y, tests)
 		result_pos[1] = ray.position.x + ray.direction.x * min_dist
 		result_pos[2] = ray.position.y + ray.direction.y * min_dist
 		result_pos[3] = ray.position.z + ray.direction.z * min_dist
-		print("cool!",unpack(result_pos))
 	end
 
-	return mesh_test, result_pos
-end
-
-function ProvMapEdit:positionAtCursor(x, y, tests)
-	local unproject = cpml.mat4.unproject
-
-	local test_tiles = tests.tiles
-	local test_walls = tests.tiles
-	local test_models = tests.tiles
-	local test_decals = tests and tests.decal
-
-	local cam = self.props.mapedit_cam
-	local viewproj = cam:getViewProjMatrix()
-	local vw,vh = love.window.getMode()
-	local viewport_xywh = {0,0,vw,vh}
-
-	local cursor_v = cpml.vec3.new(x,y,1)
-	local cam_pos = cpml.vec3.new(cam:getPosition())
-	local unproject_v = unproject(cursor_v, viewproj, viewport_xywh)
-	--local ray_dir_v = cpml.vec3.new(cam:getDirection())
-	local ray = {position=cam_pos, direction=cpml.vec3.normalize(unproject_v - cam_pos)}
-
-	local min_dist = 1/0
-	-- test against map mesh
-	local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-
-	local overlay = self.props.mapedit_overlay_edit
-	local function __test_tile(x,z)
-		local test_type = "face"
-		local intersect, dist, verts = self:testTileAgainstRay(ray, x,z, test_type)
-		if intersect and dist < min_dist then
-			min_dist = dist
-		end
-	end
-
-	local function __test_wall(x,z)
-		local intersect, dist
-		for i=1,5 do
-			intersect, dist = self:testWallSideAgainstRay(ray, x,z, i)
-			if intersect and dist < min_dist  then
-				min_dist = dist
-			end
-		end
-	end
-
-	-- perform tests on each 4x4 section of the grid map
-	local grid_size = 3
-	local region_tests = __tempregiontests
-	local g_w,g_h
-	if test_tiles or test_walls then
-		local ceil = math.ceil
-		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-		g_w,g_h = ceil(w/grid_size), ceil(h/grid_size)
-		for z=1,g_h do
-			for x=1,g_w do
-				local X,Z = (x-1.5)*TILE_SIZE*(grid_size), (z-1.5)*TILE_SIZE*(grid_size)
-				local W   = TILE_SIZE*(grid_size+2.0)
-				local D=W
-				local Y = -5000
-				local H = 10000
-				local intersect = self:testBoxAgainstRay(ray,X,Y,Z,W,H,D)
-				region_tests[x + (z-1)*g_w] = intersect ~= false
-			end
-		end
-	end
-	local function get_region_test_result(X,Z)
-		return region_tests[X + (Z-1)*g_w]
-	end
-
-	local min = math.min
-	if test_tiles then
-		--for z=1,h do
-		--	for x=1,w do
-		--		__test_tile(x,z)
-		--	end
-		--end
-		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-		for X=1,g_w do
-			for Z=1,g_h do
-				local test_result = get_region_test_result(X,Z)
-				if test_result then
-					for z=(Z-1)*grid_size,min(Z*grid_size,h-1) do
-						for x=(X-1)*grid_size,min(X*grid_size,w-1) do
-							__test_tile(x+1,z+1)
-						end
-					end
-				end
-			end
-		end
-	end
-
-	if test_walls then
-		--for z=1,h do
-		--	for x=1,w do
-		--		__test_wall(x,z)
-		--	end
-		--end
-		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
-		for X=1,g_w do
-			for Z=1,g_h do
-				local test_result = get_region_test_result(X,Z)
-				if test_result then
-					for z=(Z-1)*grid_size,min(Z*grid_size,h-1) do
-						for x=(X-1)*grid_size,min(X*grid_size,w-1) do
-							__test_wall(x+1,z+1)
-						end
-					end
-				end
-			end
-		end
-	end
-
-	if min_dist == 1/0 then return nil end
-	local result_pos={0,0,0}
-	result_pos[1] = ray.position.x + ray.direction.x * mist_dist
-	result_pos[2] = ray.position.y + ray.direction.y * mist_dist
-	result_pos[3] = ray.position.z + ray.direction.z * mist_dist
-	return result_pos
+	return mesh_test, result_pos, normal
 end
 
 local __tempv1,__tempv2,__tempv3,__tempv4,__tempv5,__tempv6 = cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new(),cpml.vec3.new()
@@ -2161,6 +2067,39 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, test_type)
 
 	local dist = nil
 	local intersect = intersect1 or intersect2
+	local normal = nil
+
+	local function line(A,B)
+		local v = {0,0,0}
+		v[1]=B.x-A.x
+		v[2]=B.y-A.y
+		v[3]=B.z-A.z
+		return v
+	end
+	local function crossN(A, B)
+    local x = A[2] * B[3] - A[3] * B[2]
+    local y = A[3] * B[1] - A[1] * B[3]
+    local z = A[1] * B[2] - A[2] * B[1]
+		local L = math.sqrt(x*x+y*y+z*z)
+		if L == 0 then return nil end
+		L=1/L
+		x=x*L
+		y=y*L
+		z=z*L
+    return {x, y, z}
+	end
+	if intersect1 and intersect2 then
+		if dist1 < dist2 then
+			normal = crossN(line(__temptri1[1],__temptri1[2]),line(__temptri1[1],__temptri1[3]))
+		else
+			normal = crossN(line(__temptri2[1],__temptri2[2]),line(__temptri2[1],__temptri2[3]))
+		end
+	elseif intersect1 then
+		normal = crossN(line(__temptri1[1],__temptri1[2]),line(__temptri1[1],__temptri1[3]))
+	elseif intersect2 then
+		normal = crossN(line(__temptri2[1],__temptri2[2]),line(__temptri2[1],__temptri2[3]))
+	end
+
 	if intersect1 and intersect2 then
 		dist = math.min(dist1,dist2)
 	else
@@ -2293,7 +2232,7 @@ function ProvMapEdit:testTileAgainstRay(ray, x,z, test_type)
 		end
 	end
 
-	return intersect, dist, verts_t
+	return intersect, dist, verts_t, normal
 end
 
 local __tempvec3min = cpml.vec3.new()
@@ -2331,6 +2270,38 @@ function ProvMapEdit:testWallSideAgainstRay(ray, x,z,side)
 	local intersect1, dist1 = ray_triangle(ray, __temptri1, false) 
 	local intersect2, dist2 = ray_triangle(ray, __temptri2, false)
 
+	local normal = nil
+	local function line(A,B)
+		local v = {0,0,0}
+		v[1]=B.x-A.x
+		v[2]=B.y-A.y
+		v[3]=B.z-A.z
+		return v
+	end
+	local function crossN(A, B)
+    local x = A[2] * B[3] - A[3] * B[2]
+    local y = A[3] * B[1] - A[1] * B[3]
+    local z = A[1] * B[2] - A[2] * B[1]
+		local L = math.sqrt(x*x+y*y+z*z)
+		if L == 0 then return nil end
+		L=1/L
+		x=x*L
+		y=y*L
+		z=z*L
+    return {x, y, z}
+	end
+	if intersect1 and intersect2 then
+		if dist1 < dist2 then
+			normal = crossN(line(__temptri1[1],__temptri1[2]),line(__temptri1[1],__temptri1[3]))
+		else
+			normal = crossN(line(__temptri2[1],__temptri2[2]),line(__temptri2[1],__temptri2[3]))
+		end
+	elseif intersect1 then
+		normal = crossN(line(__temptri1[1],__temptri1[2]),line(__temptri1[1],__temptri1[3]))
+	elseif intersect2 then
+		normal = crossN(line(__temptri2[1],__temptri2[2]),line(__temptri2[1],__temptri2[3]))
+	end
+
 	local dist = nil
 	local intersect = intersect1 or intersect2
 	if intersect1 and intersect2 then
@@ -2339,7 +2310,7 @@ function ProvMapEdit:testWallSideAgainstRay(ray, x,z,side)
 		dist = dist1 or dist2
 	end
 
-	return intersect, dist
+	return intersect, dist, normal
 end
 
 local __tempb3 = cpml.bound3.new(cpml.vec3.new{0,0,0},cpml.vec3.new{0,0,0})
@@ -3470,9 +3441,10 @@ function ProvMapEdit:applyMapEditTransformOntoDecal(decal, trans, _, precomp_inf
 
 	if t_type == "translate" then
 		local x,y = love.mouse.getPosition()
-		local obj,pos = self:objectAtCursor(x,y,{tile=true,wall=true})
-		if not obj then return end
+		local obj,pos,norm = self:objectAtCursor(x,y,{tile=true,wall=true})
+		if not obj or not norm then return end
 
+		--[[
 		local normal_x,normal_y,normal_z
 		if obj[1]=="tile" then
 			local T = obj[2]
@@ -3490,7 +3462,8 @@ function ProvMapEdit:applyMapEditTransformOntoDecal(decal, trans, _, precomp_inf
 			decal.decal.normal[1] = nx
 			decal.decal.normal[2] = ny
 			decal.decal.normal[3] = nz
-		end
+		end--]]
+		decal.decal:setNormal(norm)
 
 		--local pos = decal:getPosition()
 		--[[decal:setPosition{
@@ -4609,7 +4582,17 @@ function ProvMapEdit:drawDecals(shader)
 
 	for i,v in ipairs(self.props.mapedit_decals) do
 		local decal = v.decal
+		love.graphics.setDepthMode( "lequal", true  )
 		love.graphics.draw(decal.mesh)
+
+		love.graphics.setDepthMode( "always", false )
+		love.graphics.setWireframe( true )
+		shadersend(shader,"u_wireframe_enabled", true)
+		shadersend(shader,"u_wireframe_colour", {1,0,0,1})
+		love.graphics.draw(decal.mesh)
+		love.graphics.setWireframe( false )
+		shadersend(shader,"u_wireframe_enabled", false)
+		shadersend(shader,"u_wireframe_colour", self.wireframe_col)
 	end
 
 	local cam_pos = self.props.mapedit_cam:getPosition()
@@ -4624,11 +4607,11 @@ function ProvMapEdit:drawDecals(shader)
 
 		local dx,dy,dz = cam_pos[1]-p[1],cam_pos[2]-p[2],cam_pos[3]-p[3]
 		local dist = dx*dx + dy*dy + dz*dz
-		if dist > 500*500 then break end
-
-		love.graphics.setWireframe(true)
-		guirender:draw3DCube(shader,p,{p[1]+s[1],p[2]+s[2],p[3]+s[3]},box_border_col,true,box_col,"fill")
-		love.graphics.setWireframe(false)
+		if dist < 500*500 then
+			love.graphics.setWireframe(true)
+			guirender:draw3DCube(shader,p,{p[1]+s[1],p[2]+s[2],p[3]+s[3]},box_border_col,true,box_col,"fill")
+			love.graphics.setWireframe(false)
+		end
 	end
 	love.graphics.setDepthMode( "lequal", true  )
 	shadersend(shader, "u_solid_colour_enable", false)
