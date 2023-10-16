@@ -103,6 +103,22 @@ local function MapEditExport(props, name, settings)
 	end
 	--
 	-- generate model and group info finished
+	--
+	
+	local decals = {}
+	for i,v in ipairs(props.mapedit_decals) do
+		local dec = v.decal
+
+		local pos    = dec.pos
+		local rot    = dec.rotation
+		local normal = dec.normal
+		local name    = dec.texture_name
+		local size    = dec.size
+
+		if name and normal and rot and pos then
+			table.insert(decals, {name=name, normal=normal,size=size,pos=pos,rot=rot})
+		end
+	end
 
 	--
 	-- generate tile and wall set
@@ -220,6 +236,7 @@ local function MapEditExport(props, name, settings)
 		wall_map = wall_map,
 		overlay_tile_map = overlay_map,
 		models = models,
+		decals = decals,
 		groups = groups,
 		skybox = skybox,
 

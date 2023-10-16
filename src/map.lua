@@ -336,6 +336,7 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			end
 
 			local h1,h2,h3,h4,h5,h6 = unpack(Map.getHeights(map, x,z))
+			print(h1,h2,h3,h4,h5,h6,tex_id,tex_id2,x,z)
 			local gv1,gv2,gv3,gv4,gv5,gv6 = nil,nil,nil,nil,nil,nil
 			local indices = rect_I
 			if consec_count == 1 then

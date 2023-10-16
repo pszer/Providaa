@@ -233,7 +233,7 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	vec3 light_dir_n = normalize( light_dir);
 	vec3 halfway_v = normalize(light_dir_n + view_dir);
 
-	float spec = pow(  max(dot(normal,halfway_v),  0.0), 4);
+	float spec = pow(  max(dot(normal,halfway_v),  0.0), 32);
 
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
@@ -391,7 +391,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 
 		if (interp >= 0.0) {
 			close_shadow = shadow_calculation(frag_light_pos, lightspace,
-			  map, normal , light_dir_n, 0.0050);
+			  map, normal , light_dir_n, 0.005);
 		}
 		if (interp <= 1.0) {
 			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,

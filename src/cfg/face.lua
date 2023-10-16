@@ -110,6 +110,6 @@ FACE_DECOR_ATTRIBUTES = {
 		decor_model_name = "pianko/piankofacemesh.iqm",
 		decor_parent_bone = "Head",
 		decor_position = {0,0,0.015},
-		decor_shadow_mult = 0.95
+		decor_shadow_mult = 1.00
 	}
 }
