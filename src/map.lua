@@ -336,7 +336,6 @@ function Map.internalGenerateTileVerts(map, verts, index_map, attr_verts,
 			end
 
 			local h1,h2,h3,h4,h5,h6 = unpack(Map.getHeights(map, x,z))
-			print(h1,h2,h3,h4,h5,h6,tex_id,tex_id2,x,z)
 			local gv1,gv2,gv3,gv4,gv5,gv6 = nil,nil,nil,nil,nil,nil
 			local indices = rect_I
 			if consec_count == 1 then
@@ -1134,6 +1133,8 @@ function Map.generateMapMesh( map , params )
 
 	local dont_gen_decals = params.dont_gen_decals
 
+	local dont_gen_tangent = params.dont_gen_tangent
+
 	if gen_all_walls and not gen_nil_texture then
 		error("Map.generateMapMesh(): gen_all_verts enabled, but no gen_nil_texture supplied. give either a filename/texture")
 	end
@@ -1280,6 +1281,12 @@ function Map.generateMapMesh( map , params )
 	mesh:attachAttribute("TextureOffset", attr_mesh, "pervertex")
 	mesh:attachAttribute("TextureUvIndex", attr_mesh, "pervertex")
 
+	local tangent_mesh
+	if not dont_gen_tangent then
+		local genTangent = require 'tangent'
+		tangent_mesh = genTangent(mesh)
+	end
+
 	local simple_mesh = nil
 	if gen_simple then
 		simple_mesh = love.graphics.newMesh(MapMesh.simple_atypes, simple_verts, "triangles", "static")
@@ -1313,6 +1320,7 @@ function Map.generateMapMesh( map , params )
 
 		textures=textures,
 		texture_names=tex_names,
+		tangent_mesh = tangent_mesh,
 
 		decal_mesh  = decals,
 		decal_atlas = decals_atlas,

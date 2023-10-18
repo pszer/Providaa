@@ -12,6 +12,8 @@ require "rotation"
 require "animator"
 require "assetloader"
 
+local material = require 'materials'
+
 Model = {__type = "model"}
 Model.__index = Model
 
@@ -54,13 +56,8 @@ function Model:fromLoader( filename )
 	local texture_name = attributes["model_texture_fname"]
 	local winding      = attributes["model_vertex_winding"]
 
-	if not texture_name then
-		texture_name = "undef.png"
-		print(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
-			filename))
-		--error(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
-		--	filename))
-	end
+	local texture  = nil
+	local mat = nil
 
 	local objs = Loader:getModelReference( filename )
 	assert(objs)
@@ -72,10 +69,34 @@ function Model:fromLoader( filename )
 		bounds_copy = { ["min"]={unpack(bounds.min)}, ["max"]={unpack(bounds.max)} }
 	end
 
-	local texture = Loader:getTextureReference( texture_name )
+	if not texture_name then
+		texture_name = "undef.png"
+		mat = material:empty()
+		print(string.format("Model:fromLoader(): texture to use for model %s unknown, please specify in cfg/model_attributes",
+			filename))
+	end
+
+	texture = Loader:getTextureReference( texture_name )
 	assert(texture)
 	local mesh = objs.mesh
 	mesh:setTexture(texture)
+	if not mat then
+		mat = material:new(texture_name)
+	end
+
+	local tangent_present = false
+	local vert_format = mesh:getVertexFormat()
+	for i,v in ipairs(vert_format) do
+		if v[1]=="VertexTangent" then
+			tangent_present = true
+			break
+		end
+	end
+
+	if not tangent_present then
+		local attachTangent = require 'tangent'
+		attachTangent(mesh)
+	end
 
 	local anims = nil
 	local skeleton = nil
@@ -97,6 +118,7 @@ function Model:fromLoader( filename )
 		["model_skeleton"] = skeleton,
 		["model_animations"] = anims,
 		["model_animated"] = has_anims,
+		["model_material"] = mat,
 	}
 
 	if objs.has_anims then
@@ -656,7 +678,10 @@ function ModelInstance:draw(shader, is_main_pass)
 	if det > 0 then
 		love.graphics.setFrontFaceWinding("cw") end
 
-	local modelprops = self:getModel().props
+	if is_main_pass then
+		local base_model = self:getModel()
+		base_model:sendMaterial(shader)
+	end
 
 	local props = self.props
 
@@ -889,6 +914,18 @@ end
 --	local size = {max[1]-min[1], max[2]-min[2], max[3]-min[3]}
 --end
 --
+--
+
+function Model:getMaterial()
+	return self.props.model_material
+end
+
+function Model:sendMaterial(shader)
+	local shader = shader or love.graphics.getShader()
+	local mat = self.props.model_material
+	mat:send(shader)
+end
+
 function Model:isAnimated()
 	if not self.props.model_animated then return false end
 	return true

@@ -51,58 +51,56 @@ function Prov:load()
 			["light_col"] = {277.95/255, 277.95/255, 242/255, 14.0},
 			["light_static"] = true
 		},
-
 		
 		Light:new{
 			["light_pos"] = {250,-90,1500,1},
-			["light_col"] = {277.95/255, 255/255, 224/255,250},
+			["light_col"] = {277.95/255, 255/255, 224/255,150},
 			["light_size"] = 400,
 			["light_static"] = true
 		},
 
-		--[[Light:new{
+		Light:new{
 			["light_pos"] = {800,-130,-250+2048,1},
-			["light_col"] = {277.95/255,255/255,224/255,1000},		
-			["light_size"] = 250,
+			["light_col"] = {277.95/255,255/255,224/255,150},		
+			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
 			["light_pos"] = {1200,-120,-200+2048,1},
-			["light_col"] = {500/255,235/255,224/255,1000},
-			["light_size"] = 250,
-			["light_static"] = true
-		},
-
-		--[[Light:new{
-			["light_pos"] = {2400,-30,-280,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_col"] = {500/255,235/255,224/255,150},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {300,-80,-680,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_pos"] = {2400,-30,1280,1},
+			["light_col"] = {255/255,235/255,224/255,150},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {600,-80,-680,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_pos"] = {300,-80,1680,1},
+			["light_col"] = {255/255,235/255,224/255,150},
 			["light_size"] = 500,
 			["light_static"] = true
 		},
 
 		Light:new{
-			["light_pos"] = {1000,-80,-680,1},
-			["light_col"] = {255/255,235/255,224/255,10},
+			["light_pos"] = {600,-80,1680,1},
+			["light_col"] = {255/255,235/255,224/255,150},
+			["light_size"] = 500,
+			["light_static"] = true
+		},
+
+		Light:new{
+			["light_pos"] = {1000,-80,1680,1},
+			["light_col"] = {255/255,235/255,224/255,150},
 			["light_size"] = 500,
 			["light_static"] = true
 		},--]]
 	}
-	self.scene.props.scene_skybox_hdr_brightness = 20.0
 
 	self:fitNewEntityPartitionSpace()
 	GameData:setupFromProv(self)

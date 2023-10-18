@@ -11,6 +11,7 @@ ModelPropPrototype = Props:prototype{
 
 	{"model_name"         , "string", "", nil, "model's name" },
 	{"model_texture_fname", "string", "", nil, "model's texture filename"},
+	{"model_material", "material", nil, nil,   "model's material"},
 
 	{"model_position", "table", nil, PropDefaultTable{0,0,0}, "model's world position", "readonly"}, -- unused
 	{"model_rotation", "table", nil, PropDefaultTable{0,0,0,"rot"}, "model's world rotation"},       -- unused

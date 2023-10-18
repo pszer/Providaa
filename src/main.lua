@@ -4,6 +4,7 @@ require "render"
 require "console"
 require "assetloader"
 --require "mapedit"
+local material = require "materials"
 
 local o_ten_one = require "o-ten-one"
 local limit = require "syslimits"
@@ -110,10 +111,11 @@ function love.run()
 
 		sleep_acc = sleep_acc + dt
 		--if sleep_acc > 0.0025 then
-		if sleep_acc > 0.001 then
+		--[[if sleep_acc > 1.0/240 then
 			sleep_acc = 0
-			if love.timer then love.timer.sleep(0.001) end
-		end
+			if love.timer then love.timer.sleep(1.0/240) end
+		end--]]
+		love.timer.sleep(0.001)
 	end
 end
 

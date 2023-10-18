@@ -11,6 +11,7 @@ varying vec4 dir_frag_light_pos;
 varying vec4 dir_static_frag_light_pos;
 varying vec3 frag_normal;
 varying vec3 frag_v_normal;
+varying mat3 TBN_mat;
 
 uniform int u_point_light_count;
 uniform float u_shadow_imult;
@@ -24,6 +25,8 @@ uniform bool  u_uses_tileatlas;
 uniform Image u_tileatlas;
 uniform vec4  u_tileatlas_uv[128];
 uniform bool  u_tileatlas_clampzero;
+
+uniform bool u_bumpmap_enable;
 
 #ifdef VERTEX
 
@@ -44,7 +47,7 @@ uniform bool curve_flag;
 attribute vec3 VertexNormal;
 attribute vec4 VertexWeight;
 attribute vec4 VertexBone;
-attribute vec4 VertexTangent;
+attribute vec3 VertexTangent;
 
 uniform bool instance_draw_call;
 attribute vec4 InstanceColumn1;
@@ -103,9 +106,21 @@ mat4 get_model_matrix() {
 	}
 }
 
+mat3 get_TBN_matrix(mat4 model) {
+	if (!u_bumpmap_enable) {
+		return mat3(1.0);
+	}
+	vec3 T = normalize(vec3(model * vec4(VertexTangent, 0.0)));
+	vec3 N = normalize(vec3(model * vec4(VertexNormal, 0.0)));
+	vec3 B = cross(N,T);
+
+	return mat3(T,B,N);
+}
+
 vec4 position(mat4 transform, vec4 vertex) {
 	mat4 skin_u = get_model_matrix() * get_deform_matrix();
 	mat4 skinview_u = u_view * skin_u;
+	TBN_mat = get_TBN_matrix(skin_u);
 
 	frag_normal = normalize(get_normal_matrix(skin_u) * VertexNormal);
 	frag_v_normal = frag_normal;
@@ -186,13 +201,15 @@ uniform sampler2DShadow dir_static_shadow_map;
 uniform vec3 dir_light_dir;
 uniform vec4 dir_light_col;
 
-//uniform sampler2DShadow point_shadow_maps[MAX_POINT_LIGHTS];
-
 uniform float draw_to_outline_buffer;
 uniform vec4 outline_colour;
 
 uniform bool u_draw_as_contour;
 uniform vec4 u_contour_colour;
+
+// material info
+uniform Image MatNormal;
+uniform Image MatEmission;
 
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
@@ -238,15 +255,8 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	return spec * specular_strength * light_col.rgb * light_col.a;
 }
 
-/*vec2 calc_tex_coords( vec2 uv_coords ) {
+vec2 calc_tex_coords( vec2 uv_coords ) {
 	if (u_uses_tileatlas) {
-		if (u_tileatlas_clampzero &&
-		    (uv_coords.x<0 || uv_coords.y<0 ||
-		    uv_coords.x>1 || uv_coords.y>1))
-		{
-			return vec4(0,0,0,0);
-		}
-
 		vec2 t_off = texoffset;
 		vec2 t_scale = texscale;
 		vec4 uv_info = u_tileatlas_uv[tex_uv_index];
@@ -261,7 +271,7 @@ vec3 specular_highlight( vec3 normal , vec3 light_dir, vec4 light_col ) {
 	} else {
 		return uv_coords;
 	}
-}*/
+}
 
 vec4 get_tex_colour( Image tex, vec2 uv_coords ) {
 	if (u_uses_tileatlas) {
@@ -512,8 +522,30 @@ vec3 calc_point_light_col_shadow(int point_light_id, vec3 normal, const int poin
 	return (1.0 - shadow * (1.0-u_shadow_imult))*light_result;
 }
 
-// love_Canvases[0] is HDR color
-// love_Canvases[1] is outline buffer
+mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv ) {
+	// get edge vectors of the pixel triangle
+	vec3 dp1 = dFdx( p );
+	vec3 dp2 = dFdy( p );
+	vec2 duv1 = dFdx( uv );
+	vec2 duv2 = dFdy( uv );
+	// solve the linear system 
+	vec3 dp2perp = cross( dp2, N );
+	vec3 dp1perp = cross( N, dp1 );
+	vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+	vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+	// construct a scale-invariant frame
+	float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+	return mat3( T * invmax, B * invmax, N );
+}
+vec3 perturb_normal( vec3 N, vec3 V, vec2 texcoord ) {
+	// assume N, the interpolated vertex normal and
+	// V, the view vector (vertex to eye)
+	vec3 map = texture2D( MatNormal, texcoord ).xyz;
+	map = normalize( (map-vec3(0.5) )*2.0);
+	mat3 TBN = cotangent_frame( N, -V, texcoord );
+	return normalize( TBN * map );
+}
+
 void effect( ) {
 	// when drawing the model in contour line phase, we only need a solid
 	// colour and can skip all the other fragment calculations
@@ -528,16 +560,27 @@ void effect( ) {
 	float fog_r = (dist - fog_start) / (fog_end - fog_start);
 	fog_r = clamp(fog_r, 0.0,1.0);
 
+	// normal bump-mapping
+	vec3 normal;
+	if (u_bumpmap_enable) {
+		normal = texture2D(MatNormal, calc_tex_coords(VaryingTexCoord.xy)).xyz;
+		normal = (normal-vec3(0.5)) * 2.0;
+		normal = normalize(TBN_mat * normal);
+		//normal = frag_normal;
+	} else {
+		normal = frag_normal;
+	}
+
 	vec3 light = ambient_lighting( ambient_col );
 	vec3 dir_light_result = calc_dir_light_col(dir_frag_light_pos, dir_static_frag_light_pos, u_dir_lightspace, u_dir_static_lightspace,
 		dir_shadow_map, dir_static_shadow_map,
-		frag_normal, dir_light_dir, dir_light_col, dist);
+		normal, dir_light_dir, dir_light_col, dist);
 	light += dir_light_result;
 
 	//
 	// EVIL SHIT - no cubemap arrays, no glsl 4.0+ variable indexing.
 	//
-	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, frag_normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, frag_normal);}}
+	#define DO_POINT_LIGHT(i) if (u_point_light_count > i){if (point_light_has_shadow_map[i]) {light += calc_point_light_col_shadow(i, normal, i, point_bias, point_light_shadow_maps[i]);} else {light += calc_point_light_col_full(i, normal);}}
 	float point_bias = 0.5;
 	DO_POINT_LIGHT(0);
 	DO_POINT_LIGHT(1);
@@ -554,17 +597,15 @@ void effect( ) {
 	vec4 pix = texcolor * vec4(light,1.0);
 
 	float rim_dark = dot(frag_v_normal, -normalize(frag_w_position - view_pos));
-	if (rim_dark < 0) {
-		rim_dark = 0.0;
-	} else {
-		rim_dark = min(pow(min(1.0,rim_dark),1.0),0.49);
-	}
+	rim_dark = max(0.0, min(pow(min(1.0,rim_dark),1.0),0.49) );
+
 	vec3 rim_ambient = 0.15 * (1.0-min(1.4*rim_dark,1.0)) * ambient_col.rgb;
 	rim_dark = max(min(rim_dark*1.2,1.0),0.3);
 
 	// TODO make the fog colour work properly with HDR
 	vec4 result = vec4(rim_dark*((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour) + rim_ambient, pix.a);
 
+	//love_Canvases[0] = result*0.0001 + vec4(normal,1.0);
 	love_Canvases[0] = result;
 }
 

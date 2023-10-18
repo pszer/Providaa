@@ -279,6 +279,42 @@ function Loader:getMusicReference(filename)
 function Loader:getTTFReference(filename)
 	return Loader:getAssetReference("ttf", filename) end
 
+function Loader:queryAsset(type, filename)
+	assert_type(filename, "string")
+	local assets = self.type_str_to_asset_table[type]
+	assert(assets)
+	local base_dir = assets.__dir
+
+	local already_loaded = assets[filename]
+	if already_loaded then
+		self:ref(assets, filename)
+		return already_loaded
+	end
+
+	-- we check if there's an ongoing request for this asset
+	local is_in_queue = self:isCurrentlyRequested(base_dir, filename)
+	if is_in_queue then
+		self:finishQueue()
+	end
+
+	local now_loaded = assets[filename]
+	if now_loaded then
+		self:ref(assets, filename)
+		return now_loaded
+	end
+end
+
+function Loader:queryModel(filename)
+	return Loader:queryAsset("model", filename) end
+function Loader:queryTexture(filename)
+	return Loader:queryAsset("texture", filename) end
+function Loader:querySound(filename)
+	return Loader:queryAsset("sound", filename) end
+function Loader:queryMusic(filename)
+	return Loader:queryAsset("music", filename) end
+function Loader:queryTTF(filename)
+	return Loader:queryAsset("ttf", filename) end
+
 function Loader:getReferenceCount(type, filename)
 	return self.type_str_to_asset_table[type].__ref_counts[filename]
 end

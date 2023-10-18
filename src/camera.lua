@@ -30,7 +30,6 @@ function Camera:new(props)
 	this.props.cam_frustrum_corners = {{},{},{},{},{},{},{},{}}
 	this.props.cam_frustrum_centre  = {}
 
-
 	this:generatePerspectiveMatrix()
 	this:generateViewMatrix()
 

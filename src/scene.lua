@@ -288,11 +288,7 @@ function Scene:draw(cam)
 	self:drawSkybox()
 	prof.pop("skybox")
 
-	--[[love.graphics.setCanvas{Renderer.scene_viewport,
-		depthstencil = Renderer.scene_depthbuffer,
-		depth=true, stencil=true}
-	love.graphics.setDepthMode( "less", true  )
-	love.graphics.setMeshCullMode("front")--]]
+	sh:send("u_bumpmap_enable", true)
 	love.graphics.setDepthMode( "less", true  )
 	love.graphics.setMeshCullMode("front")
 	love.graphics.setShader(Renderer.vertex_shader)

@@ -256,14 +256,6 @@ function MapDecal:generateMeshVerts(mesh, grid_w, grid_h, vert_index_map, wall_i
 		local iz=index_start-1
 		local tri1 = {mesh[iz+indices[1]],mesh[iz+indices[2]],mesh[iz+indices[3]]}
 		local tri2 = {mesh[iz+indices[4]],mesh[iz+indices[5]],mesh[iz+indices[6]]}
-		print("tri1")
-		for i,v in ipairs(tri1) do
-			print(" ",unpack(v))
-		end
-		print("tri2")
-		for i,v in ipairs(tri2) do
-			print(" ",unpack(v))
-		end--]]
 		if tri1[1] and tri1[2] and tri1[3] then
 			doTri(tri1)
 		end
