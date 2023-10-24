@@ -21,5 +21,7 @@ CONSTS = readOnly{
 
 	MAX_DIR_LIGHTS = 1,
 	MAX_POINT_LIGHTS = 9,
+
+	RIMLIGHT = 1.1,
 }
 return CONSTS

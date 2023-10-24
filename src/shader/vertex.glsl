@@ -211,6 +211,8 @@ uniform vec4 u_contour_colour;
 uniform Image MatNormal;
 uniform Image MatEmission;
 
+uniform float u_rimlight;
+
 vec3 ambient_lighting( vec4 ambient_col ) {
 	return ambient_col.rgb * ambient_col.a;
 }
@@ -401,7 +403,7 @@ vec3 calc_dir_light_col(vec4 frag_light_pos, vec4 static_frag_light_pos, mat4 li
 
 		if (interp >= 0.0) {
 			close_shadow = shadow_calculation(frag_light_pos, lightspace,
-			  map, normal , light_dir_n, 0.005);
+			  map, normal , light_dir_n, 0.0039);
 		}
 		if (interp <= 1.0) {
 			static_shadow = shadow_calculation(static_frag_light_pos, static_lightspace,
@@ -596,16 +598,13 @@ void effect( ) {
 	texcolor = get_tex_colour(MainTex, VaryingTexCoord.xy);
 	vec4 pix = texcolor * vec4(light,1.0);
 
-	float rim_dark = dot(frag_v_normal, -normalize(frag_w_position - view_pos));
-	rim_dark = max(0.0, min(pow(min(1.0,rim_dark),1.0),0.49) );
+	float rim_light = dot(frag_normal, -normalize(frag_w_position - view_pos));
+	rim_light = 1.0 - max(0.0, min(pow(min(1.0,rim_light),1.5),1.0) );
+	rim_light = smoothstep(0.83,1.00,rim_light);
+	rim_light = pow(rim_light,2.0);
+	vec3 rim_ambient = rim_light * ambient_col.rgb * u_rimlight;
 
-	vec3 rim_ambient = 0.15 * (1.0-min(1.4*rim_dark,1.0)) * ambient_col.rgb;
-	rim_dark = max(min(rim_dark*1.2,1.0),0.3);
-
-	// TODO make the fog colour work properly with HDR
-	vec4 result = vec4(rim_dark*((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour) + rim_ambient, pix.a);
-
-	//love_Canvases[0] = result*0.0001 + vec4(normal,1.0);
+	vec4 result = vec4((1-fog_r)*pix.rgb + fog_r*skybox_brightness*fog_colour + rim_ambient, pix.a);
 	love_Canvases[0] = result;
 }
 

@@ -19,6 +19,7 @@ function CustomModel:load(props)
 	local model_name = props.model_name
 	local model_face = props.model_face
 	local model_contour = props.model_contour
+	local model_rimlight = props.model_rimlight
 
 	local model_contour_colour = props.model_contour_colour
 	if model_contour_colour then
@@ -38,6 +39,7 @@ function CustomModel:load(props)
 		["model_i_outline_flag"] = model_contour,
 		["model_i_contour_flag"] = model_contour,
 		["model_i_outline_colour"] = model_contour_colour,
+		["model_i_rimlight"] = model_rimlight
 	})
 
 	inst:attachDecoration(decor)

@@ -681,6 +681,8 @@ function ModelInstance:draw(shader, is_main_pass)
 	if is_main_pass then
 		local base_model = self:getModel()
 		base_model:sendMaterial(shader)
+		local rimlight = self.props.model_i_rimlight
+		Renderer.enableRimLighting(shader, rimlight)
 	end
 
 	local props = self.props
@@ -700,6 +702,7 @@ function ModelInstance:draw(shader, is_main_pass)
 		love.graphics.setFrontFaceWinding("ccw")
 	end
 	shadersend(shader, "u_skinning", 0)
+	Renderer.disableRimLighting(shader)
 	prof.pop("model_drawwww")
 end
 

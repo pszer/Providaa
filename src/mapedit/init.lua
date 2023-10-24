@@ -1951,20 +1951,43 @@ function ProvMapEdit:objectAtCursor(x, y, tests)
 	end
 
 	-- perform tests on each 4x4 section of the grid map
-	local grid_size = 3
+	local grid_size = 4
 	local region_tests = __tempregiontests
 	local g_w,g_h
+	print("")
 	if test_tiles or test_walls or test_all then
 		local ceil = math.ceil
 		local w,h = self.props.mapedit_map_width, self.props.mapedit_map_height
+		local min,max = math.min,math.max
 		g_w,g_h = ceil(w/grid_size), ceil(h/grid_size)
 		for z=1,g_h do
 			for x=1,g_w do
 				local X,Z = (x-1.5)*TILE_SIZE*(grid_size), (z-1.5)*TILE_SIZE*(grid_size)
-				local W   = TILE_SIZE*(grid_size+2.0)
+				local W   = TILE_SIZE*(grid_size+2.5)
 				local D=W
 				local Y = -5000
 				local H = 10000
+
+				local minY,maxY = 100000,-100000
+				for _x=(x-1)*grid_size+1,min(x*grid_size+1,w) do
+					for _z=(z-1)*grid_size+1,min(z*grid_size+1,h) do
+						local Ht = self.props.mapedit_tile_heights[_z][_x]
+						local Ht_type = type(Ht)
+						if Ht_type=="number" then
+							minY = min(minY,Ht*TILE_HEIGHT)
+							maxY = max(maxY,Ht*TILE_HEIGHT)
+						elseif Ht_type=="table" then
+							for i,v in ipairs(Ht) do
+								minY = min(minY,v*TILE_HEIGHT)
+								maxY = max(maxY,v*TILE_HEIGHT)
+							end
+						end
+					end
+				end
+
+				Y = minY-1
+				H = (maxY-minY)+2
+
 				local intersect = self:testBoxAgainstRay(ray,X,Y,Z,W,H,D)
 				region_tests[x + (z-1)*g_w] = intersect ~= false
 			end

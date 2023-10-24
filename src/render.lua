@@ -529,6 +529,21 @@ function Renderer.disableDepthBias(shader)
 	shader:send("u_depth_bias_enable",false)
 end
 
+function Renderer.enableBumpMapping(shader)
+	shader:send("u_bumpmap_enable", true)
+end
+function Renderer.disableBumpMapping(shader)
+	shader:send("u_bumpmap_enable", false)
+end
+
+function Renderer.enableRimLighting(shader, scale)
+	local scale = scale or 1.0
+	shadersend(shader, "u_rimlight", scale)
+end
+function Renderer.disableRimLighting(shader)
+	shadersend(shader, "u_rimlight", 0.0)
+end
+
 function Renderer.drawFPS()
 	love.graphics.push("all")
 	love.graphics.reset()

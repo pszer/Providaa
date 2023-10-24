@@ -141,6 +141,7 @@ local __id = cpml.mat4.new()
 function Scene:drawGridMap()
 	local shader = love.graphics.getShader()
 
+	Renderer.enableBumpMapping(shader)
 	shadersend(shader,"u_uses_tileatlas", true)
 	self.map_mesh:pushAtlas(shader,true)
 	--[[if self.resend_map_mesh_uv then
@@ -159,6 +160,7 @@ function Scene:drawGridMap()
 	local o_mesh = self.map_mesh.overlay_mesh
 	love.graphics.draw(o_mesh)
 
+	Renderer.disableBumpMapping(shader)
 	love.graphics.setDepthMode("less",true)
 	shadersend(shader,"u_uses_tileatlas", false)
 end
@@ -176,6 +178,7 @@ end
 function Scene:drawDecals(shader)
 	local shader = shader or love.graphics.getShader()
 
+	Renderer.disableBumpMapping(shader)
 	local decal_mesh = self.map_mesh.decal_mesh
 	if not decal_mesh then return end
 	self.map_mesh:pushDecalAtlas(shader, true)
@@ -190,7 +193,6 @@ end
 function Scene:drawModels(is_main_pass, model_subset)
 	prof.push("draw_models")
 	local models = model_subset or self.props.scene_models
-	--print("models, ", #models)
 	for i,v in ipairs(models) do
 		v:draw(nil, is_main_pass)
 	end

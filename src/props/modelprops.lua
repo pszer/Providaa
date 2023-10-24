@@ -76,6 +76,8 @@ ModelInstancePropPrototype = Props:prototype{
 
 	{"model_i_animator1", nil, nil, nil, "model's animator"},
 	{"model_i_animator2", nil, nil, nil, "each model has two animators to allow for interpolating between animations"},
-	{"model_i_animator_interp", "number", 0.0, nil, "interpolation between the two animators, 0.0 = animator1, 1.0 = animator2"}
+	{"model_i_animator_interp", "number", 0.0, nil, "interpolation between the two animators, 0.0 = animator1, 1.0 = animator2"},
+
+	{"model_i_rimlight", "number", 0.0, nil, "rimlight component"}
 												
 }
